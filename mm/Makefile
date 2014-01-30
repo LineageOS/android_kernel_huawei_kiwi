@@ -64,3 +64,5 @@ obj-$(CONFIG_PAGE_OWNER) += pageowner.o
 obj-$(CONFIG_ZBUD)	+= zbud.o
 obj-$(CONFIG_GENERIC_EARLY_IOREMAP) += early_ioremap.o
 obj-$(CONFIG_PROCESS_RECLAIM)	+= process_reclaim.o
+obj-$(CONFIG_ZPOOL)	+= zpool.o
+obj-$(CONFIG_ZSMALLOC)	+= zsmalloc.o
