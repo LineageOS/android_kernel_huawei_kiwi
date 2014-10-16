@@ -197,4 +197,7 @@ source "drivers/goldeneye/Kconfig"
 
 source "drivers/srecorder/Kconfig"
 source "drivers/huawei_platform/Kconfig"
+
+source "drivers/android/Kconfig"
+
 endmenu
