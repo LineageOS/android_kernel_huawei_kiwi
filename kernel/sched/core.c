@@ -75,10 +75,6 @@
 #include <linux/context_tracking.h>
 #include <linux/cpufreq.h>
 
-#ifdef CONFIG_HUAWEI_MSG_POLICY
-#include <power/msgnotify.h>
-#endif
-
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
 #include <asm/irq_regs.h>
@@ -1213,7 +1209,10 @@ unsigned int min_max_freq = 1;
 
 unsigned int max_capacity = 1024; /* max(rq->capacity) */
 unsigned int min_capacity = 1024; /* min(rq->capacity) */
-unsigned int max_load_scale_factor = 1024; /* max(rq->load_scale_factor) */
+unsigned int max_load_scale_factor = 1024; /* max possible load scale factor */
+unsigned int max_possible_capacity = 1024; /* max(rq->max_possible_capacity) */
+unsigned int min_max_possible_capacity = 1024; /* min(max_possible_capacity) */
+unsigned int min_max_capacity_delta_pct;
 
 /* Window size (in ns) */
 __read_mostly unsigned int sched_ravg_window = 10000000;
@@ -2039,7 +2038,6 @@ void reset_all_window_stats(u64 window_start, unsigned int window_size)
 	u64 start_ts = sched_clock();
 	int reason = WINDOW_CHANGE;
 	unsigned int old = 0, new = 0;
-	unsigned int old_window_size = sched_ravg_window;
 
 	disable_window_stats();
 
@@ -2062,13 +2060,8 @@ void reset_all_window_stats(u64 window_start, unsigned int window_size)
 	for_each_possible_cpu(cpu) {
 		struct rq *rq = cpu_rq(cpu);
 
-		if (window_start) {
-			u32 mostly_idle_load = rq->mostly_idle_load;
-
+		if (window_start)
 			rq->window_start = window_start;
-			rq->mostly_idle_load = div64_u64((u64)mostly_idle_load *
-				 (u64)sched_ravg_window, (u64)old_window_size);
-		}
 #ifdef CONFIG_SCHED_FREQ_INPUT
 		rq->curr_runnable_sum = rq->prev_runnable_sum = 0;
 #endif
@@ -2296,6 +2289,7 @@ static void update_min_max_capacity(void)
 {
 	int i;
 	int max = 0, min = INT_MAX;
+	int max_pc = INT_MIN, min_pc = INT_MAX;
 	int max_lsf = 0;
 
 	for_each_possible_cpu(i) {
@@ -2306,11 +2300,22 @@ static void update_min_max_capacity(void)
 
 		if (cpu_rq(i)->load_scale_factor > max_lsf)
 			max_lsf = cpu_rq(i)->load_scale_factor;
+
+		max_pc = max(cpu_rq(i)->max_possible_capacity, max_pc);
+		if (cpu_rq(i)->max_possible_capacity > 0)
+			min_pc = min(cpu_rq(i)->max_possible_capacity, min_pc);
 	}
 
 	max_capacity = max;
 	min_capacity = min;
 	max_load_scale_factor = max_lsf;
+
+	max_possible_capacity = max_pc;
+	min_max_possible_capacity = min_pc;
+	BUG_ON(max_possible_capacity < min_max_possible_capacity);
+	min_max_capacity_delta_pct =
+	    div64_u64((u64)(max_possible_capacity - min_max_possible_capacity) *
+		      100, min_max_possible_capacity);
 }
 
 /*
@@ -2460,6 +2465,7 @@ static int cpufreq_notifier_policy(struct notifier_block *nb,
 	}
 
 	update_min_max_capacity();
+
 	post_big_small_task_count_change(cpu_possible_mask);
 
 	return 0;
@@ -2470,18 +2476,24 @@ static int cpufreq_notifier_trans(struct notifier_block *nb,
 {
 	struct cpufreq_freqs *freq = (struct cpufreq_freqs *)data;
 	unsigned int cpu = freq->cpu, new_freq = freq->new;
-	struct rq *rq = cpu_rq(cpu);
 	unsigned long flags;
+	int i;
 
 	if (val != CPUFREQ_POSTCHANGE)
 		return 0;
 
 	BUG_ON(!new_freq);
 
-	raw_spin_lock_irqsave(&rq->lock, flags);
-	update_task_ravg(rq->curr, rq, TASK_UPDATE, sched_clock(), 0);
-	cpu_rq(cpu)->cur_freq = new_freq;
-	raw_spin_unlock_irqrestore(&rq->lock, flags);
+	if (cpu_rq(cpu)->cur_freq == new_freq)
+		return 0;
+
+	for_each_cpu(i, &cpu_rq(cpu)->freq_domain_cpumask) {
+		struct rq *rq = cpu_rq(i);
+		raw_spin_lock_irqsave(&rq->lock, flags);
+		update_task_ravg(rq->curr, rq, TASK_UPDATE, sched_clock(), 0);
+		rq->cur_freq = new_freq;
+		raw_spin_unlock_irqrestore(&rq->lock, flags);
+	}
 
 	return 0;
 }
@@ -4711,10 +4723,6 @@ need_resched:
 		rq->nr_switches++;
 		rq->curr = next;
 		++*switch_count;
-
-#ifdef CONFIG_HUAWEI_MSG_POLICY
-		update_msg_stat(cpu, prev, next);
-#endif
 
 #ifdef CONFIG_ARCH_WANTS_CTXSW_LOGGING
 		dlog("%s: enter context_switch at %llu\n",
@@ -9029,9 +9037,6 @@ void __init sched_init(void)
 		rq->window_start = 0;
 		rq->nr_small_tasks = rq->nr_big_tasks = 0;
 		rq->hmp_flags = 0;
-		rq->mostly_idle_load = pct_to_real(20);
-		rq->mostly_idle_nr_run = 3;
-		rq->mostly_idle_freq = 0;
 #ifdef CONFIG_SCHED_FREQ_INPUT
 		rq->old_busy_time = 0;
 		rq->curr_runnable_sum = rq->prev_runnable_sum = 0;
