@@ -382,12 +382,14 @@ static inline int msm_rpm_get_error_from_ack(uint8_t *buf)
 	return rc;
 }
 
-
-int msm_rpm_smd_buffer_request(char *buf, uint32_t size, gfp_t flag)
+int msm_rpm_smd_buffer_request(struct msm_rpm_request *cdata,
+		uint32_t size, gfp_t flag)
 {
 	struct slp_buf *slp;
 	static DEFINE_SPINLOCK(slp_buffer_lock);
 	unsigned long flags;
+	char *buf;
+	buf = cdata->buf;
 
 	if (size > MAX_SLEEP_BUFFER)
 		return -ENOMEM;
@@ -410,6 +412,9 @@ int msm_rpm_smd_buffer_request(char *buf, uint32_t size, gfp_t flag)
 		/* handle unsent requests */
 		tr_update(slp, buf);
 	}
+	trace_rpm_smd_sleep_set(cdata->msg_hdr.msg_id,
+				cdata->msg_hdr.resource_type,
+				cdata->msg_hdr.resource_id);
 
 	spin_unlock_irqrestore(&slp_buffer_lock, flags);
 
@@ -485,14 +490,12 @@ static int msm_rpm_flush_requests(bool print)
 				get_buf_len(s->buf), true);
 
 		WARN_ON(ret != get_buf_len(s->buf));
+		trace_rpm_smd_send_sleep_set(get_msg_id(s->buf),
+					get_rsc_type(s->buf),
+					get_rsc_id(s->buf));
 
 		s->valid = false;
 		count++;
-
-		trace_rpm_send_message(true, MSM_RPM_CTX_SLEEP_SET,
-				get_rsc_type(s->buf),
-				get_rsc_id(s->buf),
-				get_msg_id(s->buf));
 
 		/*
 		 * RPM acks need to be handled here if we have sent 24
@@ -536,6 +539,7 @@ static int msm_rpm_flush_requests(bool print)
 	}
 	return 0;
 }
+
 
 static void msm_rpm_notify_sleep_chain(struct rpm_message_header *hdr,
 		struct msm_rpm_kvp_data *kvp)
@@ -731,6 +735,7 @@ static void msm_rpm_notify(void *data, unsigned event)
 
 	switch (event) {
 	case SMD_EVENT_DATA:
+		trace_rpm_smd_interrupt_notify("interrupt notification");
 		complete(&data_ready);
 		break;
 	case SMD_EVENT_OPEN:
@@ -847,7 +852,7 @@ static void msm_rpm_process_ack(uint32_t msg_id, int errno)
 	 * entering RPM assisted power collapse.
 	 */
 	if (!elem)
-		trace_rpm_ack_recd(0, msg_id);
+		trace_rpm_smd_ack_recvd(0, msg_id, 0xDEADBEEF);
 
 	spin_unlock_irqrestore(&msm_rpm_list_lock, flags);
 }
@@ -857,6 +862,7 @@ struct msm_rpm_kvp_packet {
 	uint32_t len;
 	uint32_t val;
 };
+
 
 static int msm_rpm_read_smd_data(char *buf)
 {
@@ -901,7 +907,8 @@ static void msm_rpm_smd_work(struct work_struct *work)
 			if (msm_rpm_read_smd_data(buf))
 				break;
 			msg_id = msm_rpm_get_msg_id_from_ack(buf);
-			errno = msm_rpm_get_error_from_ack(buf);
+			errno = msm_rpm_get_error_from_ack((uint8_t *)buf);
+			trace_rpm_smd_ack_recvd(0, msg_id, errno);
 			msm_rpm_process_ack(msg_id, errno);
 		}
 		spin_unlock(&msm_rpm_data.smd_lock_read);
@@ -1135,7 +1142,7 @@ static int msm_rpm_send_data(struct msm_rpm_request *cdata,
 	memcpy(cdata->buf, &cdata->req_hdr, req_hdr_sz + msg_hdr_sz);
 
 	if ((cdata->msg_hdr.set == MSM_RPM_CTX_SLEEP_SET) &&
-		!msm_rpm_smd_buffer_request(cdata->buf, msg_size,
+		!msm_rpm_smd_buffer_request(cdata, msg_size,
 			GFP_FLAG(noirq)))
 		return 1;
 
@@ -1161,19 +1168,18 @@ static int msm_rpm_send_data(struct msm_rpm_request *cdata,
 	ret = msm_rpm_send_smd_buffer(&cdata->buf[0], msg_size, noirq);
 
 	if (ret == msg_size) {
-		trace_rpm_send_message(noirq, cdata->msg_hdr.set,
-				cdata->msg_hdr.resource_type,
-				cdata->msg_hdr.resource_id,
-				cdata->msg_hdr.msg_id);
 		for (i = 0; (i < cdata->write_idx); i++)
 			cdata->kvp[i].valid = false;
 		cdata->msg_hdr.data_len = 0;
 		ret = cdata->msg_hdr.msg_id;
+		trace_rpm_smd_send_active_set(cdata->msg_hdr.msg_id,
+					cdata->msg_hdr.resource_type,
+					cdata->msg_hdr.resource_id);
 	} else if (ret < msg_size) {
 		struct msm_rpm_wait_data *rc;
 		ret = 0;
-		pr_err("Failed to write data msg_size:%d ret:%d\n",
-				msg_size, ret);
+		pr_err("Failed to write data msg_size:%d ret:%d msg_id:%d\n",
+				msg_size, ret, cdata->msg_hdr.msg_id);
 		rc = msm_rpm_get_entry_from_msg_id(cdata->msg_hdr.msg_id);
 		if (rc)
 			msm_rpm_free_list_entry(rc);
@@ -1221,7 +1227,7 @@ int msm_rpm_wait_for_ack(uint32_t msg_id)
 		return rc;
 
 	wait_for_completion(&elem->ack);
-	trace_rpm_ack_recd(0, msg_id);
+	trace_rpm_smd_ack_recvd(0, msg_id, 0xDEADFEED);
 
 	rc = elem->errno;
 	msm_rpm_free_list_entry(elem);
@@ -1272,12 +1278,12 @@ int msm_rpm_wait_for_ack_noirq(uint32_t msg_id)
 			msm_rpm_read_smd_data(buf);
 			id = msm_rpm_get_msg_id_from_ack(buf);
 			errno = msm_rpm_get_error_from_ack(buf);
+			trace_rpm_smd_ack_recvd(1, msg_id, errno);
 			msm_rpm_process_ack(id, errno);
 		}
 	}
 
 	rc = elem->errno;
-	trace_rpm_ack_recd(1, msg_id);
 
 	msm_rpm_free_list_entry(elem);
 wait_ack_cleanup:
