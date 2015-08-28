@@ -26,6 +26,7 @@
 #include <sound/hw_audio_info.h>
 #include "msm-pcm-routing-v2.h"
 #include <sound/audio_cal_utils.h>
+#include <sound/adsp_err.h>
 
 enum {
 	AFE_COMMON_RX_CAL = 0,
