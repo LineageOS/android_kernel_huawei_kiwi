@@ -220,12 +220,6 @@ static irqreturn_t wcd9xxx_spmi_irq_handler(int linux_irq, void *data)
 		return IRQ_HANDLED;
 
 	status[BIT_BYTE(irq)] |= BYTE_BIT_MASK(irq);
-	for (i = 0; i < NUM_IRQ_REGS; i++) {
-		status[i] |= snd_soc_read(map.codec,
-				BIT_BYTE(irq) * 0x100 +
-			MSM8X16_WCD_A_DIGITAL_INT_LATCHED_STS);
-		status[i] &= ~map.mask[i];
-	}
 	for (i = 0; i < MAX_NUM_IRQS; i++) {
 		j = get_order_irq(i);
 		if ((status[BIT_BYTE(j)] & BYTE_BIT_MASK(j)) &&
