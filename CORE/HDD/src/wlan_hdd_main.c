@@ -8465,11 +8465,11 @@ void wlan_hdd_mon_close(hdd_context_t *pHddCtx)
 {
     VOS_STATUS vosStatus;
     v_CONTEXT_t pVosContext = pHddCtx->pvosContext;
-    struct wiphy *wiphy = pHddCtx->wiphy;
     long ret;
     hdd_mon_ctx_t *pMonCtx = NULL;
     v_U32_t magic;
     struct completion cmpVar;
+
     hdd_adapter_t *pAdapter = hdd_get_adapter(pHddCtx,WLAN_HDD_MONITOR);
     if(pAdapter == NULL || pVosContext == NULL)
     {
@@ -8526,15 +8526,7 @@ void wlan_hdd_mon_close(hdd_context_t *pHddCtx)
        nl_srv_exit();
    #endif
 
-   if (pHddCtx->cfg_ini)
-   {
-       kfree(pHddCtx->cfg_ini);
-       pHddCtx->cfg_ini= NULL;
-   }
    hdd_close_all_adapters( pHddCtx );
-
-   wiphy_free(wiphy) ;
-
 }
 /**
  * hdd_wlan_free_wiphy_channels - free Channel pointer for wiphy
@@ -8584,7 +8576,7 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    {
       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: MONITOR MODE",__func__);
       wlan_hdd_mon_close(pHddCtx);
-      return;
+      goto free_hdd_ctx;
    }
    else if (VOS_FTM_MODE != hdd_get_conparam())
    {
