@@ -41,6 +41,7 @@
 #define NCP6335D_VOLTAGE_STEPS		128
 #define NCP6335D_MIN_SLEW_NS		166
 #define NCP6335D_MAX_SLEW_NS		1333
+#define NCP6335D_MAX_EN_DELAY_MS	14
 
 /* bits */
 #define NCP6335D_ENABLE			BIT(7)
@@ -53,6 +54,8 @@
 #define NCP6335D_VOUT_SEL_MASK		0x7F
 #define NCP6335D_SLEW_MASK		0x18
 #define NCP6335D_SLEW_SHIFT		0x3
+#define NCP6335D_EN_DELAY_MASK		0xE0
+#define NCP6335D_EN_DELAY_SHIFT		0x5
 
 struct ncp6335d_info {
 	struct regulator_dev *regulator;
@@ -64,7 +67,8 @@ struct ncp6335d_info {
 	unsigned int mode_bit;
 	int curr_voltage;
 	int slew_rate;
-
+	int en_delay;
+      
 	unsigned int step_size;
 	unsigned int min_voltage;
 	unsigned int min_slew_ns;
@@ -434,10 +438,14 @@ static int ncp6335d_init(struct i2c_client *client, struct ncp6335d_info *dd,
 	val = DIV_ROUND_UP(pdata->slew_rate_ns, dd->min_slew_ns);
 	val = ilog2(val);
 
+	dd->en_delay = pdata->en_delay_ms / 2;
+
 	rc = ncp6335x_update_bits(dd, REG_NCP6335D_TIMING,
-			NCP6335D_SLEW_MASK, val << NCP6335D_SLEW_SHIFT);
+                   NCP6335D_SLEW_MASK | NCP6335D_EN_DELAY_MASK,
+                   val << NCP6335D_SLEW_SHIFT |
+                   dd->en_delay << NCP6335D_EN_DELAY_SHIFT);
 	if (rc)
-		dev_err(dd->dev, "Unable to set slew rate rc(%d)\n", rc);
+		dev_err(dd->dev, "Unable to set timing, rc(%d)\n", rc);
 
 	/* Set Sleep mode bit */
 	rc = ncp6335x_update_bits(dd, REG_NCP6335D_COMMAND,
@@ -532,6 +540,20 @@ static struct ncp6335d_platform_data *
 			rc);
 		return NULL;
 	}
+
+    if (of_find_property(client->dev.of_node, "onnn,en-delay-ms", NULL)) {
+         rc = of_property_read_u32(client->dev.of_node,
+                 "onnn,en-delay-ms", &pdata->en_delay_ms);
+         if (rc < 0) {
+             dev_err(&client->dev, "onnn,en-delay-ms property missing: rc = %d.\n",
+                         rc);
+             return NULL;
+         }
+         if (pdata->en_delay_ms > NCP6335D_MAX_EN_DELAY_MS) {
+                       dev_err(&client->dev, "en_delay_ms out of range\n");
+                       return NULL;
+         }
+     }
 
 	pdata->discharge_enable = of_property_read_bool(client->dev.of_node,
 						"onnn,discharge-enable");
@@ -712,20 +734,22 @@ static int ncp6335d_regulator_remove(struct i2c_client *client)
 	return 0;
 }
 
+/*delete I2C address 0x10*/
 static struct of_device_id ncp6335d_match_table[] = {
-	{ .compatible = "onnn,ncp6335d-regulator", },
+	{ .compatible = "onnn,ncp6335d-a1c", },
+	{ .compatible = "onnn,ncp6335d-a18", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, ncp6335d_match_table);
 
 static const struct i2c_device_id ncp6335d_id[] = {
-	{"ncp6335d", -1},
+	{"ncp6335d-a1x", -1},
 	{ },
 };
 
 static struct i2c_driver ncp6335d_regulator_driver = {
 	.driver = {
-		.name = "ncp6335d-regulator",
+		.name = "ncp6335d-a1x",
 		.owner = THIS_MODULE,
 		.of_match_table = ncp6335d_match_table,
 	},
