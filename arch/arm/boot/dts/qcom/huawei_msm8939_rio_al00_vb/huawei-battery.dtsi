@@ -1,0 +1,125 @@
+/ {
+        qrd_batterydata: qcom,battery-data {
+                qcom,rpull-up-kohm = <68>;
+                qcom,vref-batt-therm = <1800000>;
+                #include "HB396481EBC_ATL_SCUD-4v35-3000mah.dtsi"
+                #include "HB396481EBC_LG_SWD-4v35-3000mah.dtsi"
+                #include "HB396481EBC_SONY_SWD-4v35-3000mah.dtsi"
+                #include "HB396481EBC_SONY_SCUD-4v35-3000mah.dtsi"
+        };
+};
+
+&pm8916_bms {
+        status = "ok";
+        qcom,low-voltage-threshold = <3350000>;
+        qcom,battery-data = <&qrd_batterydata>;
+        qcom,use-ext-charger;
+
+        qcom,resume-soc = <99>;
+
+};
+
+&pm8916_chg {
+        status = "okay";
+        qcom,vddmax-mv = <4350>;
+        qcom,vddsafe-mv = <4380>;
+};
+
+&pm8916_mpps {
+	mpp@a100 {
+		qcom,mode = <4>; // QPNP_PIN_MODE_AIN
+		qcom,src-sel = <0>; // QPNP_PIN_SEL_FUNC_CONSTANT
+		qcom,ain-route = <1>; // QPNP_PIN_AIN_AMUX_CH6
+		qcom,master-en = <1>; // Enable features
+	};
+
+	mpp@a300 {
+		qcom,mode = <4>; // QPNP_PIN_MODE_AIN
+		qcom,src-sel = <0>; // QPNP_PIN_SEL_FUNC_CONSTANT
+		qcom,ain-route = <3>; // QPNP_PIN_AIN_AMUX_CH8
+		qcom,master-en = <1>; // Enable features
+	};
+};
+
+&pm8916_vadc {
+	cpu_mpp_number = <19>;
+	pa_mpp_number = <54>;
+
+	chan@11 {
+		label = "mpp2_div1";
+		reg = <0x11>;
+		qcom,decimation = <0>; //512 sampling rate
+		qcom,pre-div-channel-scaling = <0>; //1:1 scaling
+		qcom,calibration-type = "absolute"; //Use 625mV & 1.25V reference voltage
+		qcom,scale-function = <13>; //convert raw adc code to voltage
+		qcom,hw-settle-time = <2>; //200us
+		qcom,fast-avg-setup = <0>; //with only one average measurement
+	};
+
+	chan@13 {
+		label = "mpp4_div1";
+		reg = <0x13>;
+		qcom,decimation = <0>; //512 sampling rate
+		qcom,pre-div-channel-scaling = <0>; //1:1 scaling
+		qcom,calibration-type = "absolute"; //Use 625mV & 1.25V reference voltage
+		qcom,scale-function = <12>; //convert raw adc code to voltage
+		qcom,hw-settle-time = <2>; //200us
+		qcom,fast-avg-setup = <0>; //with only one average measurement
+	};
+
+	chan@36 {
+		qcom,scale-function = <12>; //convert raw adc code to voltage
+	};
+};
+
+/{
+	charger_core: charger_core{
+		compatible = "huawei,charger_core";
+		charger_type = "Ti_bq24296";
+		iin_ac = <2000>;
+		status = "ok";
+	};
+};
+
+&spmi_bus{
+	qcom,pm8916@0 {
+		huawei_charger: qcom,huawei_charger{
+			compatible = "huawei,charger";
+			chgr-base = <0x1000>;
+			bat-if-base = <0x1200>;
+			usb-chgpth-base = <0x1300>;
+			misc-base = <0x1600>;
+			bms-base = <0x4000>;
+			pon-base = <0x800>;
+			qcom,use-cbl-interrupt;
+			ibus_mpp_number = <17>;
+			status = "ok";
+		};
+	};
+};
+
+&soc {
+	i2c@78b8000{ /* BLSP1 QUP4 */
+		bq24296_otg_supply: bq24296m_charger@6b {
+			compatible = "huawei,bq24296m_charger";
+			reg = <0x6B>;
+			ti,max_charger_currentmA = <2048>;
+			ti,max_charger_voltagemV = <4350>;
+			ti,max_cin_limit_currentmA = <2000>;
+			gpio_cd = <&msm_gpio 108 0x00>;
+			gpio_int = <&msm_gpio 62 0x00>;
+			pinctrl-names = "bq_active","bq_suspend";
+			pinctrl-0 = <&ce_config_active &chg_int_active>;
+			pinctrl-1 = <&chg_int_suspend>;
+			regulator-name = "bq24296_otg_vreg";
+			ti,gpio_cd_level_reverse;
+		};
+	};
+};
+
+/{
+	huawei_dsm_charger: huawei_dsm_charger{
+		compatible = "huawei,dsm_charger";
+		status = "ok";
+	};
+};

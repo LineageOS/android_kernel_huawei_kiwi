@@ -1,0 +1,11 @@
+/* < DTS201503100xxxx zhujie 20150327 begin */
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI Athena CL";
+                  fac,hardware_ver = "HL1ATHAL00M";
+                  fac,software_ver = "MSM8939_ATH_CL00_VB";
+                  status = "ok";
+        };
+};
+/* DTS201503100xxxx zhujie 20150327 end > */

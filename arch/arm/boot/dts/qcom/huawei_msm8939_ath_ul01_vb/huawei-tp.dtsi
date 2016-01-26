@@ -1,0 +1,223 @@
+/* Modify JDI tp/lcd power on/off to reduce power consumption */
+/* Modify JDI tp reset gpio pinctrl for power consumption */
+/*Ath TP not working in glove mode*/
+/* move l16 control to ATH device config file */
+&tlmm_pinmux {
+
+	synaptics_int_pin {
+		qcom,pins = <&gp 13>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "synaptics-irq";
+		synaptics_int_active: synaptics_int_active {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+		synaptics_int_sleep: synaptics_int_sleep {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	synaptics_rst_pin {
+		qcom,pins = <&gp 12>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "synaptics-rst";
+		synaptics_rst_active: synaptics_rst_active {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+		synaptics_rst_sleep: synaptics_rst_sleep {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+};
+
+&soc {
+	i2c@78b9000 { /* BLSP1 QUP5 */
+		status = "ok";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		qcom,clk-freq-out = <400000>;
+		synaptics@70 {
+			compatible = "synaptics,dsx";
+			reg = <0x70>;
+
+			/* SYNAPTICS_S3207 = 0 */
+			/* SYNAPTICS_S3350 = 1 */
+			/* SYNAPTICS_S3320 = 2 */
+			/* SYNAPTICS_S3718 = 3 */
+			ic_type = <2>;
+
+			pinctrl-names = "active","sleep";
+			pinctrl-0 = <&synaptics_int_active &synaptics_rst_active>;
+			pinctrl-1 = <&synaptics_int_sleep &synaptics_rst_sleep>;
+
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <13 0x2008>;
+//			vdd-supply = <&pm8916_l17>;
+			vcc_i2c-supply = <&pm8916_l16>;
+			/* Some of qcom's param will not be replaced by huawei in dtb, */
+			/* just ignore them:such as "pinctrl-names","pinctrl-0","pinctrl-1", */
+			/* "synaptics,display-coords","synaptics,panel-coords","synaptics,i2c-pull-up", */
+			/* "synaptics,power-down","synaptics,disable-gpios"*/
+//			synaptics,vdd = "vdd";
+			synaptics,vbus = "vcc_i2c";
+			synaptics,irq-gpio = <&msm_gpio 13 0x2008>;
+			synaptics,reset-gpio = <&msm_gpio 12 0x0>;
+			synaptics,vci-gpio = <&msm_gpio 112 0x0>;
+
+			synaptics,lcd-x = <1080>;
+			synaptics,lcd-y = <1920>;
+			synaptics,lcd-all = <1920>;
+			synaptics,virtual_keys = /* KeyCode CenterX CenterY Width Height */
+				/* KEY_BACK */
+				<158 142 1342 150 100
+				/* KEY_HOME(172) */
+				172 360 1342 150 100
+				/* KEY_MENU */
+				139 578 1342 150 100>;
+
+			/* SYNAPTICS_WAKE_UP_GESTURE_FLAG:'1'->enabled,'0'->disabled */
+			/*IC flash is not enough for holster,so fw del one gesture*/
+			synaptics,gesture_enabled = <0>;
+			/* Gestures that supported:                           */
+			/* bit0  Double tap                                        */
+			/* bit1  Single finger slide from left to right     */
+			/* bit2  Single finger slide from right to left     */
+			/* bit3  Single finger slide from top to bottom  */
+			/* bit4  Single finger slide from bottom to top  */
+			/* bit5  Double finger slide from top to bottom--disable for holster*/
+			/* bit6  Single finger slide circle                     */
+			/* bit7  Single finger write letter c                  */
+			/* bit8  Single finger write letter e                  */
+			/* bit9  Single finger write letter m                 */
+			/* bit10 Single finger write letter w                 */
+			/* bit11 Palm off screen                                */
+			synaptics,easy_wakeup_supported_gestures = <0xF81>;
+
+			/*Defination of report key value  for different gestures*/
+			synaptics,easy_wakeup_gesture_keys = 
+			<	59 /*0.Double tap:                                  KEY_F1*/
+				60 /*1.Single finger slide from left to right:      KEY_F2*/
+				61 /*2.Single finger slide from right to left:      KEY_F3*/
+				62 /*3.Single finger slide from top to bottom:      KEY_F4*/
+				63 /*4.Single finger slide from bottom to top:      KEY_F5*/
+				64 /*5.Single finger slide circle clockwise:        KEY_F6*/
+				65 /*6.Single finger slide circle counter-clockwise:KEY_F7*/
+				66 /*7.Single finger write letter c:                KEY_F8*/
+				67 /*8.Single finger write letter e:                KEY_F9*/
+				68 /*9.Single finger write letter m:                KEY_F10*/
+				87 /*10.Single finger write letter w:               KEY_F11*/
+				88 /*11.Palm off screen:                            KEY_F12*/
+			>;
+
+			/* Double-tap-zone defined by huawei */
+			/* Shielded area is:1cm left,1cm right,3cm up,2cm down */
+			huawei,dtz_x0 = <1>;
+			huawei,dtz_y0 = <1>;
+			huawei,dtz_x1 = <1080>;
+			huawei,dtz_y1 = <1920>;
+
+			/* GLOVE FLAG default state:'1'->enabled,'0'->disabled*/
+			synaptics,glove_enabled = <0>;
+			/*After reduce power-consumption by exit reduce mode,*/
+			/*we have to reduce f-r rate to make sure gesture work fine*/
+			synaptics,fast_relax_gesture = <0>;
+			/*Holster support flag*/
+			synaptics,holster_supported = <0>;
+			synaptics,glove_edge_switch_supported = <0>;
+			synaptics,grip_algorithm_supported = <0>;
+			synaptics,grip_algorithm_enabled = <0>;
+			huawei,grip_left_lsb = <0x32>;
+			huawei,grip_left_msb = <0x0>;
+			huawei,grip_right_lsb = <0x1A>;
+			huawei,grip_right_msb = <0x04>;
+
+			/*dwt represent doze wakeup threshold in gesture mode*/
+			synaptics,ofilm_dwt = <30>;
+			synaptics,truly_dwt = <30>;
+			synaptics,junda_dwt = <30>;
+
+			synaptics,reset-on-status = <0>;
+			synaptics,power-delay-ms = <160>;
+			synaptics,reset-delay-ms = <100>;
+			synaptics,reset-active-ms = <90>;
+			synaptics,product_name = "athena";
+
+			/*capacitance self-adapt*/
+			huawei,jdi {
+				huawei,name = "huawei,jdi";
+				huawei,rxdiagonal_upperlimit = <1150>;
+				huawei,rxdiagonal_lowerlimit = <850>;
+				huawei,rxothers_upperlimit = <100>;
+				huawei,txtxreport_limit = <0>;
+				huawei,highres_upperlimit = <445 445 0x14>;/*0x14==20*/
+				huawei,highres_lowerlimit = <0 0 0xf830>;/*0xf830==-2000*/
+				huawei,rawcap_upperlimit = <9999>;
+				huawei,rawcap_lowerlimit = <0>;
+				huawei,rx_cap_upperlimit = <390>;
+				huawei,rx_cap_lowerlimit = <0xfe7a>;
+				huawei,tx_cap_upperlimit = <390>;
+				huawei,tx_cap_lowerlimit = <0xfe7a>;
+				huawei,deltarawimage_upperlimit = <15>;
+				huawei,deltarawimage_lowerlimit = <0xfff1>;
+				huawei,f51_ctrl_01_low_sensitivity_val = <0x1b>;
+				huawei,f51_ctrl_04_low_sensitivity_val = <0x17>;
+				huawei,f01_ctrl_05_low_sensitivity_val = <0x05>;
+				huawei,f01_ctrl_09_low_sensitivity_val = <0x04>;
+
+				huawei,fullraw_upperlimit =
+					<2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520
+					2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520 2520>;
+
+				huawei,fullraw_lowerlimit =
+					<1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500
+					1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500 1500>;
+			};
+		};
+	};
+
+	/*To disable gen-vkeys.c probe,avoid generate kobject*/
+	gen-vkeys {
+		compatible = "huawei,gen-vkeys";
+		label = "synaptics_rmi4_i2c";
+		qcom,disp-maxx = <720>;
+		qcom,disp-maxy = <1280>;
+		qcom,panel-maxx = <720>;
+		qcom,panel-maxy = <1369>;
+		qcom,key-codes = <158 172 139>;
+	};
+
+};
+	/*delete the node*/

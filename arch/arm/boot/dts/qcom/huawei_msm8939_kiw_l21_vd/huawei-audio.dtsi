@@ -1,0 +1,60 @@
+/ {
+    huawei_audio_info {
+        compatible = "huawei,hw_audio_info";
+        product-identifier = "kiw_l";
+        speaker-pa = "tfa9895";
+        speaker-box = "none";
+        pa-i2c = "i2c_1";
+        builtin-master-mic-exist;
+        builtin-2nd-mic-exist;
+        hand_held_master_mic_strategy;
+        status = "ok";
+        loud_speaker_second_mic_strategy;
+        product-btsco-nrec-adapt;
+        qcom,box-id = <&msm_gpio 73 0>;      
+        pinctrl-names ="box_default",
+            "box_sleep";
+        pinctrl-0 = <&box_id_default>;
+        pinctrl-1 = <&box_id_sleep>;
+    };
+};
+
+&tlmm_pinmux 
+{
+    audio_box_id_pin {
+        /* identity the gpio level of box */
+        qcom,pins = <&gp 73>;
+        qcom,pin-func = <0>;
+        qcom,num-grp-pins = <1>;
+        label = "box_id_pin";
+        box_id_default: box_default {
+            drive-strength = <2>;
+            bias-pull-up;
+        };
+        box_id_sleep: box_sleep {
+            drive-strength = <2>;
+            bias-pull-down;
+        };
+    };
+};
+&soc {
+    sound {
+        qcom,msm-micbias1-ext-cap;
+        qcom,msm-ext-pa = "quaternary";
+        pinctrl-names = "cdc_lines_act",
+            "cdc_lines_sus",
+            "cdc_lines_quat_ext_act",
+            "cdc_lines_quat_ext_sus";
+        pinctrl-0 = <&cdc_pdm_lines_act>;
+        pinctrl-1 = <&cdc_pdm_lines_sus>;
+        pinctrl-2 = <&cdc_pdm_lines_act &ext_cdc_tlmm_lines_act>;
+        pinctrl-3 = <&cdc_pdm_lines_sus &ext_cdc_tlmm_lines_sus>;
+    };
+};
+&spmi_bus {
+        qcom,pm8916@1 {
+                pm8916_tombak_dig: msm8x16_wcd_codec@f000{
+                        qcom,cdc-boost-voltage = <5000>;
+                };
+        };
+};

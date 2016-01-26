@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI ATH-UL06";
+                  fac,hardware_ver = "HL1ATHUL06M";
+                  fac,software_ver = "MSM8939_ATH_UL06_VC";
+                  status = "ok";
+        };
+};

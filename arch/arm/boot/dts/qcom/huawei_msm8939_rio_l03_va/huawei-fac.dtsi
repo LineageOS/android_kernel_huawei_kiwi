@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI RIO-L03";
+                  fac,hardware_ver = "HL1RIOL01M";
+                  fac,software_ver = "MSM8939_RIO_L03_VA";
+                  status = "ok";
+        };
+};

@@ -131,9 +131,7 @@
 	};
 };
 
-&spi_0 {
-	status = "disabled";
-};
+/*remove spi0 to avoid leds blink blue when device boot*/
 
 &i2c_6 {
 	status = "disabled";
