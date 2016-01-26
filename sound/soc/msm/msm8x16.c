@@ -11,6 +11,7 @@
  */
 
 #include <linux/clk.h>
+#include <sound/hw_audio_log.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
@@ -32,6 +33,7 @@
 #include "qdsp6v2/msm-pcm-routing-v2.h"
 #include "../codecs/msm8x16-wcd.h"
 #include "../codecs/wcd9306.h"
+#include <sound/hw_audio_info.h>
 #define DRV_NAME "msm8x16-asoc-wcd"
 
 #define BTSCO_RATE_8KHZ 8000
@@ -51,6 +53,15 @@
 #define DEFAULT_MCLK_RATE 9600000
 
 #define WCD_MBHC_DEF_RLOADS 5
+/* device use diff gpio for hac , need do it adapt */
+static int hac_en_gpio = 0;
+#define DEFAULT_HAC_NONEED       0
+#define DEFUALT_HAC_SWITCH_VALUE 0x0
+#define HAC_ENABLE               1
+#define GPIO_PULL_UP             1
+#define GPIO_PULL_DOWN           0
+
+static int msm8916_hac_switch = DEFUALT_HAC_SWITCH_VALUE;
 
 static int msm_btsco_rate = BTSCO_RATE_8KHZ;
 static int msm_btsco_ch = 1;
@@ -59,6 +70,31 @@ static int msm_ter_mi2s_tx_ch = 1;
 static int msm_pri_mi2s_rx_ch = 1;
 
 static int msm_proxy_rx_ch = 2;
+
+/* these var for enable and disable smartPA with QUAT_I2S */
+static struct afe_clk_cfg lpass_mi2s_enable = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_CLK1_VALID,
+	0,
+};
+
+static struct afe_clk_cfg lpass_mi2s_disable = {
+        AFE_API_VERSION_I2S_CONFIG,
+        0,
+        0,
+        Q6AFE_LPASS_CLK_SRC_INTERNAL,
+        Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+        Q6AFE_LPASS_MODE_BOTH_VALID,
+        0,
+};
+int msm_quat_mi2s_clk = 0;
+extern bool get_tfa9895_flag(void);
+
+static atomic_t quat_mi2s_clk_ref;
 
 static int msm8x16_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm);
@@ -110,7 +146,7 @@ void *def_tapan_mbhc_cal(void)
 						WCD9XXX_MBHC_DEF_RLOADS),
 			    GFP_KERNEL);
 	if (!tapan_cal) {
-		pr_err("%s: out of memory\n", __func__);
+		ad_loge("%s: out of memory\n", __func__);
 		return NULL;
 	}
 
@@ -255,6 +291,46 @@ static char const *rx_bit_format_text[] = {"S16_LE", "S24_LE"};
 static const char *const ter_mi2s_tx_ch_text[] = {"One", "Two"};
 static const char *const loopback_mclk_text[] = {"DISABLE", "ENABLE"};
 
+static int msm8x16_spk_pa_ctrl(int gpio_num,int enable)
+{
+    int ret = 0;
+    if (!gpio_is_valid(gpio_num))
+    {
+       ad_loge("%s: Invalid gpio: %d\n", __func__,gpio_num);
+       return -EINVAL;
+    }
+    ret = pinctrl_select_state(pinctrl_info.pinctrl,pinctrl_info.cdc_lines_act);
+    if (ret < 0) {
+        ad_loge("%s: failed to active cdc gpio's\n", __func__);
+        return -EINVAL;
+    }
+    gpio_direction_output(gpio_num, enable);
+    return 0;
+}
+int spk_pa_boost(struct snd_soc_codec *codec,int enable)
+{
+    struct snd_soc_card *card = codec->card;
+    struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+    return msm8x16_spk_pa_ctrl(pdata->spk_ext_pa_boost_gpio,enable);
+}
+int spk_pa_enable(struct snd_soc_codec *codec,int enable)
+{
+    struct snd_soc_card *card = codec->card;
+    struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+    return msm8x16_spk_pa_ctrl(pdata->spk_ext_pa_enable_gpio,enable);
+}
+int spk_pa_switch_vdd(struct snd_soc_codec *codec,int enable)
+{
+    struct snd_soc_card *card = codec->card;
+    struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+    return msm8x16_spk_pa_ctrl(pdata->spk_ext_pa_switch_vdd_gpio,enable);
+}
+int spk_pa_switch_in(struct snd_soc_codec *codec,int enable)
+{
+    struct snd_soc_card *card = codec->card;
+    struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+    return msm8x16_spk_pa_ctrl(pdata->spk_ext_pa_switch_in_gpio,enable);
+}
 static int msm_pri_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
 {
@@ -264,7 +340,7 @@ static int msm_pri_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels = hw_param_interval(params,
 					SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s: Number of channels = %d\n", __func__,
+	ad_logd("%s: Number of channels = %d\n", __func__,
 			msm_pri_mi2s_rx_ch);
 	rate->min = rate->max = 48000;
 	channels->min = channels->max = msm_pri_mi2s_rx_ch;
@@ -281,7 +357,7 @@ static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels = hw_param_interval(params,
 					SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s()\n", __func__);
+	ad_logd("%s()\n", __func__);
 	rate->min = rate->max = 48000;
 	channels->min = channels->max = 2;
 
@@ -303,7 +379,7 @@ static int mi2s_rx_bit_format_get(struct snd_kcontrol *kcontrol,
 		break;
 	}
 
-	pr_debug("%s: mi2s_rx_bit_format = %d, ucontrol value = %ld\n",
+	ad_logd("%s: mi2s_rx_bit_format = %d, ucontrol value = %ld\n",
 			__func__, mi2s_rx_bit_format,
 			ucontrol->value.integer.value[0]);
 
@@ -340,7 +416,7 @@ static int loopback_mclk_put(struct snd_kcontrol *kcontrol,
 
 	pdata = snd_soc_card_get_drvdata(codec->card);
 	conf_int_codec_mux(pdata);
-	pr_debug("%s: mclk_rsc_ref %d enable %ld\n",
+	ad_logd("%s: mclk_rsc_ref %d enable %ld\n",
 			__func__, atomic_read(&pdata->mclk_rsc_ref),
 			ucontrol->value.integer.value[0]);
 	switch (ucontrol->value.integer.value[0]) {
@@ -348,7 +424,7 @@ static int loopback_mclk_put(struct snd_kcontrol *kcontrol,
 		ret = pinctrl_select_state(pinctrl_info.pinctrl,
 				pinctrl_info.cdc_lines_act);
 		if (ret < 0) {
-			pr_err("%s: failed to configure the gpio; ret=%d\n",
+			ad_loge("%s: failed to configure the gpio; ret=%d\n",
 					__func__, ret);
 			break;
 		}
@@ -360,7 +436,7 @@ static int loopback_mclk_put(struct snd_kcontrol *kcontrol,
 					AFE_PORT_ID_PRIMARY_MI2S_RX,
 					&pdata->digital_cdc_clk);
 			if (ret < 0) {
-				pr_err("%s: failed to enable the MCLK: %d\n",
+				ad_loge("%s: failed to enable the MCLK: %d\n",
 						__func__, ret);
 				mutex_unlock(&pdata->cdc_mclk_mutex);
 				pinctrl_select_state(pinctrl_info.pinctrl,
@@ -385,7 +461,7 @@ static int loopback_mclk_put(struct snd_kcontrol *kcontrol,
 					AFE_PORT_ID_PRIMARY_MI2S_RX,
 					&pdata->digital_cdc_clk);
 			if (ret < 0) {
-				pr_err("%s: failed to disable the MCLK: %d\n",
+				ad_loge("%s: failed to disable the MCLK: %d\n",
 						__func__, ret);
 				mutex_unlock(&pdata->cdc_mclk_mutex);
 				break;
@@ -396,11 +472,11 @@ static int loopback_mclk_put(struct snd_kcontrol *kcontrol,
 		ret = pinctrl_select_state(pinctrl_info.pinctrl,
 				pinctrl_info.cdc_lines_sus);
 		if (ret < 0)
-			pr_err("%s: failed to configure the gpio; ret=%d\n",
+			ad_loge("%s: failed to configure the gpio; ret=%d\n",
 					__func__, ret);
 		break;
 	default:
-		pr_err("%s: Unexpected input value\n", __func__);
+		ad_loge("%s: Unexpected input value\n", __func__);
 		break;
 	}
 	return ret;
@@ -430,7 +506,7 @@ static int msm_proxy_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels = hw_param_interval(params,
 					SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s: msm_proxy_rx_ch =%d\n", __func__, msm_proxy_rx_ch);
+	ad_logd("%s: msm_proxy_rx_ch =%d\n", __func__, msm_proxy_rx_ch);
 
 	if (channels->max < 2)
 		channels->min = channels->max = 2;
@@ -457,7 +533,7 @@ static int msm_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	struct snd_interval *channels = hw_param_interval(params,
 					SNDRV_PCM_HW_PARAM_CHANNELS);
 
-	pr_debug("%s(), channel:%d\n", __func__, msm_ter_mi2s_tx_ch);
+	ad_logd("%s(), channel:%d\n", __func__, msm_ter_mi2s_tx_ch);
 	rate->min = rate->max = 48000;
 	channels->min = channels->max = msm_ter_mi2s_tx_ch;
 
@@ -467,7 +543,7 @@ static int msm_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 static int msm_pri_mi2s_rx_ch_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	pr_debug("%s: msm_pri_mi2s_rx_ch  = %d\n", __func__,
+	ad_logd("%s: msm_pri_mi2s_rx_ch  = %d\n", __func__,
 		 msm_pri_mi2s_rx_ch);
 	ucontrol->value.integer.value[0] = msm_pri_mi2s_rx_ch - 1;
 	return 0;
@@ -478,14 +554,14 @@ static int msm_pri_mi2s_rx_ch_put(struct snd_kcontrol *kcontrol,
 {
 	msm_pri_mi2s_rx_ch = ucontrol->value.integer.value[0] + 1;
 
-	pr_debug("%s: msm_pri_mi2s_rx_ch = %d\n", __func__, msm_pri_mi2s_rx_ch);
+	ad_logd("%s: msm_pri_mi2s_rx_ch = %d\n", __func__, msm_pri_mi2s_rx_ch);
 	return 1;
 }
 
 static int msm_ter_mi2s_tx_ch_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
-	pr_debug("%s: msm_ter_mi2s_tx_ch  = %d\n", __func__,
+	ad_logd("%s: msm_ter_mi2s_tx_ch  = %d\n", __func__,
 		 msm_ter_mi2s_tx_ch);
 	ucontrol->value.integer.value[0] = msm_ter_mi2s_tx_ch - 1;
 	return 0;
@@ -496,17 +572,60 @@ static int msm_ter_mi2s_tx_ch_put(struct snd_kcontrol *kcontrol,
 {
 	msm_ter_mi2s_tx_ch = ucontrol->value.integer.value[0] + 1;
 
-	pr_debug("%s: msm_ter_mi2s_tx_ch = %d\n", __func__, msm_ter_mi2s_tx_ch);
+	ad_logd("%s: msm_ter_mi2s_tx_ch = %d\n", __func__, msm_ter_mi2s_tx_ch);
 	return 1;
 }
 
 static int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params)
 {
-	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
+	ad_logd("%s(): substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
 	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT, mi2s_rx_bit_format);
 	return 0;
+}
+
+static int quat_mi2s_sclk_ctl(struct snd_pcm_substream *substream, bool enable)
+{
+	int ret = 0;
+
+	if (enable) {
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			if (mi2s_rx_bit_format == SNDRV_PCM_FORMAT_S24_LE)
+				mi2s_rx_clk.clk_val1 =
+					Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
+			else
+				mi2s_rx_clk.clk_val1 =
+					Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+			ret = afe_set_lpass_clock(
+					AFE_PORT_ID_QUATERNARY_MI2S_RX,
+					&mi2s_rx_clk);
+		} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+			mi2s_tx_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+			ret = afe_set_lpass_clock(
+					AFE_PORT_ID_QUATERNARY_MI2S_TX,
+					&mi2s_tx_clk);
+		} else {
+			ad_loge("%s:Not valid substream.\n", __func__);
+		}
+
+		if (ret < 0)
+			ad_loge("%s:afe_set_lpass_clock failed\n", __func__);
+
+	} else {
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			mi2s_rx_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_DISABLE;
+			ret = afe_set_lpass_clock(
+					AFE_PORT_ID_QUATERNARY_MI2S_RX,
+					&mi2s_rx_clk);
+		} else {
+			ad_loge("%s:Not valid substream.\n", __func__);
+		}
+
+		if (ret < 0)
+			ad_loge("%s:afe_set_lpass_clock failed\n", __func__);
+	}
+	return ret;
 }
 
 static int sec_mi2s_sclk_ctl(struct snd_pcm_substream *substream, bool enable)
@@ -524,10 +643,10 @@ static int sec_mi2s_sclk_ctl(struct snd_pcm_substream *substream, bool enable)
 			ret = afe_set_lpass_clock(AFE_PORT_ID_SECONDARY_MI2S_RX,
 						  &mi2s_rx_clk);
 		} else
-			pr_err("%s:Not valid substream.\n", __func__);
+			ad_loge("%s:Not valid substream.\n", __func__);
 
 		if (ret < 0)
-			pr_err("%s:afe_set_lpass_clock failed\n", __func__);
+			ad_loge("%s:afe_set_lpass_clock failed\n", __func__);
 
 	} else {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -535,10 +654,10 @@ static int sec_mi2s_sclk_ctl(struct snd_pcm_substream *substream, bool enable)
 			ret = afe_set_lpass_clock(AFE_PORT_ID_SECONDARY_MI2S_RX,
 						  &mi2s_rx_clk);
 		} else
-			pr_err("%s:Not valid substream.\n", __func__);
+			ad_loge("%s:Not valid substream.\n", __func__);
 
 		if (ret < 0)
-			pr_err("%s:afe_set_lpass_clock failed\n", __func__);
+			ad_loge("%s:afe_set_lpass_clock failed\n", __func__);
 	}
 	return ret;
 }
@@ -561,10 +680,10 @@ static int mi2s_clk_ctl(struct snd_pcm_substream *substream, bool enable)
 			ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_TX,
 						  &mi2s_tx_clk);
 		} else
-			pr_err("%s:Not valid substream.\n", __func__);
+			ad_loge("%s:Not valid substream.\n", __func__);
 
 		if (ret < 0)
-			pr_err("%s:afe_set_lpass_clock failed\n", __func__);
+			ad_loge("%s:afe_set_lpass_clock failed\n", __func__);
 
 	} else {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -576,10 +695,10 @@ static int mi2s_clk_ctl(struct snd_pcm_substream *substream, bool enable)
 			ret = afe_set_lpass_clock(AFE_PORT_ID_TERTIARY_MI2S_TX,
 						  &mi2s_tx_clk);
 		} else
-			pr_err("%s:Not valid substream.\n", __func__);
+			ad_loge("%s:Not valid substream.\n", __func__);
 
 		if (ret < 0)
-			pr_err("%s:afe_set_lpass_clock failed\n", __func__);
+			ad_loge("%s:afe_set_lpass_clock failed\n", __func__);
 
 	}
 	return ret;
@@ -601,10 +720,10 @@ static int ext_mi2s_clk_ctl(struct snd_pcm_substream *substream, bool enable)
 				AFE_PORT_ID_QUATERNARY_MI2S_TX,
 				&mi2s_tx_clk);
 		} else
-			pr_err("%s:Not valid substream.\n", __func__);
+			ad_loge("%s:Not valid substream.\n", __func__);
 
 		if (ret < 0)
-			pr_err("%s:afe_set_lpass_clock failed ret=%d\n",
+			ad_loge("%s:afe_set_lpass_clock failed ret=%d\n",
 					__func__, ret);
 	} else {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -618,11 +737,11 @@ static int ext_mi2s_clk_ctl(struct snd_pcm_substream *substream, bool enable)
 				AFE_PORT_ID_QUATERNARY_MI2S_TX,
 				&mi2s_tx_clk);
 		} else
-			pr_err("%s:Not valid substream %d\n", __func__,
+			ad_loge("%s:Not valid substream %d\n", __func__,
 					substream->stream);
 
 		if (ret < 0)
-				pr_err("%s:afe_set_lpass_clock failed ret=%d\n",
+				ad_loge("%s:afe_set_lpass_clock failed ret=%d\n",
 					__func__, ret);
 	}
 	return ret;
@@ -635,7 +754,7 @@ static int msm8x16_enable_codec_ext_clk(struct snd_soc_codec *codec,
 	struct msm8916_asoc_mach_data *pdata = NULL;
 
 	pdata = snd_soc_card_get_drvdata(codec->card);
-	pr_debug("%s: codec name %s enable %d mclk ref counter %d\n",
+	ad_logd("%s: codec name %s enable %d mclk ref counter %d\n",
 		   __func__, codec->name, enable,
 		   atomic_read(&pdata->mclk_rsc_ref));
 	if (enable) {
@@ -650,7 +769,7 @@ static int msm8x16_enable_codec_ext_clk(struct snd_soc_codec *codec,
 						AFE_PORT_ID_PRIMARY_MI2S_RX,
 						&pdata->digital_cdc_clk);
 				if (ret < 0) {
-					pr_err("%s: failed to enable MCLK\n",
+					ad_loge("%s: failed to enable MCLK\n",
 							__func__);
 					mutex_unlock(&pdata->cdc_mclk_mutex);
 					return ret;
@@ -669,7 +788,7 @@ static int msm8x16_enable_codec_ext_clk(struct snd_soc_codec *codec,
 					AFE_PORT_ID_PRIMARY_MI2S_RX,
 					&pdata->digital_cdc_clk);
 			if (ret < 0)
-				pr_err("%s: failed to disable MCLK\n",
+				ad_loge("%s: failed to disable MCLK\n",
 						__func__);
 			atomic_set(&pdata->mclk_enabled, false);
 		}
@@ -686,7 +805,7 @@ static int msm8x16_enable_extcodec_ext_clk(struct snd_soc_codec *codec,
 
 	pdata = snd_soc_card_get_drvdata(codec->card);
 
-	pr_debug("%s: enable = %d  codec name %s enable %d mclk ref counter %d\n",
+	ad_logd("%s: enable = %d  codec name %s enable %d mclk ref counter %d\n",
 		   __func__, enable, codec->name, enable,
 		   atomic_read(&pdata->mclk_rsc_ref));
 	if (enable) {
@@ -724,7 +843,7 @@ static int msm8x16_enable_extcodec_ext_clk(struct snd_soc_codec *codec,
 static int msm_btsco_rate_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
-	pr_debug("%s: msm_btsco_rate  = %d", __func__, msm_btsco_rate);
+	ad_logd("%s: msm_btsco_rate  = %d", __func__, msm_btsco_rate);
 	ucontrol->value.integer.value[0] = msm_btsco_rate;
 	return 0;
 }
@@ -744,8 +863,173 @@ static int msm_btsco_rate_put(struct snd_kcontrol *kcontrol,
 		break;
 	}
 
-	pr_debug("%s: msm_btsco_rate = %d\n", __func__, msm_btsco_rate);
+	ad_logd("%s: msm_btsco_rate = %d\n", __func__, msm_btsco_rate);
 	return 0;
+}
+static int conf_int_codec_mux_quat(struct msm8916_asoc_mach_data *pdata);
+static int msm_q6_enable_mi2s_clocks(bool enable) 
+{ 
+    union afe_port_config port_config; 
+	int rc = 0; 
+	ad_logd("%s:start enable =%d\n",__func__,enable); 
+	if(enable)	
+	{ 
+	     port_config.i2s.channel_mode = AFE_PORT_I2S_SD0;
+	     port_config.i2s.mono_stereo = MSM_AFE_CH_STEREO;
+	     port_config.i2s.data_format= 0; 
+	     port_config.i2s.bit_width = 16; 
+	     port_config.i2s.reserved = 0; 
+	     port_config.i2s.i2s_cfg_minor_version = AFE_API_VERSION_I2S_CONFIG; 
+	     port_config.i2s.sample_rate = 48000;
+	     port_config.i2s.ws_src = 1;
+
+	     rc = afe_port_start(AFE_PORT_ID_QUATERNARY_MI2S_RX, &port_config, 48000); 
+	     if(IS_ERR_VALUE(rc)) 
+	     { 
+            ad_loge("%s:fail to open AFE port\n",__func__);
+	        return -EINVAL; 
+	     }
+         ad_logd("<%s> <%d>: Config AFE_PORT_ID_QUATERNARY_MI2S_RX success.\n", __func__, __LINE__);
+         ad_logd("<%s> <%d>: port_config.i2s.sample_rate =%d.\n", __func__, __LINE__,port_config.i2s.sample_rate);
+#if 0        
+         port_config.i2s.channel_mode = AFE_PORT_I2S_SD0;
+	     port_config.i2s.mono_stereo = MSM_AFE_CH_STEREO;
+	     port_config.i2s.bit_width = 16;
+	     port_config.i2s.i2s_cfg_minor_version = AFE_API_VERSION_I2S_CONFIG;
+	     port_config.i2s.sample_rate = 48000;
+	     port_config.i2s.ws_src = 1;
+         rc = afe_port_start(AFE_PORT_ID_QUATERNARY_MI2S_TX, &port_config, 48000);
+         if(IS_ERR_VALUE(rc)) { 
+            ad_logd("%s:fail to open AFE port\n",__func__);
+	        return -EINVAL; 
+	     }
+         ad_logd("<%s> <%d>: Config AFE_PORT_ID_QUATERNARY_MI2S_TX success.\n", __func__, __LINE__);
+#endif         
+	} 
+	else 
+	{ 
+	    ad_logd("%s:afe_port_stop_nowait\n",__func__);
+        rc = afe_port_stop_nowait(AFE_PORT_ID_QUATERNARY_MI2S_RX);
+        if (IS_ERR_VALUE(rc)) 
+        {         
+            ad_loge(KERN_ERR"fail to stop AFE port\n");
+            return -EINVAL; 
+        }
+        ad_logd("<%s> <%d>: Stop AFE_PORT_ID_QUATERNARY_MI2S_RX success.\n", __func__, __LINE__);
+        ad_logd("%s:afe_port_stop_nowait\n",__func__);
+        rc = afe_port_stop_nowait(AFE_PORT_ID_QUATERNARY_MI2S_TX);
+        if (IS_ERR_VALUE(rc)) 
+        {         
+            ad_loge(KERN_ERR"fail to stop AFE port\n");
+            return -EINVAL; 
+        }
+        ad_logd("<%s> <%d>: Stop AFE_PORT_ID_QUATERNARY_MI2S_TX success.\n", __func__, __LINE__);
+#if 0       
+        rc = afe_port_stop_nowait(AFE_PORT_ID_QUATERNARY_MI2S_TX);
+        if (IS_ERR_VALUE(rc)) {
+            ad_logd(KERN_ERR"fail to stop AFE port\n");
+            return -EINVAL;
+        }
+        ad_logd("<%s> <%d>: Stop AFE_PORT_ID_QUATERNARY_MI2S_TX success.\n", __func__, __LINE__);
+#endif
+    } 
+	return rc;
+}
+
+static const char *const external_pa_text[] = {"disable", "enable"};
+static const struct soc_enum msm_external_pa_enum[] = {
+	SOC_ENUM_SINGLE_EXT(2, external_pa_text),
+};
+
+static int msm_external_pa_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    ad_loge("%s: msm_quat_mi2s_clk = %d\n", __func__, msm_quat_mi2s_clk);
+	ucontrol->value.integer.value[0] = msm_quat_mi2s_clk;
+	return 0;
+}
+
+static int msm_external_pa_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	int ret = -EINVAL;
+    struct msm8916_asoc_mach_data *pdata = NULL;
+    struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+    ad_logd("%s:test start \n", __func__);
+	pdata = snd_soc_card_get_drvdata(codec->card);
+    msm_quat_mi2s_clk = ucontrol->value.integer.value[0];
+
+	if(msm_quat_mi2s_clk)
+	{
+       ad_logd("%s: enable_mi2s_clocks enter\n", __func__);
+       ret = conf_int_codec_mux_quat(pdata);
+		if (ret < 0) 
+		{
+			ad_loge("%s: failed to conf internal codec mux\n", __func__);
+			return ret;
+		} 
+
+		ret = msm8x16_enable_codec_ext_clk(codec, 1, true);
+		if (ret < 0) 
+		{
+			ad_loge("failed to enable mclk\n");
+			return ret;
+		}
+
+        ret = pinctrl_select_state(pinctrl_info.pinctrl, pinctrl_info.cdc_lines_act);
+		if (ret < 0) 
+		{
+			ad_loge("failed to enable codec gpios\n");
+			return ret;
+		}
+                
+        //lpass_mi2s_enable.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+        ad_logd("%s: afe_set_lpass_clock = %d \n", __func__, lpass_mi2s_enable.clk_val1);
+        ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_RX, &lpass_mi2s_enable);
+        if (ret < 0) 
+        {
+           ad_loge("%s: afe_set_lpass_clock failed\n", __func__);
+           return ret;
+        }
+#if  0      
+        /*lgh add for TX*/
+		ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_TX, &lpass_mi2s_enable);
+		if (ret < 0) {
+			ad_loge("%s: afe_set_lpass_clock failed\n", __func__);
+			return ret;
+		}
+#endif        
+        ad_logd("%s: msm_q6_enable_mi2s_clocks \n", __func__);
+        ret = msm_q6_enable_mi2s_clocks(1); 
+        if (ret < 0) 
+        {
+           ad_loge("%s: enable_mi2s_clocks failed\n", __func__);
+           return ret;
+        }        
+    } 
+    else
+    {
+        ad_logd("%s: disable_mi2s_clocks enter\n", __func__);
+        ret = msm_q6_enable_mi2s_clocks(0); 
+        if (ret < 0) 
+        {
+            ad_loge("%s: disable_mi2s_clocks failed\n", __func__);
+            //return ret;
+        }
+
+        ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_RX, &lpass_mi2s_disable);
+        if (ret < 0) 
+        {
+            ad_loge("%s: afe_set_lpass_clock QUATERNARY_MI2S_RX failed\n", __func__);
+            //return ret;
+        }  
+
+        ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_TX, &lpass_mi2s_disable);
+        if (ret < 0) 
+        {
+            ad_loge("%s: afe_set_lpass_clock QUATERNARY_MI2S_TX failed\n", __func__);
+            //return ret;
+        } 
+	}
+	return ret;
 }
 
 static const struct soc_enum msm_snd_enum[] = {
@@ -758,7 +1042,84 @@ static const char *const btsco_rate_text[] = {"8000", "16000"};
 static const struct soc_enum msm_btsco_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, btsco_rate_text),
 };
+/* The function to pull up GPIO 151 to enable HAC*/
+/* device use diff gpio for hac , need do it adapt */
+static void hac_gpio_on(void)
+{
+    if (DEFAULT_HAC_NONEED == hac_en_gpio)
+    {
+        ad_loge("%s: Failed to get the hac gpio",__func__);
+        return;
+    }
 
+    ad_loge("%s: Enable hac enable gpio %u\n",
+            __func__, hac_en_gpio);
+    gpio_direction_output(hac_en_gpio, GPIO_PULL_UP);
+}
+
+/* The function to pull down GPIO 151 to disable HAC*/
+static void hac_gpio_off(void)
+{
+    if (DEFAULT_HAC_NONEED == hac_en_gpio)
+    {
+        ad_loge("%s: Failed to get the hac gpio",__func__);
+        return;
+    }
+    ad_loge("%s: Pull down and free hac enable gpio %u\n",
+            __func__, hac_en_gpio);
+    gpio_direction_output(hac_en_gpio, GPIO_PULL_DOWN);
+}
+static const char *hac_switch_text[] = {"OFF","ON"};
+
+static const struct soc_enum msm8916_hac_switch_enum[] = {
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(hac_switch_text),
+                        hac_switch_text),
+};
+
+/* The function to get hac status */
+static int msm8916_hac_switch_get(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+    if(NULL == ucontrol)
+    {
+        ad_loge("%s: ucontrol pointer is null\n", __func__);
+        return 0;
+    }
+    else
+    {
+        ad_logd("%s: msm8916_hac_switch = %d\n", __func__,
+                 msm8916_hac_switch);
+        ucontrol->value.integer.value[0] = msm8916_hac_switch;
+    }
+	return 0;
+}
+
+/* The function to set hac status */
+static int msm8916_hac_switch_put(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+    int ret = 0;
+    if(NULL == ucontrol)
+    {
+        ad_loge("%s: ucontrol pointer is null\n", __func__);
+        return ret;
+    }
+    else
+    {
+        msm8916_hac_switch = ucontrol->value.integer.value[0];
+        ad_logd("%s: msm8916_hac_switch = %d\n", __func__,msm8916_hac_switch);
+        if(HAC_ENABLE == msm8916_hac_switch)
+        {
+            hac_gpio_on();
+            ret = HAC_ENABLE;
+        }
+        else
+        {
+            hac_gpio_off();
+        }
+    }
+    return ret;
+}
 static const struct snd_kcontrol_new msm_snd_controls[] = {
 	SOC_ENUM_EXT("MI2S_RX Format", msm_snd_enum[0],
 			mi2s_rx_bit_format_get, mi2s_rx_bit_format_put),
@@ -770,7 +1131,11 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			loopback_mclk_get, loopback_mclk_put),
 	SOC_ENUM_EXT("Internal BTSCO SampleRate", msm_btsco_enum[0],
 		     msm_btsco_rate_get, msm_btsco_rate_put),
-
+	/* to add HAC structure in ALSA */
+	SOC_ENUM_EXT("HAC", msm8916_hac_switch_enum[0],
+			msm8916_hac_switch_get, msm8916_hac_switch_put),
+	SOC_ENUM_EXT("Initial external PA", msm_external_pa_enum[0],
+	     msm_external_pa_get, msm_external_pa_put),
 };
 
 static int msm8x16_mclk_event(struct snd_soc_dapm_widget *w,
@@ -780,27 +1145,27 @@ static int msm8x16_mclk_event(struct snd_soc_dapm_widget *w,
 	int ret = 0;
 
 	pdata = snd_soc_card_get_drvdata(w->codec->card);
-	pr_debug("%s: event = %d\n", __func__, event);
+	ad_logd("%s: event = %d\n", __func__, event);
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMD:
-		pr_debug("%s: mclk_res_ref = %d\n",
+		ad_logd("%s: mclk_res_ref = %d\n",
 			__func__, atomic_read(&pdata->mclk_rsc_ref));
 		if (!pdata->codec_type) {
 			if (atomic_read(&pdata->mclk_rsc_ref) == 0) {
-				pr_debug("%s: disabling MCLK\n", __func__);
+				ad_logd("%s: disabling MCLK\n", __func__);
 				/* disable the codec mclk config*/
 				msm8x16_wcd_mclk_enable(w->codec, 0, true);
 				msm8x16_enable_codec_ext_clk(w->codec, 0, true);
 				ret = pinctrl_select_state(pinctrl_info.pinctrl,
 						pinctrl_info.cdc_lines_sus);
 				if (ret < 0)
-					pr_err("%s: error during pinctrl state select\n",
+					ad_loge("%s: error during pinctrl state select\n",
 							__func__);
 			}
 		}
 		break;
 	default:
-		pr_err("%s: invalid DAPM event %d\n", __func__, event);
+		ad_loge("%s: invalid DAPM event %d\n", __func__, event);
 		return -EINVAL;
 	}
 	return 0;
@@ -814,17 +1179,17 @@ static void msm_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 	struct snd_soc_codec *codec = rtd->codec;
 	struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 
-	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
+	ad_logd("%s(): substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
 
 	if (!pdata->codec_type) {
 		ret = mi2s_clk_ctl(substream, false);
 		if (ret < 0)
-			pr_err("%s:clock disable failed; ret=%d\n", __func__,
+			ad_loge("%s:clock disable failed; ret=%d\n", __func__,
 					ret);
 		if (atomic_read(&pdata->mclk_rsc_ref) > 0) {
 			atomic_dec(&pdata->mclk_rsc_ref);
-			pr_debug("%s: decrementing mclk_res_ref %d\n",
+			ad_logd("%s: decrementing mclk_res_ref %d\n",
 					__func__,
 					atomic_read(&pdata->mclk_rsc_ref));
 		}
@@ -832,13 +1197,13 @@ static void msm_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 		ret = pinctrl_select_state(ext_cdc_pinctrl_info.pinctrl,
 					ext_cdc_pinctrl_info.tlmm_act);
 		if (ret < 0) {
-			pr_err("%s: failed to configure the gpio; ret=%d\n",
+			ad_loge("%s: failed to configure the gpio; ret=%d\n",
 					__func__, ret);
 			return;
 		}
 		ret =  msm8x16_enable_extcodec_ext_clk(codec, 0, false);
 		if (ret < 0) {
-			pr_err("%s: failed to enable mclk; ret=%d\n",
+			ad_loge("%s: failed to enable mclk; ret=%d\n",
 					__func__, ret);
 			return;
 		}
@@ -859,7 +1224,7 @@ static int conf_int_codec_mux_sec(struct msm8916_asoc_mach_data *pdata)
 	val = ioread32(vaddr);
 	/* enable sec MI2S interface to TLMM GPIO */
 	val = val | 0x0004007E;
-	pr_debug("%s: Sec mux configuration = %x\n", __func__, val);
+	ad_logd("%s: Sec mux configuration = %x\n", __func__, val);
 	iowrite32(val, vaddr);
 	vaddr = pdata->vaddr_gpio_mux_mic_ctl;
 	val = ioread32(vaddr);
@@ -877,11 +1242,11 @@ static int msm_sec_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	struct msm8916_asoc_mach_data *pdata =
 			snd_soc_card_get_drvdata(card);
 	int ret = 0;
-	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
+	ad_logd("%s(): substream = %s  stream = %d\n", __func__,
 				substream->name, substream->stream);
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-		pr_info("%s: Secondary Mi2s does not support capture\n",
+		ad_logn("%s: Secondary Mi2s does not support capture\n",
 					__func__);
 		return 0;
 	}
@@ -889,42 +1254,42 @@ static int msm_sec_mi2s_snd_startup(struct snd_pcm_substream *substream)
 			((pdata->ext_pa & SEC_MI2S_ID) == SEC_MI2S_ID)) {
 		ret = conf_int_codec_mux_sec(pdata);
 		if (ret < 0) {
-			pr_err("%s: failed to conf internal codec mux\n",
+			ad_loge("%s: failed to conf internal codec mux\n",
 							__func__);
 			return ret;
 		}
 		ret = msm8x16_enable_codec_ext_clk(codec, 1, true);
 		if (ret < 0) {
-			pr_err("failed to enable mclk\n");
+			ad_loge("failed to enable mclk\n");
 			return ret;
 		}
 		ret = sec_mi2s_sclk_ctl(substream, true);
 		if (ret < 0) {
-			pr_err("failed to enable sclk\n");
+			ad_loge("failed to enable sclk\n");
 			goto err;
 		}
 		ret = pinctrl_select_state(pinctrl_info.pinctrl,
 					pinctrl_info.cdc_lines_act);
 		if (ret < 0) {
-			pr_err("failed to enable codec gpios\n");
+			ad_loge("failed to enable codec gpios\n");
 			goto err1;
 		}
 	} else {
-			pr_err("%s: error codec type\n", __func__);
+			ad_loge("%s: error codec type\n", __func__);
 	}
 	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
-		pr_debug("%s: set fmt cpu dai failed\n", __func__);
+		ad_logd("%s: set fmt cpu dai failed\n", __func__);
 
 	return ret;
 err1:
 	ret = sec_mi2s_sclk_ctl(substream, false);
 	if (ret < 0)
-		pr_err("failed to disable sclk\n");
+		ad_loge("failed to disable sclk\n");
 err:
 	ret = msm8x16_enable_codec_ext_clk(codec, 0, true);
 	if (ret < 0)
-		pr_err("failed to disable mclk\n");
+		ad_loge("failed to disable mclk\n");
 
 	return ret;
 }
@@ -936,18 +1301,138 @@ static void msm_sec_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 	struct snd_soc_card *card = rtd->card;
 	struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 
-	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
+	ad_logd("%s(): substream = %s  stream = %d\n", __func__,
 				substream->name, substream->stream);
 	if ((!pdata->codec_type) &&
 			((pdata->ext_pa & SEC_MI2S_ID) == SEC_MI2S_ID)) {
 		ret = sec_mi2s_sclk_ctl(substream, false);
 		if (ret < 0)
-			pr_err("%s:clock disable failed\n", __func__);
+			ad_loge("%s:clock disable failed\n", __func__);
 		if (atomic_read(&pdata->mclk_rsc_ref) > 0) {
 			atomic_dec(&pdata->mclk_rsc_ref);
-			pr_debug("%s: decrementing mclk_res_ref %d\n",
+			ad_logd("%s: decrementing mclk_res_ref %d\n",
 						__func__,
 					atomic_read(&pdata->mclk_rsc_ref));
+		}
+	}
+}
+
+static int conf_int_codec_mux_quat(struct msm8916_asoc_mach_data *pdata)
+{
+	int val = 0;
+	void __iomem *vaddr = NULL;
+
+	vaddr = pdata->vaddr_gpio_mux_spkr_ctl;
+	val = ioread32(vaddr);
+	val = val | 0x00000002;
+	ad_logd("%s: QUAT mux spk configuration = %x\n", __func__, val);
+	iowrite32(val, vaddr);
+	vaddr = pdata->vaddr_gpio_mux_mic_ctl;
+	val = ioread32(vaddr);
+	/* enable QUAT MI2S interface to TLMM GPIO */
+	val = val | 0x02020002;
+	ad_logd("%s: QUAT mux mic configuration = %x\n", __func__, val);
+	iowrite32(val, vaddr);
+	return 0;
+}
+
+static int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_codec *codec = rtd->codec;
+	struct msm8916_asoc_mach_data *pdata =
+			snd_soc_card_get_drvdata(card);
+	int ret = 0;
+	ad_logd("%s(): substream = %s  stream = %d\n", __func__,
+				substream->name, substream->stream);
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		ad_logn("%s: Quaternary Mi2s does not support capture\n",
+					__func__);
+		goto set_fmt;
+	}
+	if (!pdata->codec_type &&
+			((pdata->ext_pa & QUAT_MI2S_ID) == QUAT_MI2S_ID)) {
+
+		ret = conf_int_codec_mux_quat(pdata);
+		if (ret < 0) {
+			ad_loge("%s: failed to conf internal codec mux\n",
+							__func__);
+			return ret;
+		}
+		ret = msm8x16_enable_codec_ext_clk(codec, 1, true);
+		if (ret < 0) {
+			ad_loge("failed to enable mclk\n");
+			return ret;
+		}
+		ret = quat_mi2s_sclk_ctl(substream, true);
+		if (ret < 0) {
+			ad_loge("failed to enable sclk\n");
+			goto err;
+		}
+		ret = pinctrl_select_state(pinctrl_info.pinctrl,
+					pinctrl_info.cdc_lines_act);
+		if (ret < 0) {
+			ad_loge("failed to enable codec gpios\n");
+			goto err1;
+		}
+	} else {
+			ad_loge("%s: error codec type\n", __func__);
+	}
+set_fmt:
+	if (atomic_inc_return(&quat_mi2s_clk_ref) == 1) {
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0)
+			ad_logd("%s: set fmt cpu dai failed\n", __func__);
+	}
+	return ret;
+err1:
+	ret = quat_mi2s_sclk_ctl(substream, false);
+	if (ret < 0)
+		ad_loge("failed to disable sclk\n");
+err:
+	ret = msm8x16_enable_codec_ext_clk(codec, 0, true);
+	if (ret < 0)
+		ad_loge("failed to disable mclk\n");
+
+	return ret;
+}
+
+static void msm_quat_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
+{
+	int ret;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_codec *codec = rtd->codec;
+	struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+
+	ad_logd("%s(): substream = %s  stream = %d\n", __func__,
+				substream->name, substream->stream);
+	if ((!pdata->codec_type) &&
+			((pdata->ext_pa & QUAT_MI2S_ID) == QUAT_MI2S_ID)) {
+        if(0 == msm_quat_mi2s_clk)
+        {
+    		ret = quat_mi2s_sclk_ctl(substream, false);
+    		if (ret < 0)
+    			ad_loge("%s:clock disable failed\n", __func__);
+        }
+		if (atomic_read(&pdata->mclk_rsc_ref) > 0) {
+			atomic_dec(&pdata->mclk_rsc_ref);
+			ad_logd("%s: decrementing mclk_res_ref %d\n",
+						__func__,
+					atomic_read(&pdata->mclk_rsc_ref));
+		}
+		if (atomic_read(&quat_mi2s_clk_ref) > 0)
+			atomic_dec(&quat_mi2s_clk_ref);
+		if ((atomic_read(&quat_mi2s_clk_ref) == 0) &&
+			(atomic_read(&pdata->mclk_rsc_ref) == 0)) {
+			msm8x16_enable_codec_ext_clk(codec, 0, true);
+			ret = pinctrl_select_state(pinctrl_info.pinctrl,
+					pinctrl_info.cdc_lines_sus);
+			if (ret < 0)
+				ad_loge("%s: error at pinctrl state select\n",
+					__func__);
 		}
 	}
 }
@@ -986,25 +1471,25 @@ static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	int val = 0;
 	void __iomem *vaddr = NULL;
 
-	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
+	ad_logd("%s(): substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
 
 	if (!pdata->codec_type) {
 		ret = conf_int_codec_mux(pdata);
 		if (ret < 0) {
-			pr_err("%s: failed to conf internal codec mux\n",
+			ad_loge("%s: failed to conf internal codec mux\n",
 					__func__);
 			return ret;
 		}
 		ret = mi2s_clk_ctl(substream, true);
 		if (ret < 0) {
-			pr_err("%s: failed to enable sclk %d\n",
+			ad_loge("%s: failed to enable sclk %d\n",
 					__func__, ret);
 			return ret;
 		}
 		ret =  msm8x16_enable_codec_ext_clk(codec, 1, true);
 		if (ret < 0) {
-			pr_err("failed to enable mclk\n");
+			ad_loge("failed to enable mclk\n");
 			return ret;
 		}
 		/* Enable the codec mclk config */
@@ -1012,7 +1497,7 @@ static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 		ret = pinctrl_select_state(pinctrl_info.pinctrl,
 					pinctrl_info.cdc_lines_act);
 		if (ret < 0) {
-			pr_err("%s: failed to active cdc gpio's\n",
+			ad_loge("%s: failed to active cdc gpio's\n",
 							__func__);
 			return -EINVAL;
 		}
@@ -1034,13 +1519,13 @@ static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 		ret = pinctrl_select_state(ext_cdc_pinctrl_info.pinctrl,
 						ext_cdc_pinctrl_info.tlmm_act);
 		if (ret < 0) {
-			pr_err("%s: failed to configure the gpio; ret=%d\n",
+			ad_loge("%s: failed to configure the gpio; ret=%d\n",
 					__func__, ret);
 			return ret;
 		}
 		ret =  msm8x16_enable_extcodec_ext_clk(codec, 1, true);
 		if (ret < 0) {
-			pr_err("%s: failed to enable mclk; ret=%d\n",
+			ad_loge("%s: failed to enable mclk; ret=%d\n",
 					__func__, ret);
 			return ret;
 		}
@@ -1048,7 +1533,7 @@ static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	}
 	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
-		pr_err("%s: set fmt cpu dai failed; ret=%d\n", __func__, ret);
+		ad_loge("%s: set fmt cpu dai failed; ret=%d\n", __func__, ret);
 
 	return ret;
 }
@@ -1062,7 +1547,7 @@ static void *def_msm8x16_wcd_mbhc_cal(void)
 	msm8x16_wcd_cal = kzalloc(WCD_MBHC_CAL_SIZE(WCD_MBHC_DEF_BUTTONS,
 				WCD_MBHC_DEF_RLOADS), GFP_KERNEL);
 	if (!msm8x16_wcd_cal) {
-		pr_err("%s: out of memory\n", __func__);
+		ad_loge("%s: out of memory\n", __func__);
 		return NULL;
 	}
 
@@ -1085,16 +1570,17 @@ static void *def_msm8x16_wcd_mbhc_cal(void)
 	 * all btn_low corresponds to threshold for current source
 	 * all bt_high corresponds to threshold for Micbias
 	 */
-	btn_low[0] = 25;
-	btn_high[0] = 25;
-	btn_low[1] = 50;
-	btn_high[1] = 50;
-	btn_low[2] = 75;
-	btn_high[2] = 75;
-	btn_low[3] = 112;
-	btn_high[3] = 112;
-	btn_low[4] = 137;
-	btn_high[4] = 137;
+	 /* modify button value region for new baseline of android L version*/
+	btn_low[0] = 87;
+	btn_high[0] = 100;
+	btn_low[1] = 212;
+	btn_high[1] = 237;
+	btn_low[2] = 350;
+	btn_high[2] = 400;
+	btn_low[3] = 450;
+	btn_high[3] = 575;
+	btn_low[4] = 537;
+	btn_high[4] = 675;
 
 	return msm8x16_wcd_cal;
 }
@@ -1107,7 +1593,7 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	int ret = -ENOMEM;
 
-	pr_debug("%s(),dev_name%s\n", __func__, dev_name(cpu_dai->dev));
+	ad_logd("%s(),dev_name%s\n", __func__, dev_name(cpu_dai->dev));
 
 	snd_soc_add_codec_controls(codec, msm_snd_controls,
 				ARRAY_SIZE(msm_snd_controls));
@@ -1131,12 +1617,16 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "DMIC2");
 
 	snd_soc_dapm_sync(dapm);
+    msm8x16_wcd_spk_pa_boost_set_cb(spk_pa_boost,codec);
+    msm8x16_wcd_spk_pa_enable_set_cb(spk_pa_enable,codec);
+    msm8x16_wcd_spk_pa_switch_vdd_set_cb(spk_pa_switch_vdd,codec);
+    msm8x16_wcd_spk_pa_switch_in_set_cb(spk_pa_switch_in,codec);
 
 	mbhc_cfg.calibration = def_msm8x16_wcd_mbhc_cal();
 	if (mbhc_cfg.calibration) {
 		ret = msm8x16_wcd_hs_detect(codec, &mbhc_cfg);
 		if (ret) {
-			pr_err("%s: msm8x16_wcd_hs_detect failed\n", __func__);
+			ad_loge("%s: msm8x16_wcd_hs_detect failed\n", __func__);
 			kfree(mbhc_cfg.calibration);
 			return ret;
 		}
@@ -1152,7 +1642,7 @@ static int msm_audrx_init_wcd(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	int ret = 0;
 
-	pr_debug("%s: dev_name%s\n", __func__, dev_name(cpu_dai->dev));
+	ad_logd("%s: dev_name%s\n", __func__, dev_name(cpu_dai->dev));
 
 	snd_soc_add_codec_controls(codec, msm_snd_controls,
 				ARRAY_SIZE(msm_snd_controls));
@@ -1170,6 +1660,12 @@ static int msm_audrx_init_wcd(struct snd_soc_pcm_runtime *rtd)
 		ret = -ENOMEM;
 	return ret;
 }
+
+static struct snd_soc_ops msm8x16_quat_mi2s_be_ops = {
+	.startup = msm_quat_mi2s_snd_startup,
+	.hw_params = msm_mi2s_snd_hw_params,
+	.shutdown = msm_quat_mi2s_snd_shutdown,
+};
 
 static struct snd_soc_ops msm8x16_sec_mi2s_be_ops = {
 	.startup = msm_sec_mi2s_snd_startup,
@@ -1679,6 +2175,33 @@ static struct snd_soc_dai_link msm8x16_dai[] = {
 		.ignore_suspend = 1,
 	},
 	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8x16_quat_mi2s_be_ops,
+		.ignore_pmdown_time = 1, /* dai link has playback support */
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_QUAT_MI2S_TX,
+		.stream_name = "Quaternary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8x16_quat_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
+	{
 		.name = LPASS_BE_INT_BT_SCO_RX,
 		.stream_name = "Internal BT-SCO Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.12288",
@@ -1859,19 +2382,19 @@ void disable_mclk(struct work_struct *work)
 	pdata = container_of(dwork, struct msm8916_asoc_mach_data,
 				disable_mclk_work);
 	mutex_lock(&pdata->cdc_mclk_mutex);
-	pr_debug("%s: mclk_enabled %d mclk_rsc_ref %d\n", __func__,
+	ad_logd("%s: mclk_enabled %d mclk_rsc_ref %d\n", __func__,
 			atomic_read(&pdata->mclk_enabled),
 			atomic_read(&pdata->mclk_rsc_ref));
 
 	if (atomic_read(&pdata->mclk_enabled) == true
 		&& atomic_read(&pdata->mclk_rsc_ref) == 0) {
-		pr_debug("Disable the mclk\n");
+		ad_logd("Disable the mclk\n");
 		pdata->digital_cdc_clk.clk_val = 0;
 		ret = afe_set_digital_codec_core_clock(
 				AFE_PORT_ID_PRIMARY_MI2S_RX,
 				&pdata->digital_cdc_clk);
 		if (ret < 0)
-			pr_err("%s failed to disable the MCLK\n", __func__);
+			ad_loge("%s failed to disable the MCLK\n", __func__);
 		atomic_set(&pdata->mclk_enabled, false);
 	}
 	mutex_unlock(&pdata->cdc_mclk_mutex);
@@ -1884,22 +2407,22 @@ static bool msm8x16_swap_gnd_mic(struct snd_soc_codec *codec)
 	int value, ret;
 
 	if (!gpio_is_valid(pdata->us_euro_gpio)) {
-		pr_err("%s: Invalid gpio: %d", __func__, pdata->us_euro_gpio);
+		ad_loge("%s: Invalid gpio: %d", __func__, pdata->us_euro_gpio);
 		return false;
 	}
 	value = gpio_get_value_cansleep(pdata->us_euro_gpio);
 	ret = pinctrl_select_state(pinctrl_info.pinctrl,
 				pinctrl_info.cross_conn_det_act);
 	if (ret < 0) {
-		pr_err("failed to configure the gpio\n");
+		ad_loge("failed to configure the gpio\n");
 		return ret;
 	}
 	gpio_set_value_cansleep(pdata->us_euro_gpio, !value);
-	pr_debug("%s: swap select switch %d to %d\n", __func__, value, !value);
+	ad_logd("%s: swap select switch %d to %d\n", __func__, value, !value);
 	ret = pinctrl_select_state(pinctrl_info.pinctrl,
 				pinctrl_info.cross_conn_det_sus);
 	if (ret < 0) {
-		pr_err("failed to configure the gpio\n");
+		ad_loge("failed to configure the gpio\n");
 		return ret;
 	}
 
@@ -1914,20 +2437,20 @@ static int msm8x16_setup_hs_jack(struct platform_device *pdev,
 	pdata->us_euro_gpio = of_get_named_gpio(pdev->dev.of_node,
 					"qcom,cdc-us-euro-gpios", 0);
 	if (pdata->us_euro_gpio < 0) {
-		dev_dbg(&pdev->dev,
+		ad_dev_logd(&pdev->dev,
 			"property %s in node %s not found %d\n",
 			"qcom,cdc-us-euro-gpios", pdev->dev.of_node->full_name,
 			pdata->us_euro_gpio);
 	} else {
 		mbhc_cfg.swap_gnd_mic = msm8x16_swap_gnd_mic;
 		if (!gpio_is_valid(pdata->us_euro_gpio)) {
-			pr_err("%s: Invalid gpio: %d", __func__,
+			ad_loge("%s: Invalid gpio: %d", __func__,
 						pdata->us_euro_gpio);
 			return -EINVAL;
 		}
 		pinctrl = devm_pinctrl_get(&pdev->dev);
 		if (IS_ERR(pinctrl)) {
-			pr_err("%s: Unable to get pinctrl handle\n", __func__);
+			ad_loge("%s: Unable to get pinctrl handle\n", __func__);
 			return -EINVAL;
 		}
 		pinctrl_info.pinctrl = pinctrl;
@@ -1935,14 +2458,14 @@ static int msm8x16_setup_hs_jack(struct platform_device *pdev,
 		pinctrl_info.cross_conn_det_sus = pinctrl_lookup_state(pinctrl,
 							"cross_conn_det_sus");
 		if (IS_ERR(pinctrl_info.cross_conn_det_sus)) {
-			pr_err("%s: Unable to get pinctrl disable handle\n",
+			ad_loge("%s: Unable to get pinctrl disable handle\n",
 								  __func__);
 			return -EINVAL;
 		}
 		pinctrl_info.cross_conn_det_act = pinctrl_lookup_state(pinctrl,
 							"cross_conn_det_act");
 		if (IS_ERR(pinctrl_info.cross_conn_det_act)) {
-			pr_err("%s: Unable to get pinctrl active handle\n",
+			ad_loge("%s: Unable to get pinctrl active handle\n",
 								 __func__);
 			return -EINVAL;
 		}
@@ -1952,40 +2475,61 @@ static int msm8x16_setup_hs_jack(struct platform_device *pdev,
 
 int get_cdc_gpio_lines(struct pinctrl *pinctrl, int ext_pa)
 {
-	pr_debug("%s\n", __func__);
-	switch (ext_pa & SEC_MI2S_ID) {
+	int ret;
+	ad_logd("%s\n", __func__);
+	switch (ext_pa & QUAT_MI2S_ID) {
 	case SEC_MI2S_ID:
 		pinctrl_info.cdc_lines_sus = pinctrl_lookup_state(pinctrl,
 			"cdc_lines_sec_ext_sus");
 		if (IS_ERR(pinctrl_info.cdc_lines_sus)) {
-			pr_err("%s: Unable to get pinctrl disable state handle\n",
+			ad_loge("%s: Unable to get pinctrl disable state handle\n",
 								__func__);
 			return -EINVAL;
 		}
 		pinctrl_info.cdc_lines_act = pinctrl_lookup_state(pinctrl,
 			"cdc_lines_sec_ext_act");
 		if (IS_ERR(pinctrl_info.cdc_lines_act)) {
-			pr_err("%s: Unable to get pinctrl disable state handle\n",
+			ad_loge("%s: Unable to get pinctrl disable state handle\n",
 								__func__);
 			return -EINVAL;
 		}
+		break;
+	case QUAT_MI2S_ID:
+		pinctrl_info.cdc_lines_sus = pinctrl_lookup_state(pinctrl,
+			"cdc_lines_quat_ext_sus");
+		if (IS_ERR(pinctrl_info.cdc_lines_sus)) {
+			ad_loge("%s: Unable to get pinctrl disable state handle\n",
+								__func__);
+			return -EINVAL;
+		}
+		pinctrl_info.cdc_lines_act = pinctrl_lookup_state(pinctrl,
+			"cdc_lines_quat_ext_act");
+		if (IS_ERR(pinctrl_info.cdc_lines_act)) {
+			ad_loge("%s: Unable to get pinctrl disable state handle\n",
+								__func__);
+			return -EINVAL;
+		}
+		ret = pinctrl_select_state(pinctrl_info.pinctrl,
+					pinctrl_info.cdc_lines_act);
+		if (ret < 0)
+			ad_loge("failed to enable codec gpios\n");
 		break;
 	default:
 		pinctrl_info.cdc_lines_sus = pinctrl_lookup_state(pinctrl,
 			"cdc_lines_sus");
 		if (IS_ERR(pinctrl_info.cdc_lines_sus)) {
-			pr_err("%s: Unable to get pinctrl disable state handle\n",
+			ad_loge("%s: Unable to get pinctrl disable state handle\n",
 								__func__);
 			return -EINVAL;
 		}
 		pinctrl_info.cdc_lines_act = pinctrl_lookup_state(pinctrl,
 			"cdc_lines_act");
 		if (IS_ERR(pinctrl_info.cdc_lines_act)) {
-			pr_err("%s: Unable to get pinctrl disable state handle\n",
+			ad_loge("%s: Unable to get pinctrl disable state handle\n",
 								__func__);
 			return -EINVAL;
 		}
-		pr_debug("%s: no external PA connected %d\n", __func__, ext_pa);
+		ad_logd("%s: no external PA connected %d\n", __func__, ext_pa);
 		break;
 	}
 	return 0;
@@ -1998,7 +2542,7 @@ int populate_ext_snd_card_dt_data(struct platform_device *pdev)
 
 	pinctrl = devm_pinctrl_get(&pdev->dev);
 	if (IS_ERR(pinctrl)) {
-		pr_err("%s: Unable to get pinctrl handle\n", __func__);
+		ad_loge("%s: Unable to get pinctrl handle\n", __func__);
 		return -EINVAL;
 	}
 	ext_cdc_pinctrl_info.pinctrl = pinctrl;
@@ -2006,14 +2550,14 @@ int populate_ext_snd_card_dt_data(struct platform_device *pdev)
 	ext_cdc_pinctrl_info.tlmm_sus = pinctrl_lookup_state(pinctrl,
 			"ext_cdc_tlmm_lines_sus");
 	if (IS_ERR(ext_cdc_pinctrl_info.tlmm_sus)) {
-		pr_err("%s: Unable to get pinctrl disable state handle %ld\n",
+		ad_loge("%s: Unable to get pinctrl disable state handle %ld\n",
 			__func__, PTR_ERR(ext_cdc_pinctrl_info.tlmm_sus));
 		return -EINVAL;
 	}
 	ext_cdc_pinctrl_info.tlmm_act = pinctrl_lookup_state(pinctrl,
 			"ext_cdc_tlmm_lines_act");
 	if (IS_ERR(ext_cdc_pinctrl_info.tlmm_act)) {
-		pr_err("%s: Unable to get pinctrl active state handle %ld\n",
+		ad_loge("%s: Unable to get pinctrl active state handle %ld\n",
 			__func__, PTR_ERR(ext_cdc_pinctrl_info.tlmm_act));
 		return -EINVAL;
 	}
@@ -2022,7 +2566,7 @@ int populate_ext_snd_card_dt_data(struct platform_device *pdev)
 	ret = pinctrl_select_state(ext_cdc_pinctrl_info.pinctrl,
 					ext_cdc_pinctrl_info.tlmm_sus);
 	if (ret != 0) {
-		pr_err("%s: Failed to disable the TLMM pins ret=%d\n",
+		ad_loge("%s: Failed to disable the TLMM pins ret=%d\n",
 				__func__, ret);
 		return ret;
 	}
@@ -2034,7 +2578,7 @@ static void populate_ext_snd_card_dailinks(struct platform_device *pdev)
 {
 	if (of_property_read_bool(pdev->dev.of_node,
 					"qcom,tapan-codec-9302")) {
-		pr_debug("%s: CARD is 9306\n", __func__);
+		ad_logd("%s: CARD is 9306\n", __func__);
 
 		memcpy(msm8x16_9302_dai_links, msm8x16_dai,
 				sizeof(msm8x16_dai));
@@ -2043,7 +2587,7 @@ static void populate_ext_snd_card_dailinks(struct platform_device *pdev)
 
 	} else {
 
-		pr_debug("%s: CARD is 9302\n", __func__);
+		ad_logd("%s: CARD is 9302\n", __func__);
 
 		memcpy(msm8x16_9306_dai_links, msm8x16_dai,
 				sizeof(msm8x16_dai));
@@ -2061,7 +2605,7 @@ static int msm8x16_populate_dai_link_component_of_node(
 	struct device_node *phandle;
 
 	if (!cdev) {
-		pr_err("%s: Sound card device memory NULL\n", __func__);
+		ad_loge("%s: Sound card device memory NULL\n", __func__);
 		return -ENODEV;
 	}
 
@@ -2076,7 +2620,7 @@ static int msm8x16_populate_dai_link_component_of_node(
 						"asoc-platform-names",
 						dai_link[i].platform_name);
 			if (index < 0) {
-				pr_debug("%s: No match found for platform name: %s\n",
+				ad_logd("%s: No match found for platform name: %s\n",
 					__func__, dai_link[i].platform_name);
 				ret = index;
 				goto cpu_dai;
@@ -2085,7 +2629,7 @@ static int msm8x16_populate_dai_link_component_of_node(
 						"asoc-platform",
 						index);
 			if (!phandle) {
-				pr_err("%s: retrieving phandle for platform %s, index %d failed\n",
+				ad_loge("%s: retrieving phandle for platform %s, index %d failed\n",
 					__func__, dai_link[i].platform_name,
 					index);
 				ret = -ENODEV;
@@ -2105,7 +2649,7 @@ cpu_dai:
 			phandle = of_parse_phandle(cdev->of_node, "asoc-cpu",
 					      index);
 			if (!phandle) {
-				pr_err("%s: retrieving phandle for cpu dai %s failed\n",
+				ad_loge("%s: retrieving phandle for cpu dai %s failed\n",
 					__func__, dai_link[i].cpu_dai_name);
 				ret = -ENODEV;
 				goto err;
@@ -2124,7 +2668,7 @@ codec_dai:
 			phandle = of_parse_phandle(cdev->of_node, "asoc-codec",
 					      index);
 			if (!phandle) {
-				pr_err("%s: retrieving phandle for codec dai %s failed\n",
+				ad_loge("%s: retrieving phandle for codec dai %s failed\n",
 					__func__, dai_link[i].codec_name);
 				ret = -ENODEV;
 				goto err;
@@ -2147,16 +2691,26 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	const char *hs_micbias_type = "qcom,msm-hs-micbias-type";
 	const char *ext_pa = "qcom,msm-ext-pa";
 	const char *mclk = "qcom,msm-mclk-freq";
+    const char *spk_ext_pa_boost_gpio = "qcom,spk-ext-pa-boost-gpio";
+    const char *spk_ext_pa_enable_gpio = "qcom,spk-ext-pa-enable-gpio";
+    const char *spk_ext_pa_switch_vdd_gpio = "qcom,spk-ext-pa-switch-vdd-gpio";
+    const char *spk_ext_pa_switch_in_gpio = "qcom,spk-ext-pa-switch-in-gpio";
 	const char *ptr = NULL;
 	const char *type = NULL;
 	const char *ext_pa_str = NULL;
 	int num_strings;
 	int ret, id, i;
+	/* device use diff gpio for hac , need do it adapt */
+	struct device_node *of_audio_node = NULL ;
+#ifdef CONFIG_HUAWEI_DSM
+	struct timespec ts = {0, 0};
+#endif
+	audio_dsm_register();
 
 	pdata = devm_kzalloc(&pdev->dev,
 			sizeof(struct msm8916_asoc_mach_data), GFP_KERNEL);
 	if (!pdata) {
-		dev_err(&pdev->dev, "Can't allocate msm8x16_asoc_mach_data\n");
+		ad_dev_loge(&pdev->dev, "Can't allocate msm8x16_asoc_mach_data\n");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -2164,7 +2718,7 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	pdata->vaddr_gpio_mux_spkr_ctl =
 		ioremap(LPASS_CSR_GP_IO_MUX_SPKR_CTL , 4);
 	if (!pdata->vaddr_gpio_mux_spkr_ctl) {
-		pr_err("%s ioremap failure for addr %x",
+		ad_loge("%s ioremap failure for addr %x",
 				__func__, LPASS_CSR_GP_IO_MUX_SPKR_CTL);
 		ret = -ENOMEM;
 		goto err;
@@ -2172,7 +2726,7 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	pdata->vaddr_gpio_mux_mic_ctl =
 		ioremap(LPASS_CSR_GP_IO_MUX_MIC_CTL , 4);
 	if (!pdata->vaddr_gpio_mux_mic_ctl) {
-		pr_err("%s ioremap failure for addr %x",
+		ad_loge("%s ioremap failure for addr %x",
 				__func__, LPASS_CSR_GP_IO_MUX_MIC_CTL);
 		ret = -ENOMEM;
 		goto err;
@@ -2180,21 +2734,21 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 
 	ret = of_property_read_u32(pdev->dev.of_node, card_dev_id, &id);
 	if (ret) {
-		dev_err(&pdev->dev,
+		ad_dev_loge(&pdev->dev,
 			"%s: missing %s in dt node\n", __func__, card_dev_id);
 		goto err;
 	}
 
 	pdev->id = id;
 	if (!pdev->dev.of_node) {
-		dev_err(&pdev->dev, "No platform supplied from device tree\n");
+		ad_dev_loge(&pdev->dev, "No platform supplied from device tree\n");
 		ret = -EINVAL;
 		goto err;
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, mclk, &id);
 	if (ret) {
-		dev_err(&pdev->dev,
+		ad_dev_loge(&pdev->dev,
 			"%s: missing %s in dt node\n", __func__, card_dev_id);
 		id = DEFAULT_MCLK_RATE;
 	}
@@ -2202,23 +2756,23 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 
 	ret = of_property_read_string(pdev->dev.of_node, codec_type, &ptr);
 	if (ret) {
-		dev_err(&pdev->dev,
+		ad_dev_loge(&pdev->dev,
 			"%s: missing %s in dt node\n", __func__, codec_type);
 		goto err;
 	}
 	if (pdev->id >= MAX_SND_CARDS) {
-		dev_err(&pdev->dev, "Sound Card parsed is wrong, id=%d\n",
+		ad_dev_loge(&pdev->dev, "Sound Card parsed is wrong, id=%d\n",
 				pdev->id);
 		ret = -EINVAL;
 		goto err;
 	}
 	if (!strcmp(ptr, "external")) {
-		dev_info(&pdev->dev, "external codec is configured\n");
+		ad_dev_logn(&pdev->dev, "external codec is configured\n");
 		pdata->codec_type = 1;
 			/*Populate external codec TLMM configs*/
 		ret = populate_ext_snd_card_dt_data(pdev);
 		if (ret < 0) {
-			dev_err(&pdev->dev, "error finding the DT params ret=%d\n",
+			ad_dev_loge(&pdev->dev, "error finding the DT params ret=%d\n",
 					ret);
 			goto err;
 		}
@@ -2229,12 +2783,12 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 		card = &bear_cards[pdev->id];
 		bear_cards[pdev->id].name = dev_name(&pdev->dev);
 		card = &bear_cards[pdev->id];
-		dev_info(&pdev->dev, "default codec configured\n");
+		ad_dev_logn(&pdev->dev, "default codec configured\n");
 		pdata->codec_type = 0;
 		num_strings = of_property_count_strings(pdev->dev.of_node,
 				ext_pa);
 		if (num_strings < 0) {
-			dev_err(&pdev->dev,
+			ad_dev_loge(&pdev->dev,
 					"%s: missing %s in dt node or length is incorrect\n",
 					__func__, ext_pa);
 			goto err;
@@ -2243,7 +2797,7 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 			ret = of_property_read_string_index(pdev->dev.of_node,
 					ext_pa, i, &ext_pa_str);
 			if (ret) {
-				dev_err(&pdev->dev, "%s:of read string %s i %d error %d\n",
+				ad_dev_loge(&pdev->dev, "%s:of read string %s i %d error %d\n",
 						__func__, ext_pa, i, ret);
 				goto err;
 			}
@@ -2256,17 +2810,18 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 			else if (!strcmp(ext_pa_str, "quaternary"))
 				pdata->ext_pa = (pdata->ext_pa | QUAT_MI2S_ID);
 		}
-		pr_debug("%s: ext_pa = %d\n", __func__, pdata->ext_pa);
+		ad_logd("%s: ext_pa = %d\n", __func__, pdata->ext_pa);
 		pinctrl = devm_pinctrl_get(&pdev->dev);
 		if (IS_ERR(pinctrl)) {
-			pr_err("%s: Unable to get pinctrl handle\n",
+			audio_dsm_report_num(DSM_AUDIO_CARD_LOAD_FAIL_ERROR_NO, DSM_AUDIO_MESG_GET_PINCRTL_FAIL);
+			ad_loge("%s: Unable to get pinctrl handle\n",
 					__func__);
 			return -EINVAL;
 		}
 		pinctrl_info.pinctrl = pinctrl;
 		ret = get_cdc_gpio_lines(pinctrl, pdata->ext_pa);
 		if (ret < 0) {
-			pr_err("%s: failed to ger the codec gpio's %d\n",
+			ad_loge("%s: failed to ger the codec gpio's %d\n",
 					__func__, ret);
 			goto err;
 		}
@@ -2275,15 +2830,15 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	ret = of_property_read_string(pdev->dev.of_node,
 		hs_micbias_type, &type);
 	if (ret) {
-		dev_err(&pdev->dev, "%s: missing %s in dt node\n",
+		ad_dev_loge(&pdev->dev, "%s: missing %s in dt node\n",
 			__func__, hs_micbias_type);
 		goto err;
 	}
 	if (!strcmp(type, "external")) {
-		dev_dbg(&pdev->dev, "Headset is using external micbias\n");
+		ad_dev_logd(&pdev->dev, "Headset is using external micbias\n");
 		mbhc_cfg.hs_ext_micbias = true;
 	} else {
-		dev_dbg(&pdev->dev, "Headset is using internal micbias\n");
+		ad_dev_logd(&pdev->dev, "Headset is using internal micbias\n");
 		mbhc_cfg.hs_ext_micbias = false;
 	}
 
@@ -2323,12 +2878,105 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 
 	ret = snd_soc_register_card(card);
 	if (ret) {
-		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
+		ad_dev_loge(&pdev->dev, "snd_soc_register_card failed (%d)\n",
 			ret);
 		goto err;
 	}
+	/* device use diff gpio for hac , need do it adapt */
+	/*search hw_audio_info */
+	if( NULL == of_audio_node ){
+		of_audio_node = of_find_compatible_node(NULL, NULL, "huawei,hw_audio_info");
+		if( !of_audio_node ) {
+			ad_loge("Can not find dev node: \"hw_audio_info\"\n");
+			goto err;
+        }
+    }
+    pdata->spk_ext_pa_boost_gpio=of_get_named_gpio(pdev->dev.of_node,spk_ext_pa_boost_gpio,0);
+    if (pdata->spk_ext_pa_boost_gpio < 0) {
+        ad_loge("%s: missing %s in dt node\n", __func__, spk_ext_pa_boost_gpio);
+      } else {
+            if (!gpio_is_valid(pdata->spk_ext_pa_boost_gpio)) {
+            ad_loge("%s: Invalid external speaker gpio: %d",__func__, pdata->spk_ext_pa_boost_gpio);
+        }else{
+            ret = gpio_request(pdata->spk_ext_pa_boost_gpio, "spk_ext_pa_boost_gpio");
+            if(ret < 0)
+            {
+                ad_loge("%s: gpio_request spk_ext_pa_boost_gpio failed",__func__);
+            }
+        }
+    }
+    pdata->spk_ext_pa_enable_gpio=of_get_named_gpio(pdev->dev.of_node,spk_ext_pa_enable_gpio,0);
+    if (pdata->spk_ext_pa_enable_gpio < 0) {
+        ad_loge("%s: missing %s in dt node\n", __func__, spk_ext_pa_enable_gpio);
+    } else {
+        if (!gpio_is_valid(pdata->spk_ext_pa_enable_gpio)) {
+            ad_loge("%s: Invalid external speaker gpio: %d",__func__, pdata->spk_ext_pa_enable_gpio);
+        }else{
+            ret = gpio_request(pdata->spk_ext_pa_enable_gpio, "spk_ext_pa_enable_gpio");
+            if(ret < 0)
+            {
+                ad_loge("%s: gpio_request spk_ext_pa_enable_gpio failed",__func__);
+            }
+        }
+    }
+    pdata->spk_ext_pa_switch_vdd_gpio=of_get_named_gpio(pdev->dev.of_node,spk_ext_pa_switch_vdd_gpio,0);
+    if (pdata->spk_ext_pa_switch_vdd_gpio < 0) {
+        ad_loge("%s: missing %s in dt node\n", __func__, spk_ext_pa_switch_vdd_gpio);
+    } else {
+        if (!gpio_is_valid(pdata->spk_ext_pa_switch_vdd_gpio)) {
+            ad_loge("%s: Invalid external speaker gpio: %d",__func__, pdata->spk_ext_pa_switch_vdd_gpio);
+        }else
+        {
+            ret = gpio_request(pdata->spk_ext_pa_switch_vdd_gpio, "spk_ext_pa_switch_vdd_gpio");
+            if(ret < 0)
+            {
+                ad_loge("%s: gpio_request spk_ext_pa_switch_vdd_gpio failed",__func__);
+            }
+        }
+    }
+    pdata->spk_ext_pa_switch_in_gpio=of_get_named_gpio(pdev->dev.of_node,spk_ext_pa_switch_in_gpio,0);
+    if (pdata->spk_ext_pa_switch_in_gpio < 0) {
+        ad_loge("%s: missing %s in dt node\n", __func__, spk_ext_pa_switch_in_gpio);
+    } else {
+        if (!gpio_is_valid(pdata->spk_ext_pa_switch_in_gpio)) {
+            ad_loge("%s: Invalid external speaker gpio: %d",__func__, pdata->spk_ext_pa_switch_in_gpio);
+        }else
+        {
+            ret = gpio_request(pdata->spk_ext_pa_switch_in_gpio, "spk_ext_pa_switch_in_gpio");
+            if(ret < 0)
+            {
+                ad_loge("%s: gpio_request spk_ext_pa_switch_in_gpio failed",__func__);
+            }
+		}
+	}
+
+	ret = of_get_named_gpio_flags(of_audio_node, "huawei,hac_gpio", 0, NULL);
+	if (ret < 0) {
+		ad_dev_loge(&pdev->dev, "Unable to read gpio pin number\n");
+		hac_en_gpio = DEFAULT_HAC_NONEED;
+	} else {
+		ad_dev_loge(&pdev->dev, "read hac gpio  %d\n", ret);
+		hac_en_gpio = ret;
+	}
+
+	ret = gpio_request(hac_en_gpio, "HAC_EN_GPIO");
+	if (ret) {
+		ad_loge("%s: Failed to configure hac enable "
+				"gpio %u\n", __func__, hac_en_gpio);
+	}
 	return 0;
 err:
+#ifdef CONFIG_HUAWEI_DSM
+	if(-EPROBE_DEFER != ret)
+	{
+		get_monotonic_boottime(&ts);
+		if(ts.tv_sec >= DSM_REPORT_DELAY_TIME) 
+		{
+			audio_dsm_report_info(DSM_AUDIO_CARD_LOAD_FAIL_ERROR_NO,
+				 "%s ret = %d, time = %d", __func__, ret, ts.tv_sec);
+		}
+	}
+#endif
 	devm_kfree(&pdev->dev, pdata);
 	if (pdata->vaddr_gpio_mux_spkr_ctl)
 		iounmap(pdata->vaddr_gpio_mux_spkr_ctl);
@@ -2347,8 +2995,17 @@ static int msm8x16_asoc_machine_remove(struct platform_device *pdev)
 	if (pdata->vaddr_gpio_mux_mic_ctl)
 		iounmap(pdata->vaddr_gpio_mux_mic_ctl);
 	snd_soc_unregister_card(card);
-	mutex_destroy(&pdata->cdc_mclk_mutex);
-	return 0;
+	gpio_free(hac_en_gpio);
+    if((pdata->spk_ext_pa_boost_gpio) >= 0)
+        gpio_free(pdata->spk_ext_pa_boost_gpio);
+    if((pdata->spk_ext_pa_enable_gpio) >= 0)
+        gpio_free(pdata->spk_ext_pa_enable_gpio);
+    if((pdata->spk_ext_pa_switch_vdd_gpio)>= 0)
+        gpio_free(pdata->spk_ext_pa_switch_vdd_gpio);
+    if((pdata->spk_ext_pa_switch_in_gpio)>= 0)
+        gpio_free(pdata->spk_ext_pa_switch_in_gpio);
+    mutex_destroy(&pdata->cdc_mclk_mutex);
+    return 0;
 }
 
 static const struct of_device_id msm8x16_asoc_machine_of_match[]  = {

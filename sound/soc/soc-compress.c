@@ -539,10 +539,10 @@ static int soc_compr_set_params_fe(struct snd_compr_stream *cstream,
 			if (ret < 0)
 				goto out;
 		}
-
-		memcpy(&fe->dpcm[fe_substream->stream].hw_params, params,
+		
+		memset(&fe->dpcm[fe_substream->stream].hw_params, 0,
 				sizeof(struct snd_pcm_hw_params));
-
+		
 		fe->dpcm[stream].runtime_update = SND_SOC_DPCM_UPDATE_FE;
 
 		ret = dpcm_be_dai_hw_params(fe, stream);
