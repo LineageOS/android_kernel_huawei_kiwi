@@ -35,6 +35,26 @@
 #define QPNP_VIB_VTG_SET_MASK		0x1F
 #define QPNP_VIB_LOGIC_SHIFT		4
 
+int vibrator_debug_mask = 1;
+module_param_named(vibrator_debug, vibrator_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
+#define VIBRATOR_ERR(x...) do {\
+    if (vibrator_debug_mask >=0) \
+        printk(KERN_ERR x);\
+    } while (0)
+#define VIBRATOR_WARN(x...) do {\
+    if (vibrator_debug_mask >=0) \
+        printk(KERN_ERR x);\
+    } while (0)
+#define VIBRATOR_INFO(x...) do {\
+    if (vibrator_debug_mask >=1) \
+        printk(KERN_ERR x);\
+    } while (0)
+#define VIBRATOR_DEBUG(x...) do {\
+    if (vibrator_debug_mask >=2) \
+        printk(KERN_ERR x);\
+    } while (0)
+
+	
 enum qpnp_vib_mode {
 	QPNP_VIB_MANUAL,
 	QPNP_VIB_DTEST1,
@@ -74,8 +94,7 @@ static int qpnp_vib_read_u8(struct qpnp_vib *vib, u8 *data, u16 reg)
 	rc = spmi_ext_register_readl(vib->spmi->ctrl, vib->spmi->sid,
 							reg, data, 1);
 	if (rc < 0)
-		dev_err(&vib->spmi->dev,
-			"Error reading address: %X - ret %X\n", reg, rc);
+		VIBRATOR_ERR("Error reading address: %X - ret %X\n", reg, rc);
 
 	return rc;
 }
@@ -87,8 +106,7 @@ static int qpnp_vib_write_u8(struct qpnp_vib *vib, u8 *data, u16 reg)
 	rc = spmi_ext_register_writel(vib->spmi->ctrl, vib->spmi->sid,
 							reg, data, 1);
 	if (rc < 0)
-		dev_err(&vib->spmi->dev,
-			"Error writing address: %X - ret %X\n", reg, rc);
+		VIBRATOR_ERR("Error writing address: %X - ret %X\n", reg, rc);
 
 	return rc;
 }
@@ -118,14 +136,14 @@ static int qpnp_vibrator_config(struct qpnp_vib *vib)
 		vib->pwm_info.pwm_dev = pwm_request(vib->pwm_info.pwm_channel,
 								 "qpnp-vib");
 		if (IS_ERR_OR_NULL(vib->pwm_info.pwm_dev)) {
-			dev_err(&vib->spmi->dev, "vib pwm request failed\n");
+			VIBRATOR_ERR("vib pwm request failed\n");
 			return -ENODEV;
 		}
 
 		rc = pwm_config(vib->pwm_info.pwm_dev, vib->pwm_info.duty_us,
 						vib->pwm_info.period_us);
 		if (rc < 0) {
-			dev_err(&vib->spmi->dev, "vib pwm config failed\n");
+			VIBRATOR_ERR("vib pwm config failed\n");
 			pwm_free(vib->pwm_info.pwm_dev);
 			return -ENODEV;
 		}
@@ -179,7 +197,7 @@ static void qpnp_vib_enable(struct timed_output_dev *dev, int value)
 {
 	struct qpnp_vib *vib = container_of(dev, struct qpnp_vib,
 					 timed_dev);
-
+	VIBRATOR_INFO("%s,value=%d\n",__FUNCTION__,value);
 	mutex_lock(&vib->lock);
 	hrtimer_cancel(&vib->vib_timer);
 
@@ -256,7 +274,7 @@ static int qpnp_vib_parse_dt(struct qpnp_vib *vib)
 	if (!rc) {
 		vib->timeout = temp_val;
 	} else if (rc != -EINVAL) {
-		dev_err(&spmi->dev, "Unable to read vib timeout\n");
+		VIBRATOR_ERR("Unable to read vib timeout\n");
 		return rc;
 	}
 
@@ -266,7 +284,7 @@ static int qpnp_vib_parse_dt(struct qpnp_vib *vib)
 	if (!rc) {
 		vib->vtg_level = temp_val;
 	} else if (rc != -EINVAL) {
-		dev_err(&spmi->dev, "Unable to read vtg level\n");
+		VIBRATOR_ERR("Unable to read vtg level\n");
 		return rc;
 	}
 
@@ -288,11 +306,11 @@ static int qpnp_vib_parse_dt(struct qpnp_vib *vib)
 		else if (strcmp(mode, "dtest3") == 0)
 			vib->mode = QPNP_VIB_DTEST3;
 		else {
-			dev_err(&spmi->dev, "Invalid mode\n");
+			VIBRATOR_ERR("Invalid mode\n");
 			return -EINVAL;
 		}
 	} else if (rc != -EINVAL) {
-		dev_err(&spmi->dev, "Unable to read mode\n");
+		VIBRATOR_ERR("Unable to read mode\n");
 		return rc;
 	}
 
@@ -339,20 +357,20 @@ static int qpnp_vibrator_probe(struct spmi_device *spmi)
 
 	vib_resource = spmi_get_resource(spmi, 0, IORESOURCE_MEM, 0);
 	if (!vib_resource) {
-		dev_err(&spmi->dev, "Unable to get vibrator base address\n");
+		VIBRATOR_ERR("Unable to get vibrator base address\n");
 		return -EINVAL;
 	}
 	vib->base = vib_resource->start;
 
 	rc = qpnp_vib_parse_dt(vib);
 	if (rc) {
-		dev_err(&spmi->dev, "DT parsing failed\n");
+		VIBRATOR_ERR("DT parsing failed\n");
 		return rc;
 	}
 
 	rc = qpnp_vibrator_config(vib);
 	if (rc) {
-		dev_err(&spmi->dev, "vib config failed\n");
+		VIBRATOR_ERR("vib config failed\n");
 		return rc;
 	}
 
@@ -417,3 +435,4 @@ module_exit(qpnp_vibrator_exit);
 
 MODULE_DESCRIPTION("qpnp vibrator driver");
 MODULE_LICENSE("GPL v2");
+
