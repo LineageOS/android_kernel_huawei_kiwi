@@ -21,12 +21,23 @@
 #include <linux/usb/composite.h>
 #include <asm/unaligned.h>
 
+/*delet the USB monitor point*/
+
 /*
  * The code in this file is utility code, used to build a gadget driver
  * from one or more "function" drivers, one or more "configuration"
  * objects, and a "usb_composite_driver" by gluing them together along
  * with the relevant device-wide data.
  */
+#include <linux/interrupt.h>
+
+#define  USB_REQ_VENDOR_SWITCH_MODE      0xA5
+extern void usb_port_switch_request(int usb_pid_index);
+static void usb_port_switch_wq(struct work_struct *data)
+	{	
+	   usb_port_switch_request(0);
+    }
+DECLARE_WORK(usb_port_switch_work, usb_port_switch_wq);
 
 static struct usb_gadget_strings **get_containers_gs(
 		struct usb_gadget_string_container *uc)
@@ -1337,6 +1348,7 @@ static void composite_setup_complete(struct usb_ep *ep, struct usb_request *req)
 		DBG((struct usb_composite_dev *) ep->driver_data,
 				"setup complete --> %d, %d/%d\n",
 				req->status, req->actual, req->length);
+	/*delet the USB monitor point*/
 }
 
 /*
@@ -1580,6 +1592,20 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 			break;
 		}
 		break;
+        case USB_REQ_VENDOR_SWITCH_MODE:
+			if ((ctrl->bRequestType != (USB_DIR_IN|USB_TYPE_VENDOR|USB_RECIP_DEVICE))	|| (w_index != 0))
+				goto unknown;			/* Handle vendor customized request */
+			INFO(cdev, "vendor request: %d index: %d value: %d length: %d\n",ctrl->bRequest, w_index, w_value, w_length);
+	
+              	if (in_interrupt())	
+				{
+					schedule_work(&usb_port_switch_work);	
+				}
+				else	
+				{
+				    usb_port_switch_request(0);
+			    }
+	    break;
 	default:
 unknown:
 		VDBG(cdev,
@@ -1896,7 +1922,11 @@ composite_resume(struct usb_gadget *gadget)
 {
 	struct usb_composite_dev	*cdev = get_gadget_data(gadget);
 	struct usb_function		*f;
+#ifdef CONFIG_HUAWEI_KERNEL
+	u16				maxpower;
+#else
 	u8				maxpower;
+#endif
 	int ret;
 	unsigned long			flags;
 

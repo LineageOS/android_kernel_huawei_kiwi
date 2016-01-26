@@ -72,6 +72,8 @@
 
 #include "ci13xxx_udc.h"
 
+#include "huawei_usb.h"
+
 /******************************************************************************
  * DEFINE
  *****************************************************************************/
@@ -345,7 +347,7 @@ static int hw_device_reset(struct ci13xxx *udc)
 	while (delay_count--  && hw_cread(CAP_USBCMD, USBCMD_RST))
 		udelay(10);
 	if (delay_count < 0)
-		pr_err("USB controller reset failed\n");
+		usb_logs_err("USB controller reset failed\n");
 
 	if (udc->udc_driver->notify_event)
 		udc->udc_driver->notify_event(udc,
@@ -371,8 +373,8 @@ static int hw_device_reset(struct ci13xxx *udc)
 		hw_cwrite(CAP_USBCMD, USBCMD_ITC_MASK, USBCMD_ITC(0));
 
 	if (hw_cread(CAP_USBMODE, USBMODE_CM) != USBMODE_CM_DEVICE) {
-		pr_err("cannot enter in device mode");
-		pr_err("lpm = %i", hw_bank.lpm);
+		usb_logs_err("cannot enter in device mode");
+		usb_logs_err("lpm = %i", hw_bank.lpm);
 		return -ENODEV;
 	}
 
@@ -396,8 +398,8 @@ static int hw_device_state(u32 dma)
 		if (gadget->streaming_enabled || !(udc->udc_driver->flags &
 				CI13XXX_DISABLE_STREAMING)) {
 			hw_cwrite(CAP_USBMODE, USBMODE_SDIS, 0);
-			pr_debug("%s(): streaming mode is enabled. USBMODE:%x\n",
-				 __func__, hw_cread(CAP_USBMODE, ~0));
+			usb_logs_dbg("streaming mode is enabled. USBMODE:%x\n",
+				  hw_cread(CAP_USBMODE, ~0));
 
 			/* In streaming mode, allowed to increase USB system
 			 * clock upto 133MHz. But, going to 133MHz require
@@ -407,13 +409,14 @@ static int hw_device_state(u32 dma)
 			if (udc->system_clk) {
 				ret = clk_set_rate(udc->system_clk, 100000000);
 				if (ret)
-					pr_err("fail to set system_clk: %d\n",
+					usb_logs_err("fail to set system_clk: %d\n",
 						ret);
 			}
 		} else {
 			hw_cwrite(CAP_USBMODE, USBMODE_SDIS, USBMODE_SDIS);
-			pr_debug("%s(): streaming mode is disabled. USBMODE:%x\n",
-				__func__, hw_cread(CAP_USBMODE, ~0));
+			usb_logs_dbg("streaming mode is disabled. USBMODE:%x\n",
+				hw_cread(CAP_USBMODE, ~0));
+			
 
 			/* In non-stream mode, due to HW limitation cannot go
 			 * beyond 80MHz, otherwise, may see EP prime failures.
@@ -421,7 +424,7 @@ static int hw_device_state(u32 dma)
 			if (udc->system_clk) {
 				ret = clk_set_rate(udc->system_clk, 80000000);
 				if (ret)
-					pr_err("fail to set system_clk: %d\n",
+					usb_logs_err("fail to set system_clk: %d\n",
 						ret);
 			}
 
@@ -436,8 +439,8 @@ static int hw_device_state(u32 dma)
 		/* Set BIT(31) to enable AHB2AHB Bypass functionality */
 		if (udc->udc_driver->flags & CI13XXX_ENABLE_AHB2AHB_BYPASS) {
 			hw_awrite(ABS_AHBMODE, AHB2AHB_BYPASS, AHB2AHB_BYPASS);
-			pr_debug("%s(): ByPass Mode is enabled. AHBMODE:%x\n",
-					__func__, hw_aread(ABS_AHBMODE, ~0));
+			usb_logs_dbg("ByPass Mode is enabled. AHBMODE:%x\n",
+					hw_aread(ABS_AHBMODE, ~0));
 		}
 
 		/* interrupt, error, port change, reset, sleep/suspend */
@@ -450,8 +453,8 @@ static int hw_device_state(u32 dma)
 		/* Clear BIT(31) to disable AHB2AHB Bypass functionality */
 		if (udc->udc_driver->flags & CI13XXX_ENABLE_AHB2AHB_BYPASS) {
 			hw_awrite(ABS_AHBMODE, AHB2AHB_BYPASS, 0);
-			pr_debug("%s(): ByPass Mode is disabled. AHBMODE:%x\n",
-					__func__, hw_aread(ABS_AHBMODE, ~0));
+			usb_logs_dbg("ByPass Mode is disabled. AHBMODE:%x\n",
+					 hw_aread(ABS_AHBMODE, ~0));
 
 		/* In non-stream mode, due to HW limitation cannot go
 		 * beyond 80MHz, otherwise, may see EP prime failures.
@@ -459,7 +462,7 @@ static int hw_device_state(u32 dma)
 		if (udc->system_clk) {
 			ret = clk_set_rate(udc->system_clk, 80000000);
 			if (ret)
-				pr_err("fail to set system_clk ret:%d\n", ret);
+				usb_logs_err("fail to set system_clk ret:%d\n", ret);
 		}
 
 		/* make sure clock set rate is finished before proceeding */
@@ -886,7 +889,7 @@ static int hw_usb_reset(void)
 	while (delay_count-- && hw_cread(CAP_ENDPTPRIME, ~0))
 		udelay(10);
 	if (delay_count < 0)
-		pr_err("ENDPTPRIME is not cleared during bus reset\n");
+		usb_logs_err("ENDPTPRIME is not cleared during bus reset\n");
 
 	/* reset all endpoints ? */
 
@@ -913,7 +916,7 @@ static ssize_t show_device(struct device *dev, struct device_attribute *attr,
 
 	dbg_trace("[%s] %p\n", __func__, buf);
 	if (attr == NULL || buf == NULL) {
-		dev_err(dev, "[%s] EINVAL\n", __func__);
+		usb_dev_err(dev, "EINVAL\n");
 		return 0;
 	}
 
@@ -955,7 +958,7 @@ static ssize_t show_driver(struct device *dev, struct device_attribute *attr,
 
 	dbg_trace("[%s] %p\n", __func__, buf);
 	if (attr == NULL || buf == NULL) {
-		dev_err(dev, "[%s] EINVAL\n", __func__);
+		usb_dev_err(dev, "EINVAL\n");
 		return 0;
 	}
 
@@ -1074,7 +1077,7 @@ static void dbg_print(u8 addr, const char *name, int status, const char *extra)
 	write_unlock_irqrestore(&dbg_data.lck, flags);
 
 	if (dbg_data.tty != 0)
-		pr_notice("%s\t? %02X %-7.7s %4i ?\t%s\n",
+		usb_logs_info("%s\t? %02X %-7.7s %4i ?\t%s\n",
 			  get_timestamp(tbuf), addr, name, status, extra);
 }
 
@@ -1193,7 +1196,7 @@ static ssize_t show_events(struct device *dev, struct device_attribute *attr,
 
 	dbg_trace("[%s] %p\n", __func__, buf);
 	if (attr == NULL || buf == NULL) {
-		dev_err(dev, "[%s] EINVAL\n", __func__);
+		usb_dev_err(dev, "EINVAL\n");
 		return 0;
 	}
 
@@ -1228,17 +1231,17 @@ static ssize_t store_events(struct device *dev, struct device_attribute *attr,
 
 	dbg_trace("[%s] %p, %d\n", __func__, buf, count);
 	if (attr == NULL || buf == NULL) {
-		dev_err(dev, "[%s] EINVAL\n", __func__);
+		usb_dev_err(dev, "EINVAL\n");
 		goto done;
 	}
 
 	if (sscanf(buf, "%u", &tty) != 1 || tty > 1) {
-		dev_err(dev, "<1|0>: enable|disable console log\n");
+		usb_dev_err(dev, "<1|0>: enable|disable console log\n");
 		goto done;
 	}
 
 	dbg_data.tty = tty;
-	dev_info(dev, "tty = %u", dbg_data.tty);
+	usb_dev_info(dev, "tty = %u", dbg_data.tty);
 
  done:
 	return count;
@@ -1260,7 +1263,7 @@ static ssize_t show_inters(struct device *dev, struct device_attribute *attr,
 
 	dbg_trace("[%s] %p\n", __func__, buf);
 	if (attr == NULL || buf == NULL) {
-		dev_err(dev, "[%s] EINVAL\n", __func__);
+		usb_dev_err(dev, " EINVAL\n");
 		return 0;
 	}
 
@@ -1333,24 +1336,24 @@ static ssize_t store_inters(struct device *dev, struct device_attribute *attr,
 
 	dbg_trace("[%s] %p, %d\n", __func__, buf, count);
 	if (attr == NULL || buf == NULL) {
-		dev_err(dev, "[%s] EINVAL\n", __func__);
+		usb_dev_err(dev, "EINVAL\n");
 		goto done;
 	}
 
 	if (sscanf(buf, "%u %u", &en, &bit) != 2 || en > 1) {
-		dev_err(dev, "<1|0> <bit>: enable|disable interrupt");
+		usb_dev_err(dev, "<1|0> <bit>: enable|disable interrupt");
 		goto done;
 	}
 
 	spin_lock_irqsave(udc->lock, flags);
 	if (en) {
 		if (hw_intr_force(bit))
-			dev_err(dev, "invalid bit number\n");
+			usb_dev_err(dev, "invalid bit number\n");
 		else
 			isr_statistics.test++;
 	} else {
 		if (hw_intr_clear(bit))
-			dev_err(dev, "invalid bit number\n");
+			usb_dev_err(dev, "invalid bit number\n");
 	}
 	spin_unlock_irqrestore(udc->lock, flags);
 
@@ -1373,7 +1376,8 @@ static ssize_t show_port_test(struct device *dev,
 
 	dbg_trace("[%s] %p\n", __func__, buf);
 	if (attr == NULL || buf == NULL) {
-		dev_err(dev, "[%s] EINVAL\n", __func__);
+
+		usb_dev_err(dev, " EINVAL\n");
 		return 0;
 	}
 
@@ -1399,18 +1403,18 @@ static ssize_t store_port_test(struct device *dev,
 
 	dbg_trace("[%s] %p, %d\n", __func__, buf, count);
 	if (attr == NULL || buf == NULL) {
-		dev_err(dev, "[%s] EINVAL\n", __func__);
+		usb_dev_err(dev, "EINVAL\n");
 		goto done;
 	}
 
 	if (sscanf(buf, "%u", &mode) != 1) {
-		dev_err(dev, "<mode>: set port test mode");
+		usb_dev_err(dev, "<mode>: set port test mode");
 		goto done;
 	}
 
 	spin_lock_irqsave(udc->lock, flags);
 	if (hw_port_test_set(mode))
-		dev_err(dev, "invalid mode\n");
+		usb_dev_err(dev, "invalid mode\n");
 	spin_unlock_irqrestore(udc->lock, flags);
 
  done:
@@ -1433,7 +1437,7 @@ static ssize_t show_qheads(struct device *dev, struct device_attribute *attr,
 
 	dbg_trace("[%s] %p\n", __func__, buf);
 	if (attr == NULL || buf == NULL) {
-		dev_err(dev, "[%s] EINVAL\n", __func__);
+		usb_dev_err(dev, "EINVAL\n");
 		return 0;
 	}
 
@@ -1473,13 +1477,13 @@ static ssize_t show_registers(struct device *dev,
 
 	dbg_trace("[%s] %p\n", __func__, buf);
 	if (attr == NULL || buf == NULL) {
-		dev_err(dev, "[%s] EINVAL\n", __func__);
+		usb_dev_err(dev, "EINVAL\n");
 		return 0;
 	}
 
 	dump = kmalloc(sizeof(u32) * DUMP_ENTRIES, GFP_KERNEL);
 	if (!dump) {
-		dev_err(dev, "%s: out of memory\n", __func__);
+		usb_dev_err(dev, " out of memory\n");
 		return 0;
 	}
 
@@ -1511,18 +1515,18 @@ static ssize_t store_registers(struct device *dev,
 
 	dbg_trace("[%s] %p, %d\n", __func__, buf, count);
 	if (attr == NULL || buf == NULL) {
-		dev_err(dev, "[%s] EINVAL\n", __func__);
+		usb_dev_err(dev, " EINVAL\n");
 		goto done;
 	}
 
 	if (sscanf(buf, "%li %li", &addr, &data) != 2) {
-		dev_err(dev, "<addr> <data>: write data to register address");
+		usb_dev_err(dev, "<addr> <data>: write data to register address");
 		goto done;
 	}
 
 	spin_lock_irqsave(udc->lock, flags);
 	if (hw_register_write(addr, data))
-		dev_err(dev, "invalid address range\n");
+		usb_dev_err(dev, "invalid address range\n");
 	spin_unlock_irqrestore(udc->lock, flags);
 
  done:
@@ -1547,7 +1551,7 @@ static ssize_t show_requests(struct device *dev, struct device_attribute *attr,
 
 	dbg_trace("[%s] %p\n", __func__, buf);
 	if (attr == NULL || buf == NULL) {
-		dev_err(dev, "[%s] EINVAL\n", __func__);
+		usb_dev_err(dev, " EINVAL\n");
 		return 0;
 	}
 
@@ -1585,7 +1589,7 @@ static ssize_t prime_ept(struct device *dev,
 	struct ci13xxx_req *mReq = NULL;
 
 	if (sscanf(buf, "%u %u", &ep_num, &dir) != 2) {
-		dev_err(dev, "<ep_num> <dir>: prime the ep");
+		usb_dev_err(dev, "<ep_num> <dir>: prime the ep");
 		goto done;
 	}
 
@@ -1605,7 +1609,7 @@ static ssize_t prime_ept(struct device *dev,
 	while (hw_cread(CAP_ENDPTPRIME, BIT(n)))
 		cpu_relax();
 
-	pr_info("%s: prime:%08x stat:%08x ep#%d dir:%s\n", __func__,
+	usb_logs_info("prime:%08x stat:%08x ep#%d dir:%s\n",
 			hw_cread(CAP_ENDPTPRIME, ~0),
 			hw_cread(CAP_ENDPTSTAT, ~0),
 			mEp->num, mEp->dir ? "IN" : "OUT");
@@ -1628,7 +1632,7 @@ static ssize_t print_dtds(struct device *dev,
 	struct ci13xxx_req *req = NULL;
 
 	if (sscanf(buf, "%u %u", &ep_num, &dir) != 2) {
-		dev_err(dev, "<ep_num> <dir>: to print dtds");
+		usb_dev_err(dev, "<ep_num> <dir>: to print dtds");
 		goto done;
 	}
 
@@ -1638,10 +1642,10 @@ static ssize_t print_dtds(struct device *dev,
 		mEp = &udc->ci13xxx_ep[ep_num];
 
 	n = hw_ep_bit(mEp->num, mEp->dir);
-	pr_info("%s: prime:%08x stat:%08x ep#%d dir:%s"
+	usb_logs_info(" prime:%08x stat:%08x ep#%d dir:%s"
 			"dTD_update_fail_count: %lu "
 			"mEp->dTD_update_fail_count: %lu"
-			"mEp->prime_fail_count: %lu\n", __func__,
+			"mEp->prime_fail_count: %lu\n",
 			hw_cread(CAP_ENDPTPRIME, ~0),
 			hw_cread(CAP_ENDPTSTAT, ~0),
 			mEp->num, mEp->dir ? "IN" : "OUT",
@@ -1649,14 +1653,14 @@ static ssize_t print_dtds(struct device *dev,
 			mEp->dTD_update_fail_count,
 			mEp->prime_fail_count);
 
-	pr_info("QH: cap:%08x cur:%08x next:%08x token:%08x\n",
+	usb_logs_info("QH: cap:%08x cur:%08x next:%08x token:%08x\n",
 			mEp->qh.ptr->cap, mEp->qh.ptr->curr,
 			mEp->qh.ptr->td.next, mEp->qh.ptr->td.token);
 
 	list_for_each(ptr, &mEp->qh.queue) {
 		req = list_entry(ptr, struct ci13xxx_req, queue);
 
-		pr_info("\treq:%pa next:%08x token:%08x page0:%08x status:%d\n",
+		usb_logs_info("\treq:%pa next:%08x token:%08x page0:%08x status:%d\n",
 				&req->dma, req->ptr->next, req->ptr->token,
 				req->ptr->page[0], req->req.status);
 	}
@@ -1856,12 +1860,12 @@ static void dump_usb_info(void *ignore, unsigned int ebi_addr,
 		return;
 	count++;
 
-	pr_info("%s: USB EBI error detected\n", __func__);
+	usb_logs_info(" USB EBI error detected\n");
 
 	ebi_err_data = kmalloc(sizeof(struct ci13xxx_ebi_err_data),
 				 GFP_ATOMIC);
 	if (!ebi_err_data) {
-		pr_err("%s: memory alloc failed for ebi_err_data\n", __func__);
+		usb_logs_err("memory alloc failed for ebi_err_data\n");
 		return;
 	}
 
@@ -1870,7 +1874,7 @@ static void dump_usb_info(void *ignore, unsigned int ebi_addr,
 					GFP_ATOMIC);
 	if (!ebi_err_data->ebi_err_entry) {
 		kfree(ebi_err_data);
-		pr_err("%s: memory alloc failed for ebi_err_entry\n", __func__);
+		usb_logs_err("memory alloc failed for ebi_err_entry\n");
 		return;
 	}
 
@@ -1879,7 +1883,7 @@ static void dump_usb_info(void *ignore, unsigned int ebi_addr,
 	ebi_err_data->apkt1 = ebi_apacket1;
 
 	temp_dump = ebi_err_data->ebi_err_entry;
-	pr_info("\n DUMPING USB Requests Information\n");
+	usb_logs_info("\n DUMPING USB Requests Information\n");
 	spin_lock_irqsave(udc->lock, flags);
 	for (i = 0; i < hw_ep_max; i++) {
 		list_for_each(ptr, &udc->ci13xxx_ep[i].qh.queue) {
@@ -1895,7 +1899,7 @@ static void dump_usb_info(void *ignore, unsigned int ebi_addr,
 					  sizeof(struct ci13xxx_ebi_err_entry),
 					  GFP_ATOMIC);
 			if (!temp_dump->next) {
-				pr_err("%s: memory alloc failed\n", __func__);
+				usb_logs_err("memory alloc failed\n");
 				spin_unlock_irqrestore(udc->lock, flags);
 				return;
 			}
@@ -1929,7 +1933,7 @@ static void ep_prime_timer_func(unsigned long data)
 	spin_lock_irqsave(mep->lock, flags);
 
 	if (_udc && (!_udc->vbus_active || _udc->suspended)) {
-		pr_debug("ep%d%s prime timer when vbus_active=%d,suspend=%d\n",
+		usb_logs_dbg("ep%d%s prime timer when vbus_active=%d,suspend=%d\n",
 			mep->num, mep->dir ? "IN" : "OUT",
 			_udc->vbus_active, _udc->suspended);
 		goto out;
@@ -1950,13 +1954,13 @@ static void ep_prime_timer_func(unsigned long data)
 	mep->prime_timer_count++;
 	if (mep->prime_timer_count == MAX_PRIME_CHECK_RETRY) {
 		mep->prime_timer_count = 0;
-		pr_info("ep%d dir:%s QH:cap:%08x cur:%08x next:%08x tkn:%08x\n",
+		usb_logs_info("ep%d dir:%s QH:cap:%08x cur:%08x next:%08x tkn:%08x\n",
 				mep->num, mep->dir ? "IN" : "OUT",
 				mep->qh.ptr->cap, mep->qh.ptr->curr,
 				mep->qh.ptr->td.next, mep->qh.ptr->td.token);
 		list_for_each(ptr, &mep->qh.queue) {
 			req = list_entry(ptr, struct ci13xxx_req, queue);
-			pr_info("\treq:%pa:%08xtkn:%08xpage0:%08xsts:%d\n",
+			usb_logs_info("\treq:%pa:%08xtkn:%08xpage0:%08xsts:%d\n",
 					&req->dma, req->ptr->next,
 					req->ptr->token, req->ptr->page[0],
 					req->req.status);
@@ -2072,10 +2076,10 @@ static int _hardware_enqueue(struct ci13xxx_ep *mEp, struct ci13xxx_req *mReq)
 		if (!udc->gadget.remote_wakeup) {
 			mReq->req.status = -EAGAIN;
 
-			dev_dbg(mEp->device,
-				"%s: queue failed (suspend)."
+			usb_dev_dbg(mEp->device,
+				"queue failed (suspend)."
 				" Remote wakeup is not supported. ept #%d\n",
-				__func__, mEp->num);
+				mEp->num);
 
 			return -EAGAIN;
 		}
@@ -2511,7 +2515,12 @@ __acquires(udc->lock)
 
 	/*stop charging upon reset */
 	if (udc->transceiver)
+#ifdef CONFIG_HUAWEI_KERNEL
+		//in order to support D+ ground, D- hung up non-standard charger,modify the current value
+		usb_phy_set_power(udc->transceiver, 500);
+#else
 		usb_phy_set_power(udc->transceiver, 100);
+#endif
 
 	retval = _gadget_stop_activity(&udc->gadget);
 	if (retval)
@@ -3045,9 +3054,8 @@ static int ci13xxx_exit_lpm(struct ci13xxx *udc, bool allow_sleep)
 	    udc->udc_driver->in_lpm(udc) &&
 	    udc->transceiver) {
 
-		dev_dbg(udc->transceiver->dev,
-			"%s: Exit from low power mode\n",
-			__func__);
+		usb_dev_dbg(udc->transceiver->dev,
+			"Exit from low power mode\n");
 
 		/*
 		 * Resume of the controller may be done
@@ -3068,9 +3076,8 @@ static int ci13xxx_exit_lpm(struct ci13xxx *udc, bool allow_sleep)
 			 * was done asynchronically.
 			 */
 			if (udc->udc_driver->in_lpm(udc)) {
-				dev_err(udc->transceiver->dev,
-					"%s: Unable to exit lpm\n",
-					__func__);
+				usb_dev_err(udc->transceiver->dev,
+					" Unable to exit lpm\n");
 				return -EAGAIN;
 			}
 		}
@@ -3355,10 +3362,10 @@ static int ep_queue(struct usb_ep *ep, struct usb_request *req,
 		/* Remote Wakeup */
 		if (!udc->gadget.remote_wakeup) {
 
-			dev_dbg(mEp->device,
-					"%s: queue failed (suspend)."
+			usb_dev_dbg(mEp->device,
+					"queue failed (suspend)."
 					" Remote wakeup is not supported. ept #%d\n",
-					__func__, mEp->num);
+					mEp->num);
 
 			retval = -EAGAIN;
 			goto done;
@@ -3646,9 +3653,9 @@ static int ci13xxx_pullup(struct usb_gadget *_gadget, int is_active)
 
 	ret = ci13xxx_exit_lpm(udc, true);
 	if (ret) {
-		dev_err(udc->transceiver->dev,
-			"%s: Unable to exit lpm %d, ignore pullup\n",
-			__func__, ret);
+		usb_dev_err(udc->transceiver->dev,
+			"Unable to exit lpm %d, ignore pullup\n",
+			ret);
 		return ret;
 	}
 
@@ -3864,8 +3871,7 @@ static irqreturn_t udc_irq(void)
 		if (USBi_URI & intr) {
 			isr_statistics.uri++;
 			if (!hw_cread(CAP_PORTSC, PORTSC_PR))
-				pr_info("%s: USB reset interrupt is delayed\n",
-								__func__);
+				usb_logs_info("USB reset interrupt is delayed\n");
 			isr_reset_handler(udc);
 		}
 		if (USBi_PCI & intr) {
@@ -4048,7 +4054,7 @@ static int udc_probe(struct ci13xxx_udc_driver *driver, struct device *dev,
 #ifdef CONFIG_USB_GADGET_DEBUG_FILES
 	retval = dbg_create_files(&udc->gadget.dev);
 	if (retval) {
-		pr_err("Registering sysfs files for debug failed!!!!\n");
+		usb_logs_err("Registering sysfs files for debug failed!!!!\n");
 		goto del_udc;
 	}
 #endif
@@ -4057,7 +4063,7 @@ static int udc_probe(struct ci13xxx_udc_driver *driver, struct device *dev,
 	pm_runtime_enable(&udc->gadget.dev);
 
 	if (register_trace_usb_daytona_invalid_access(dump_usb_info, NULL))
-		pr_err("Registering trace failed\n");
+		usb_logs_err("Registering trace failed\n");
 
 	_udc = udc;
 	return retval;
@@ -4101,7 +4107,7 @@ static void udc_remove(void)
 	retval = unregister_trace_usb_daytona_invalid_access(dump_usb_info,
 									NULL);
 	if (retval)
-		pr_err("Unregistering trace failed\n");
+		usb_logs_err("Unregistering trace failed\n");
 
 	usb_del_gadget_udc(&udc->gadget);
 

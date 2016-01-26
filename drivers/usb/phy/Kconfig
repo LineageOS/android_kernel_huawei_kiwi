@@ -303,5 +303,9 @@ config USB_ULPI_VIEWPORT
 	help
 	  Provides read/write operations to the ULPI phy register set for
 	  controllers with a viewport register (e.g. Chipidea/ARC controllers).
-
+config HUAWEI_USB_DSM
+	bool "Listen USB kernel err"
+	depends on HUAWEI_DSM
+	help
+	   use huawei usb log radar
 endif # USB_PHY
