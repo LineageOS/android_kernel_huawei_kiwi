@@ -1,0 +1,19 @@
+menu HUAWEI_LOG_MODULE
+
+config  HUAWEI_LOG_MODULE
+        default n
+	bool "huawei log module"
+	help
+          huawei log module control
+
+endmenu
+
+menu HUAWEI_STORE_EXCEPTION
+
+config  HUAWEI_STORE_EXCEPTION
+        default n
+	bool "huawei store exception"
+	help
+          huawei store exception control
+
+endmenu
