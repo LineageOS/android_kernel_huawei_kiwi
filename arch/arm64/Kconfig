@@ -50,6 +50,8 @@ config ARM64
 	select HAVE_SYSCALL_TRACEPOINTS
 	select HAVE_PERF_REGS
 	select HAVE_PERF_USER_STACK_DUMP
+	select HAVE_KPROBES
+        select HAVE_KRETPROBES if HAVE_KPROBES
 	select IRQ_DOMAIN
 	select MODULES_USE_ELF_RELA
 	select NO_BOOTMEM
@@ -605,6 +607,13 @@ config COMPAT
 config SYSVIPC_COMPAT
 	def_bool y
 	depends on COMPAT && SYSVIPC
+	
+config HUAWEI_FEATURE_NFF
+	bool "save bootup log to log partition if long power event"
+	depends on HUAWEI_KERNEL
+        default n
+	help
+	  in debug mode,you can use sysrq and dump mode 	 
 
 endmenu
 
