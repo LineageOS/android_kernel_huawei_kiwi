@@ -1467,6 +1467,11 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 	u32 spi_ioc;
 	u32 int_loopback = 0;
 	int ret;
+	unsigned int __iomem *gpio;
+	unsigned int gpio0;
+	unsigned int gpio1;
+	unsigned int gpio2;
+	unsigned int gpio3;
 
 	dd->tx_bytes_remaining = dd->cur_msg_len;
 	dd->rx_bytes_remaining = dd->cur_msg_len;
@@ -1555,10 +1560,20 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 	do {
 		if (!wait_for_completion_timeout(&dd->transfer_complete,
 						 timeout)) {
+				gpio = ioremap(0x1000000, sizeof(unsigned int));
+				gpio0 = readl_relaxed(gpio);
+				gpio = ioremap(0x1001000, sizeof(unsigned int));
+				gpio1 = readl_relaxed(gpio);
+				gpio = ioremap(0x1002000, sizeof(unsigned int));
+				gpio2 = readl_relaxed(gpio);
+				gpio = ioremap(0x1003000, sizeof(unsigned int));
+				gpio3 = readl_relaxed(gpio);
+				printk("gpio dump for spi: gpio0 %x  gpio1 %x gpio2 %x gpio3 %x\n", gpio0, gpio1, gpio2, gpio3);
 				dev_err(dd->dev,
 					"%s: SPI transaction timeout\n",
 					__func__);
 				dd->cur_msg->status = -EIO;
+				//delete panic which we added for debug
 				break;
 		}
 	} while (msm_spi_dma_send_next(dd));
@@ -1825,6 +1840,7 @@ static int msm_spi_transfer_one_message(struct spi_master *master,
 			status_error = -EINVAL;
 			msg->status = status_error;
 			spi_finalize_current_message(master);
+			put_local_resources(dd);
 			return 0;
 		}
 	}
@@ -1839,17 +1855,19 @@ static int msm_spi_transfer_one_message(struct spi_master *master,
 	 * get local resources for each transfer to ensure we're in a good
 	 * state and not interfering with other EE's using this device
 	 */
-	if (get_local_resources(dd)) {
-		mutex_unlock(&dd->core_lock);
-		return -EINVAL;
-	}
+	if (dd->pdata->is_shared) {
+		if (get_local_resources(dd)) {
+			mutex_unlock(&dd->core_lock);
+			return -EINVAL;
+		}
 
-	reset_core(dd);
-	if (dd->use_dma) {
-		msm_spi_bam_pipe_connect(dd, &dd->bam.prod,
-				&dd->bam.prod.config);
-		msm_spi_bam_pipe_connect(dd, &dd->bam.cons,
-				&dd->bam.cons.config);
+		reset_core(dd);
+		if (dd->use_dma) {
+			msm_spi_bam_pipe_connect(dd, &dd->bam.prod,
+					&dd->bam.prod.config);
+			msm_spi_bam_pipe_connect(dd, &dd->bam.cons,
+					&dd->bam.cons.config);
+		}
 	}
 
 	if (dd->suspended || !msm_spi_is_valid_state(dd)) {
@@ -1867,21 +1885,25 @@ static int msm_spi_transfer_one_message(struct spi_master *master,
 	spin_lock_irqsave(&dd->queue_lock, flags);
 	dd->transfer_pending = 0;
 	spin_unlock_irqrestore(&dd->queue_lock, flags);
-
-
-
 	/*
 	 * Put local resources prior to calling finalize to ensure the hw
 	 * is in a known state before notifying the calling thread (which is a
 	 * different context since we're running in the spi kthread here) to
 	 * prevent race conditions between us and any other EE's using this hw.
 	 */
-	if (dd->use_dma) {
-		msm_spi_bam_pipe_disconnect(dd, &dd->bam.prod);
-		msm_spi_bam_pipe_disconnect(dd, &dd->bam.cons);
+	if (dd->pdata->is_shared) {
+		if (dd->use_dma) {
+			msm_spi_bam_pipe_disconnect(dd, &dd->bam.prod);
+			msm_spi_bam_pipe_disconnect(dd, &dd->bam.cons);
+		}
+		put_local_resources(dd);
 	}
-	put_local_resources(dd);
 	mutex_unlock(&dd->core_lock);
+
+	/*
+	 * If needed, this can be done after the current message is complete,
+	 * and work can be continued upon resume. No motivation for now.
+	 */
 	if (dd->suspended)
 		wake_up_interruptible(&dd->continue_suspend);
 	status_error = dd->cur_msg->status;
@@ -1892,23 +1914,8 @@ static int msm_spi_transfer_one_message(struct spi_master *master,
 static int msm_spi_prepare_transfer_hardware(struct spi_master *master)
 {
 	struct msm_spi	*dd = spi_master_get_devdata(master);
-	int resume_state = 0;
 
-	resume_state = pm_runtime_get_sync(dd->dev);
-	if (resume_state < 0)
-		return resume_state;
-	/*
-	 * Counter-part of system-suspend when runtime-pm is not enabled.
-	 * This way, resume can be left empty and device will be put in
-	 * active mode only if client requests anything on the bus
-	 */
-	if (!pm_runtime_enabled(dd->dev))
-		resume_state = msm_spi_pm_resume_runtime(dd->dev);
-	if (resume_state < 0)
-		return resume_state;
-	if (dd->suspended)
-		return -EBUSY;
-
+	pm_runtime_get_sync(dd->dev);
 	return 0;
 }
 
@@ -1920,7 +1927,33 @@ static int msm_spi_unprepare_transfer_hardware(struct spi_master *master)
 	pm_runtime_put_autosuspend(dd->dev);
 	return 0;
 }
+int msm_spi_ctl_for_tz(struct spi_device *spi,int enable)
+{
+	struct msm_spi *dd;
+	static int enable_count = 0;
 
+	if(!spi)
+		return -EINVAL;
+	dd = spi_master_get_devdata(spi->master);
+
+	if(enable) {
+		msm_spi_clk_path_init(dd);
+		if (!dd->pdata->active_only)
+			msm_spi_clk_path_vote(dd);
+		get_local_resources(dd);
+		enable_count++;
+		dev_info(&spi->dev, "%s: clk enable_count = %d\n",__func__, enable_count);
+	}
+	else {
+		if (dd->pdata)
+			put_local_resources(dd);
+		if (dd->pdata && !dd->pdata->active_only)
+			msm_spi_clk_path_unvote(dd);
+		enable_count--;
+		dev_info(&spi->dev, "%s: clk enable_count = %d\n",__func__, enable_count);
+	}
+	return 0;
+}
 static int msm_spi_setup(struct spi_device *spi)
 {
 	struct msm_spi	*dd;
@@ -1932,21 +1965,20 @@ static int msm_spi_setup(struct spi_device *spi)
 	if (spi->bits_per_word < 4 || spi->bits_per_word > 32) {
 		dev_err(&spi->dev, "%s: invalid bits_per_word %d\n",
 			__func__, spi->bits_per_word);
-		return -EINVAL;
+		rc = -EINVAL;
 	}
 	if (spi->chip_select > SPI_NUM_CHIPSELECTS-1) {
 		dev_err(&spi->dev, "%s, chip select %d exceeds max value %d\n",
 			__func__, spi->chip_select, SPI_NUM_CHIPSELECTS - 1);
-		return -EINVAL;
+		rc = -EINVAL;
 	}
+
+	if (rc)
+		goto err_setup_exit;
 
 	dd = spi_master_get_devdata(spi->master);
 
 	pm_runtime_get_sync(dd->dev);
-	rc = get_local_resources(dd);
-	if (rc)
-		goto no_resources;
-
 
 	mutex_lock(&dd->core_lock);
 
@@ -1955,8 +1987,14 @@ static int msm_spi_setup(struct spi_device *spi)
 		msm_spi_pm_resume_runtime(dd->dev);
 
 	if (dd->suspended) {
-		rc = -EBUSY;
-		goto err_setup_exit;
+		mutex_unlock(&dd->core_lock);
+		return -EBUSY;
+	}
+
+	if (dd->pdata->is_shared) {
+		rc = get_local_resources(dd);
+		if (rc)
+			goto no_resources;
 	}
 
 	spi_ioc = readl_relaxed(dd->base + SPI_IO_CONTROL);
@@ -1976,23 +2014,22 @@ static int msm_spi_setup(struct spi_device *spi)
 
 	/* Ensure previous write completed before disabling the clocks */
 	mb();
-
+	if (dd->pdata->is_shared)
+		put_local_resources(dd);
 	/* Counter-part of system-resume when runtime-pm is not enabled. */
 	if (!pm_runtime_enabled(dd->dev))
 		msm_spi_pm_suspend_runtime(dd->dev);
 
-err_setup_exit:
-	mutex_unlock(&dd->core_lock);
-	put_local_resources(dd);
 no_resources:
+	mutex_unlock(&dd->core_lock);
 	pm_runtime_mark_last_busy(dd->dev);
 	pm_runtime_put_autosuspend(dd->dev);
+
+err_setup_exit:
 	return rc;
 }
 
 #ifdef CONFIG_DEBUG_FS
-
-
 static int debugfs_iomem_x32_set(void *data, u64 val)
 {
 	struct msm_spi_regs *debugfs_spi_regs = (struct msm_spi_regs *)data;
@@ -2391,6 +2428,8 @@ struct msm_spi_platform_data *msm_spi_dt_to_pdata(
 			&dd->cs_gpios[3].gpio_num,       DT_OPT,  DT_GPIO, -1},
 		{"qcom,rt-priority",
 			&pdata->rt_priority,		 DT_OPT,  DT_BOOL,  0},
+		{"qcom,shared",
+			&pdata->is_shared,		 DT_OPT,  DT_BOOL,  0},
 		{NULL,  NULL,                            0,       0,        0},
 		};
 
@@ -2761,9 +2800,14 @@ static int msm_spi_pm_suspend_runtime(struct device *device)
 	wait_event_interruptible(dd->continue_suspend,
 		!dd->transfer_pending);
 
+	if (dd->pdata && !dd->pdata->is_shared && dd->use_dma) {
+		msm_spi_bam_pipe_disconnect(dd, &dd->bam.prod);
+		msm_spi_bam_pipe_disconnect(dd, &dd->bam.cons);
+	}
 	if (dd->pdata && !dd->pdata->active_only)
 		msm_spi_clk_path_unvote(dd);
-
+	if (dd->pdata && !dd->pdata->is_shared)
+		put_local_resources(dd);
 suspend_exit:
 	return 0;
 }
@@ -2784,9 +2828,17 @@ static int msm_spi_pm_resume_runtime(struct device *device)
 	if (!dd->suspended)
 		return 0;
 
+	if (!dd->pdata->is_shared)
+		get_local_resources(dd);
 	msm_spi_clk_path_init(dd);
 	if (!dd->pdata->active_only)
 		msm_spi_clk_path_vote(dd);
+	if (!dd->pdata->is_shared && dd->use_dma) {
+		msm_spi_bam_pipe_connect(dd, &dd->bam.prod,
+				&dd->bam.prod.config);
+		msm_spi_bam_pipe_connect(dd, &dd->bam.cons,
+				&dd->bam.cons.config);
+	}
 	dd->suspended = 0;
 
 resume_exit:
