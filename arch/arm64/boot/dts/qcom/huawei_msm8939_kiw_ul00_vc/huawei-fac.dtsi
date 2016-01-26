@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI KIW-UL00";
+                  fac,hardware_ver = "HL1KIWMAM";
+                  fac,software_ver = "MSM8939_KIW_UL00_VC";
+                  status = "ok";
+        };
+};

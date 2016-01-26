@@ -1,0 +1,163 @@
+/*
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+&i2c_1 {
+        status = "disabled";
+};
+&spi_1 {
+	status = "ok";
+	miniisp0:hw,mini_isp@0{
+	        cell-index = <0>;
+	        compatible = "hw,mini_isp";
+	        reg = <0>;
+	        spi-cpol = <1>;
+	        spi-cpha = <1>;
+	        spi-max-frequency = <40000000>; /* 19200000 */
+	       //boot code down load max freq=MCLK(6~27MHz)*0.65
+	        hw,isp_gpio_reset=<&msm_gpio 33 0>;
+	        interrupt-parent = <&msm_gpio>;
+	        interrupts = <34 0>;
+	        status = "ok";
+	};
+};
+&soc {
+	led_flash0: qcom,camera-led-flash {
+		cell-index = <0>;
+		/*compatible = "qcom,camera-led-flash";*/
+		qcom,flash-type = <1>;
+		qcom,flash-source = <&flash_lm3646>;
+		qcom,torch-source = <&flash_lm3646>;
+	};
+
+};
+
+&tlmm_pinmux {
+	lm3646-en-pin {
+                qcom,pins = <&gp 31>, <&gp 86>, <&gp 119>;
+                qcom,num-grp-pins = <2>;
+                label = "lm3646_en_pins";
+                qcom,pin-func = <0>;
+
+                lm3646_en_default: en-default {
+                        driver-strength = <2>;
+                        bias-disable;
+                };
+                lm3646_en_suspend: en-suspend {
+                        driver-strength = <2>;
+                        bias-pull-down;
+                };
+                lm3646_en_reset: en-reset {
+                        driver-strength = <2>;
+                        bias-pull-down;
+                };
+        };
+};
+&i2c_0 { /* BLSP1 QUP2 */
+	flash_lm3646:qcom,led-flash@67 {
+		reg = <0x67>;
+		cell-index = <0>;
+		qcom,slave-id = <0xCE 0x00 0x0011>;
+		compatible = "ti,lm3646";
+		label = "lm3646";
+		qcom,flash-type = <1>;
+		pinctrl-names = "cam_flash_default","cam_flash_suspend","cam_flash_reset";
+		pinctrl-0 = <&lm3646_en_default>;
+		pinctrl-1 = <&lm3646_en_suspend>;
+		pinctrl-2 = <&lm3646_en_reset>;
+		gpios = <&msm_gpio 86 0>,
+			<&msm_gpio 31 0>,
+			<&msm_gpio 119 0>;
+		qcom,gpio-flash-en = <0>;
+		qcom,gpio-flash-now = <1>;
+		qcom,gpio-flash-reset = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <0 0 0>;
+		qcom,gpio-req-tbl-label = "FLASH_EN",
+			"FLASH_NOW",
+			"FLASH_RESET";
+		qcom,flash-high-current = <6>;
+	};
+};
+
+&cci {
+	actuator0: qcom,actuator@0 {
+		cell-index = <0>;
+		reg = <0x00>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <0>;
+	};
+/*delete epprom config for athena*/
+
+	qcom,camera@0 {
+		cell-index = <0>;
+		compatible = "qcom,camera";
+		reg = <0x0>;
+		qcom,csiphy-sd-index = <0>;
+		qcom,csid-sd-index = <0>;
+		qcom,mount-angle = <90>;
+		qcom,actuator-src = <&actuator0>;
+		qcom,led-flash-src = <&led_flash0>;
+		/*use dtsi get sensor name instead of board id string*/
+		qcom,support-sensor-code = "23060156";
+		qcom,product-name = "ATH";
+		qcom,misp-firmware-name = "ATH_TBM_Latour2.bin";
+		qcom,misp-boot-firmware-name = "ATH_miniBoot.bin";
+		cam_vaf-supply = <&pm8916_l10>;
+		qcom,cam-vreg-name = "cam_vaf";
+		qcom,cam-vreg-type = <0>;
+		qcom,cam-vreg-min-voltage = <2700000>;
+		qcom,cam-vreg-max-voltage = <2800000>;
+		qcom,cam-vreg-op-mode = <100000>;
+
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk0_default  &cam_sensor_rear_default
+				&cam_sensor_mclk1_default  &cam_sensor_front_default>;
+		pinctrl-1 = <&cam_sensor_mclk0_sleep &cam_sensor_rear_sleep &cam_sensor_mclk1_sleep &cam_sensor_front_sleep>;
+		gpios = <&msm_gpio 26 0>,
+			<&msm_gpio 27 0>,
+			<&msm_gpio 35 0>,
+			<&msm_gpio 121 0>,//core vreg
+			<&msm_gpio 114 0>,
+			<&msm_gpio 110 0>,
+			<&msm_gpio 116 0>,
+			<&msm_gpio 120 0>,
+			<&msm_gpio 51 0>;
+		qcom,gpio-reset = <2>;
+		qcom,gpio-vdig = <3>;
+		qcom,gpio-vio = <4>;
+		qcom,gpio-vana = <5>;
+		qcom,gpio-misp-vdd = <6>;
+		qcom,gpio-af-pwdm = <7>;
+		qcom,gpio-cam-id = <8>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4 5 6 7 8>;
+		qcom,gpio-req-tbl-flags = <1 1 0 0 0 0 0 0 1>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+			"CAMIF_MCLK1",
+			"MCAM_RESET",
+			"CAM_LDO_VDIG",
+			"CAM_LDO_VIO",
+			"CAM_LDO_VANA",
+			"CAM_MINIISP_VDD",
+			"CAM_AF_PWDM",
+			"CAM_CAM_ID";
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <0>;
+		status = "ok";
+		clocks = <&clock_gcc clk_mclk0_clk_src>,
+				<&clock_gcc clk_gcc_camss_mclk0_clk>,
+				<&clock_gcc clk_mclk1_clk_src>,
+ 				<&clock_gcc clk_gcc_camss_mclk1_clk>;
+		clock-names = "cam_src_clk", "cam_clk", "isp_src_clk", "isp_clk";
+
+	};
+};

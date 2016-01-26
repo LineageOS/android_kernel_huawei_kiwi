@@ -1,0 +1,10 @@
+ / {
+        huawei_wifi_info {
+                  compatible = "huawei,hw_wifi_info";
+                  status = "ok";
+                  wifi,chiptype = "2.3";
+                  wifi,pubfile_id = "ALE-CL00";
+                  wifi,fw_ver = "QCOM_WCN3620_2.0.1";
+                  wifi,softap_feature = "wps";
+        };
+};

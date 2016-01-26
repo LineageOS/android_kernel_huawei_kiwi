@@ -1,0 +1,26 @@
+/ {
+    huawei_audio_info {
+        compatible = "huawei,hw_audio_info";
+        product-identifier = "federer";
+        builtin-master-mic-exist;
+        status = "ok";
+        loud_speaker_master_mic_strategy;
+        product-btsco-nrec-adapt;
+    };
+};
+&soc {
+    sound {
+            qcom,spk-ext-pa-boost-gpio = <&msm_gpio 2 0>;
+            qcom,spk-ext-pa-enable-gpio = <&msm_gpio 3 0>;
+            qcom,spk-ext-pa-switch-vdd-gpio = <&msm_gpio 0 0>;
+            qcom,spk-ext-pa-switch-in-gpio = <&msm_gpio 1 0>;
+        qcom,msm-micbias1-ext-cap;
+    };
+};
+&spmi_bus {
+        qcom,pm8916@1 {
+                pm8916_tombak_dig: msm8x16_wcd_codec@f000{
+                        qcom,cdc-boost-voltage = <5000>;
+                };
+        };
+};

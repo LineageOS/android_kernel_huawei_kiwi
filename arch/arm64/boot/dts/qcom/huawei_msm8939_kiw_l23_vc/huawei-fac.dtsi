@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI KIW-L23";
+                  fac,hardware_ver = "HL3KIWMAF";
+                  fac,software_ver = "MSM8939_KIW_L23_VC";
+                  status = "ok";
+        };
+};
