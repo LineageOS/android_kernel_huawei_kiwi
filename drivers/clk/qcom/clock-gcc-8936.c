@@ -273,6 +273,7 @@ static void __iomem *virt_dbgbase;
 #define BIMC_GFX_CBCR					0x31024
 #define BIMC_GPU_CBCR					0x31040
 #define GCC_SPARE3_REG					0x7E004
+#define SNOC_QOSGEN					0x2601C
 
 #define APCS_CCI_PLL_MODE				0x00000
 #define APCS_CCI_PLL_L_VAL				0x00004
@@ -883,6 +884,7 @@ static struct clk_freq_tbl ftbl_gcc_blsp1_qup1_6_spi_apps_clk[] = {
 	F(  16000000,	   gpll0_out_main,  10,	  1,	5),
 	F(  19200000,	      gcc_xo,   1,	  0,	0),
 	F(  25000000,	   gpll0_out_main,  16,	  1,	2),
+    F(  40000000,      gpll0_out_main,  10,   1,    2),
 	F(  50000000,	   gpll0_out_main,  16,	  0,	0),
 	F_END
 };
@@ -896,7 +898,7 @@ static struct rcg_clk blsp1_qup1_spi_apps_clk_src = {
 	.c = {
 		.dbg_name = "blsp1_qup1_spi_apps_clk_src",
 		.ops = &clk_ops_rcg_mnd,
-		VDD_DIG_FMAX_MAP2(LOW, 25000000, NOMINAL, 50000000),
+		VDD_DIG_FMAX_MAP2(LOW, 25000000, NOMINAL, 40000000),
 		CLK_INIT(blsp1_qup1_spi_apps_clk_src.c),
 	},
 };
@@ -2973,6 +2975,18 @@ static struct pll_config_regs gpll4_regs = {
 	.base = &virt_bases[GCC_BASE],
 };
 
+static struct gate_clk gcc_snoc_qosgen_clk = {
+	.en_mask = BIT(0),
+	.en_reg = SNOC_QOSGEN,
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "gcc_snoc_qosgen_clk",
+		.ops = &clk_ops_gate,
+		.flags = CLKFLAG_SKIP_HANDOFF,
+		CLK_INIT(gcc_snoc_qosgen_clk.c),
+	},
+};
+
 static struct mux_clk gcc_debug_mux;
 static struct clk_ops clk_ops_debug_mux;
 
@@ -3311,6 +3325,9 @@ static struct clk_lookup msm_clocks_lookup[] = {
 	CLK_LIST(gcc_crypto_ahb_clk),
 	CLK_LIST(gcc_crypto_axi_clk),
 	CLK_LIST(crypto_clk_src),
+
+	/* QoS Reference clock */
+	CLK_LIST(gcc_snoc_qosgen_clk),
 };
 
 static struct clk_lookup msm_clocks_lookup_v1[] = {
@@ -3455,10 +3472,14 @@ static int msm_gcc_probe(struct platform_device *pdev)
 		/* Enable GMEM HW Dynamic */
 		regval = 0x0;
 		writel_relaxed(regval, GCC_REG_BASE(GCC_SPARE3_REG));
-	} else
+	} else {
 		ret = of_msm_clock_register(pdev->dev.of_node,
 				msm_clocks_lookup_v1,
 				ARRAY_SIZE(msm_clocks_lookup_v1));
+		/* Disable GMEM HW Dynamic */
+		regval = 0x1;
+		writel_relaxed(regval, GCC_REG_BASE(GCC_SPARE3_REG));
+	}
 	if (ret)
 		return ret;
 
