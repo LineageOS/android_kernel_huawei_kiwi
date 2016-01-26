@@ -46,7 +46,21 @@
 #include "mmc_ops.h"
 #include "sd_ops.h"
 #include "sdio_ops.h"
+#ifdef CONFIG_HUAWEI_SDCARD_DSM
+#include <linux/mmc/dsm_sdcard.h>
+#endif
+#ifdef CONFIG_HUAWEI_DSM
+#include <linux/store_log.h>
+extern u64 device_index;
+#include "../card/queue.h"
+#include <linux/mmc/dsm_emmc.h>
+#endif
 
+#include <linux/hw_sd_common.h>
+
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <linux/debugfs.h>
+#endif
 /* If the device is not responding */
 #define MMC_CORE_TIMEOUT_MS	(10 * 60 * 1000) /* 10 minute timeout */
 
@@ -112,6 +126,51 @@ MODULE_PARM_DESC(
 			stats.bkops_level[level-1]++;			\
 		spin_unlock(&stats.lock);				\
 	} while (0);
+
+
+#ifdef CONFIG_HUAWEI_KERNEL
+
+static struct dentry *dentry_mmclog;
+u64 rwlog_enable_flag = 0;   /* 0 : Disable , 1: Enable */
+u64 rwlog_index = 0;     /* device index, 0: for emmc */
+int mmc_debug_mask = 0;
+
+static int rwlog_enable_set(void *data, u64 val)
+{
+    rwlog_enable_flag = val;
+    return 0;
+}
+static int rwlog_enable_get(void *data, u64 *val)
+{
+    *val = rwlog_enable_flag;
+    return 0;
+}
+static int rwlog_index_set(void *data, u64 val)
+{
+    rwlog_index = val;
+    return 0;
+}
+static int rwlog_index_get(void *data, u64 *val)
+{
+    *val = rwlog_index;
+    return 0;
+}
+static int debug_mask_set(void *data, u64 val)
+{
+    mmc_debug_mask = (int)val;
+    return 0;
+}
+static int debug_mask_get(void *data, u64 *val)
+{
+    *val = (u64)mmc_debug_mask;
+    return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(rwlog_enable_fops,rwlog_enable_get, rwlog_enable_set, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(rwlog_index_fops,rwlog_index_get, rwlog_index_set, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(debug_mask_fops,debug_mask_get, debug_mask_set, "%llu\n");
+
+#endif
 
 /*
  * Internal function. Schedule delayed work in the MMC work queue.
@@ -317,6 +376,24 @@ mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 			 mmc_hostname(host), mrq->stop->opcode,
 			 mrq->stop->arg, mrq->stop->flags);
 	}
+
+#ifdef CONFIG_HUAWEI_KERNEL
+    if(1 == rwlog_enable_flag)
+    {
+        if(mrq->cmd->opcode == MMC_WRITE_MULTIPLE_BLOCK
+            || mrq->cmd->opcode == MMC_WRITE_BLOCK
+            || mrq->cmd->opcode == MMC_READ_MULTIPLE_BLOCK
+            || mrq->cmd->opcode == MMC_READ_SINGLE_BLOCK)
+        {
+            /* only mmc rw log is output */
+            if(rwlog_index == host->index)
+            {
+                printk("%s:cmd=%d,mrq->data.blocks=%d,index=%d,arg=%x\n",__func__,
+                (int)mrq->cmd->opcode, mrq->data->blocks, host->index, mrq->cmd->arg);
+            }
+        }
+    }
+#endif
 
 	WARN_ON(!host->claimed);
 
@@ -829,6 +906,101 @@ static int mmc_wait_for_data_req_done(struct mmc_host *host,
 	return err;
 }
 
+#ifdef CONFIG_HUAWEI_DSM
+#define MMC_RSP_R1_ERROR_MASK (R1_OUT_OF_RANGE | R1_ADDRESS_ERROR | R1_BLOCK_LEN_ERROR | R1_ERASE_SEQ_ERROR | \
+								  R1_ERASE_PARAM | R1_WP_VIOLATION | R1_LOCK_UNLOCK_FAILED | \
+								  R1_COM_CRC_ERROR | R1_ILLEGAL_COMMAND | R1_CARD_ECC_FAILED | R1_CC_ERROR | \
+								  R1_ERROR | R1_CID_CSD_OVERWRITE | \
+								  R1_WP_ERASE_SKIP | R1_ERASE_RESET | \
+								  R1_SWITCH_ERROR)
+
+#define MMC_RSP_R1_ERROR_NON_CRC_MASK (MMC_RSP_R1_ERROR_MASK & (~(R1_COM_CRC_ERROR | R1_ILLEGAL_COMMAND)))
+
+static inline int mmc_dsm_request_response_error_filter(struct mmc_request *mrq) {
+	return (((mrq)->cmd->opcode == MMC_SEND_TUNING_BLOCK_HS200) ||
+			(((mrq)->cmd->opcode == MMC_SWITCH) && ((mrq)->cmd->resp[0] & (R1_COM_CRC_ERROR | R1_ILLEGAL_COMMAND)) && (((mrq)->cmd->resp[0] & MMC_RSP_R1_ERROR_NON_CRC_MASK) == 0)));
+}
+
+static void mmc_dsm_request_response_error_check(struct mmc_host *host, struct mmc_request *mrq) {
+	int do_event = 0;
+	if (mrq->sbc) {
+		if (mrq->sbc->resp[0] & (MMC_RSP_R1_ERROR_MASK | R1_EXCEPTION_EVENT)) {
+			if (host->index == device_index) {
+				if (mrq->sbc->resp[0] & MMC_RSP_R1_ERROR_MASK) {
+					struct mmc_card *card;
+					card = host->card;
+					DSM_EMMC_LOG(card, DSM_EMMC_RSP_ERR,
+						"cmd: %d, requesting status %#x\n",
+						mrq->sbc->opcode, mrq->sbc->resp[0]);
+				}
+				do_event = mrq->sbc->resp[0] & R1_EXCEPTION_EVENT;
+			}
+		}
+	}
+	if (mrq->cmd && ((mmc_resp_type(mrq->cmd) == MMC_RSP_R1) || (mmc_resp_type(mrq->cmd) == MMC_RSP_R1B))) {
+		if (mrq->cmd->resp[0] & (MMC_RSP_R1_ERROR_MASK | R1_EXCEPTION_EVENT)) {
+			if (host->index == device_index) {
+				if ((mrq->cmd->resp[0] & MMC_RSP_R1_ERROR_MASK) && !mmc_dsm_request_response_error_filter(mrq)) {
+					struct mmc_card *card;
+					card = host->card;
+					DSM_EMMC_LOG(card, DSM_EMMC_RSP_ERR,
+						"cmd: %d, requesting status %#x\n",
+						mrq->cmd->opcode, mrq->cmd->resp[0]);
+				}
+				do_event = mrq->cmd->resp[0] & R1_EXCEPTION_EVENT;
+			}
+		}
+	}
+	if (mrq->stop) {
+		if (mrq->stop->resp[0] & (MMC_RSP_R1_ERROR_MASK | R1_EXCEPTION_EVENT)) {
+			if (host->index == 0) {
+				if (mrq->stop->resp[0] & MMC_RSP_R1_ERROR_MASK) {
+					struct mmc_card *card;
+					card = host->card;
+					DSM_EMMC_LOG(card, DSM_EMMC_RSP_ERR,
+						"cmd: %d, requesting status %#x\n",
+						mrq->stop->opcode, mrq->stop->resp[0]);
+				}
+				do_event = mrq->stop->resp[0] & R1_EXCEPTION_EVENT;
+			}
+		}
+	}
+
+	if (unlikely(do_event)) {
+		if(mrq->done == mmc_wait_data_done) {
+			struct mmc_queue_req *mq_mrq = container_of(mrq, struct mmc_queue_req, brq.mrq);
+			do_event = !mmc_packed_cmd(mq_mrq->cmd_type);
+		} else {
+			do_event = 0;
+		}
+		if (do_event) {
+			int err;
+			u8 *ext_csd;
+			ext_csd = kzalloc(512, GFP_KERNEL);
+			if (!ext_csd)
+				return;
+			err = mmc_send_ext_csd(host->card, ext_csd);
+			if (err)
+				goto free;
+			if(ext_csd[EXT_CSD_EXP_EVENTS_STATUS] &
+			     EXT_CSD_DYNCAP_NEEDED) {
+				DSM_EMMC_LOG(NULL, DSM_EMMC_DYNCAP_NEEDED,
+					"DYNCAP_NEEDED [58]: %d, the device may degrade in performance and eventually become non-functional\n",
+			       ext_csd[58]);
+			}
+			if(ext_csd[EXT_CSD_EXP_EVENTS_STATUS] &
+			     EXT_CSD_SYSPOOL_EXHAUSTED) {
+				DSM_EMMC_LOG(NULL, DSM_EMMC_SYSPOOL_EXHAUSTED,
+					"SYSPOOL_EXHAUSTED, System resources pool exhausted\n");
+			}
+free:
+			kfree(ext_csd);
+		}
+	}
+
+}
+#endif
+
 static void mmc_wait_for_req_done(struct mmc_host *host,
 				  struct mmc_request *mrq)
 {
@@ -838,7 +1010,13 @@ static void mmc_wait_for_req_done(struct mmc_host *host,
 		wait_for_completion_io(&mrq->completion);
 
 		cmd = mrq->cmd;
-
+#ifdef CONFIG_HUAWEI_DSM
+		if(host != NULL && host->card != NULL){
+			if(mmc_card_mmc(host->card)){
+				mmc_dsm_request_response_error_check(host, mrq);
+			}
+		}
+#endif
 		/*
 		 * If host has timed out waiting for the commands which can be
 		 * HPIed then let the caller handle the timeout error as it may
@@ -976,6 +1154,11 @@ struct mmc_async_req *mmc_start_req(struct mmc_host *host,
 			pr_debug("%s: %s: completed BKOPs due to exception",
 				 mmc_hostname(host), __func__);
 		}
+#ifdef CONFIG_HUAWEI_DSM
+		if(mmc_card_mmc(host->card)){
+			mmc_dsm_request_response_error_check(host, host->areq->mrq);
+		}
+#endif
 	}
 	if (!err && areq) {
 		trace_mmc_blk_rw_start(areq->mrq->cmd->opcode,
@@ -1586,7 +1769,7 @@ void mmc_set_clock(struct mmc_host *host, unsigned int hz)
 	__mmc_set_clock(host, hz);
 	mmc_host_clk_release(host);
 }
-
+EXPORT_SYMBOL(mmc_set_clock);
 #ifdef CONFIG_MMC_CLKGATE
 /*
  * This gates the clock by setting it to 0 Hz.
@@ -1958,7 +2141,13 @@ int mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage)
 	mmc_host_clk_hold(host);
 	err = mmc_wait_for_cmd(host, &cmd, 0);
 	if (err)
+	{
+	    if(!strcmp(mmc_hostname(host),"mmc1"))
+		{
+		    EMMCSD_LOG_ERR("%s:send cmd11 fail,err=%d\n",mmc_hostname(host),err);
+		}
 		goto exit;
+	}
 
 	if (!mmc_host_is_spi(host) && (cmd.resp[0] & R1_ERROR)) {
 		err = -EIO;
@@ -2013,9 +2202,10 @@ int mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage)
 
 power_cycle:
 	if (err) {
-		pr_debug("%s: Signal voltage switch failed, "
-			"power cycling card\n", mmc_hostname(host));
+		EMMCSD_LOG_ERR("%s: Signal voltage switch failed, power cycling card\n", mmc_hostname(host));
 		mmc_power_cycle(host);
+	} else {
+		EMMCSD_LOG_INFO("%s:host and card voltage have changed into 1.8v success!\n",mmc_hostname(host));
 	}
 
 exit:
@@ -2088,7 +2278,17 @@ void mmc_power_up(struct mmc_host *host)
 	 * This delay should be sufficient to allow the power supply
 	 * to reach the minimum voltage.
 	 */
+	/*For sdcard we increase delay to 150ms to give rpm more time to operate.*/
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(!strcmp(mmc_hostname(host), "mmc1")) {
+		mmc_delay(150);
+	}
+	else {
+		mmc_delay(10);
+	}
+#else
 	mmc_delay(10);
+#endif
 
 	host->ios.clock = host->f_init;
 
@@ -2112,6 +2312,17 @@ void mmc_power_off(struct mmc_host *host)
 	if (host->ios.power_mode == MMC_POWER_OFF)
 		return;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+    /*because no sdcard plug in,we need power off the ldo
+    *but is_always_on==1, so that the state of sdcard's power will not power off.
+    *above,add check sdcard's state of and set is_always_on=0 when there's no sdcard,
+    *ensure sdcard can power off in this case.
+    */
+    if(host->ops->get_cd)
+    {
+        host->ops->get_cd(host);
+    }
+#endif
 	mmc_host_clk_hold(host);
 
 	host->ios.clock = 0;
@@ -2534,8 +2745,19 @@ static int mmc_do_erase(struct mmc_card *card, unsigned int from,
 		/* Do not retry else we can't see errors */
 		err = mmc_wait_for_cmd(card->host, &cmd, 0);
 		if (err || (cmd.resp[0] & 0xFDF92000)) {
+#ifdef CONFIG_HUAWEI_DSM
+			if(card->host->index == device_index){
+				DSM_EMMC_LOG(card, DSM_EMMC_ERASE_ERR,
+					"%s:error %d requesting status %#x\n", __FUNCTION__,
+					err, cmd.resp[0]);
+			}
+			else
+				pr_err("error %d requesting status %#x\n",
+					err, cmd.resp[0]);
+#else
 			pr_err("error %d requesting status %#x\n",
 				err, cmd.resp[0]);
+#endif
 			err = -EIO;
 			goto out;
 		}
@@ -3285,12 +3507,26 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 		return 0;
 
 	mmc_power_off(host);
+	printk(KERN_ERR "%s attach failed!!\n",mmc_hostname(host));
 	return -EIO;
 }
 
 int _mmc_detect_card_removed(struct mmc_host *host)
 {
 	int ret;
+#ifdef CONFIG_HUAWEI_SDCARD_DSM
+	int i;
+
+	if(!strcmp(mmc_hostname(host), "mmc1"))
+	{
+		for(i=0; i< DSM_SDCARD_CMD_MAX; i++)
+		{
+			dsm_sdcard_cmd_logs[i].value = 0;
+			dsm_sdcard_cmd_logs[i].manfid = 0;
+		}
+		
+	}
+#endif
 
 	if ((host->caps & MMC_CAP_NONREMOVABLE) || !host->bus_ops->alive)
 		return 0;
@@ -3428,8 +3664,14 @@ void mmc_rescan(struct work_struct *work)
 	if (extend_wakelock && !host->rescan_disable)
 		wake_lock_timeout(&host->detect_wake_lock, HZ / 2);
 
-	if (host->caps & MMC_CAP_NEEDS_POLL)
+	if (host->caps & MMC_CAP_NEEDS_POLL) {
+#ifdef CONFIG_HUAWEI_KERNEL
+		/*set the time of polling to three second.*/
+		mmc_schedule_delayed_work(&host->detect, (3*HZ));
+#else
 		mmc_schedule_delayed_work(&host->detect, HZ);
+#endif
+}
 }
 
 void mmc_start_host(struct mmc_host *host)
@@ -3597,15 +3839,48 @@ int mmc_flush_cache(struct mmc_card *card)
 						EXT_CSD_FLUSH_CACHE, 1,
 						MMC_FLUSH_REQ_TIMEOUT_MS);
 		if (err == -ETIMEDOUT) {
+#ifdef CONFIG_HUAWEI_DSM
+			if(mmc_card_mmc(card)){
+				DSM_EMMC_LOG(card, DSM_EMMC_CACHE_TIMEOUT,
+					"%s: cache flush timeout\n", 
+					mmc_hostname(card->host));
+			}
+			else{
+				pr_err("%s: cache flush timeout\n",
+					mmc_hostname(card->host));
+			}
+#endif
 			pr_err("%s: cache flush timeout\n",
 					mmc_hostname(card->host));
 			rc = mmc_interrupt_hpi(card);
 			if (rc) {
+#ifdef CONFIG_HUAWEI_DSM
+				if(mmc_card_mmc(card)){
+					DSM_EMMC_LOG(card, DSM_EMMC_CACHE_ERR,
+						"%s: mmc_interrupt_hpi() failed (%d)\n",
+						mmc_hostname(host), rc);
+				}
+				else{
+					pr_err("%s: mmc_interrupt_hpi() failed (%d)\n",
+						mmc_hostname(host), rc);
+				}
+#endif
 				pr_err("%s: mmc_interrupt_hpi() failed (%d)\n",
 						mmc_hostname(host), rc);
 				err = -ENODEV;
 			}
 		} else if (err) {
+#ifdef CONFIG_HUAWEI_DSM
+			if(mmc_card_mmc(card)){
+				DSM_EMMC_LOG(card, DSM_EMMC_CACHE_ERR,
+					"%s: cache flush error %d\n",
+					mmc_hostname(card->host), err);
+			}
+			else{
+				pr_err("%s: cache flush error %d\n",
+						mmc_hostname(card->host), err);
+			}
+#endif
 			pr_err("%s: cache flush error %d\n",
 					mmc_hostname(card->host), err);
 		}
@@ -4009,6 +4284,19 @@ static int __init mmc_init(void)
 	if (ret)
 		goto unregister_host_class;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+    dentry_mmclog = debugfs_create_dir("hw_mmclog", NULL);
+    if(dentry_mmclog )
+    {
+        debugfs_create_file("rwlog_enable", S_IFREG|S_IRWXU|S_IRGRP|S_IROTH,
+            dentry_mmclog, NULL, &rwlog_enable_fops);
+        debugfs_create_file("rwlog_index", S_IFREG|S_IRWXU|S_IRGRP|S_IROTH,
+            dentry_mmclog, NULL, &rwlog_index_fops);
+        debugfs_create_file("debug_mask", S_IFREG|S_IRWXU|S_IRGRP|S_IROTH,
+            dentry_mmclog, NULL, &debug_mask_fops);
+    }
+#endif
+  
 	return 0;
 
 unregister_host_class:
