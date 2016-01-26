@@ -97,9 +97,15 @@ static void evdev_pass_values(struct evdev_client *client,
 	const struct input_value *v;
 	struct input_event event;
 	bool wakeup = false;
-
-	event.time = ktime_to_timeval(client->clkid == CLOCK_MONOTONIC ?
+	if(client->clkid == CLOCK_BOOTTIME)
+	{
+		event.time = ktime_to_timeval(ktime_get_boottime());
+	}
+	else 
+	{
+		event.time = ktime_to_timeval(client->clkid == CLOCK_MONOTONIC ?
 				      mono : real);
+	}
 
 	/* Interrupts are disabled, just acquire the lock. */
 	spin_lock(&client->buffer_lock);
@@ -792,7 +798,7 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
 	case EVIOCSCLOCKID:
 		if (copy_from_user(&i, p, sizeof(unsigned int)))
 			return -EFAULT;
-		if (i != CLOCK_MONOTONIC && i != CLOCK_REALTIME)
+		if (i != CLOCK_MONOTONIC && i != CLOCK_REALTIME && i != CLOCK_BOOTTIME)
 			return -EINVAL;
 		client->clkid = i;
 		return 0;
