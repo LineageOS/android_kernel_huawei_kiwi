@@ -204,6 +204,26 @@ config BATTERY_MAX17042
 	  with MAX17042. This driver also supports max17047/50 chips which are
 	  improved version of max17042.
 
+config BATTERY_MAX17048
+    tristate "Maxim MAX17048/77819 Fuel Gauge"
+    depends on I2C
+    help
+      MAX17048 is fuel-gauge systems for lithium-ion (Li+) batteries
+      in handheld and portable equipment. The MAX17048 is configured
+      to operate with a single lithium cell. MAX8997 and MAX8966 are
+      multi-function devices that include fuel gauages that are compatible
+      with MAX17048.
+
+config BATTERY_ANDROID
+	tristate "Battery driver for Android"
+	help
+	  Say Y to enable generic support for battery charging according
+	  to common Android policies.
+	  This driver adds periodic battery level and health monitoring,
+	  kernel log reporting and other debugging features, common board
+	  battery file glue logic for battery/case temperature sensors,
+	  etc.
+
 config BATTERY_Z2
 	tristate "Z2 battery driver"
 	depends on I2C && MACH_ZIPIT2
@@ -322,6 +342,12 @@ config CHARGER_MAX8998
 	help
 	  Say Y to enable support for the battery charger control sysfs and
 	  platform data of MAX8998/LP3974 PMICs.
+
+config CHARGER_MAX77819
+    tristate "Maxim MAX77819 PMIC battery charger driver"
+    depends on MFD_MAX77819
+    help
+      Say Y to enable support for the MAX77819 PMIC battery charger.
 
 config CHARGER_BQ2415X
 	tristate "TI BQ2415x battery charger driver"
@@ -526,6 +552,33 @@ config QPNP_LINEAR_CHARGER
 	  detection and charging. The driver also offers relevant information
 	  to userspace via the power supply framework.
 
+# /* remove bq27510 and bq24152 kconfig code */
+# /* Add G7 charger driver */
+config BATTERY_BQ27510
+        tristate "Power supply class support"
+        depends on I2C
+        depends on HUAWEI_KERNEL
+
+config CHARGER_BQ24152
+        tristate "Power supply class support"
+        depends on I2C
+        depends on HUAWEI_KERNEL
+
+config BQ24296M_CHARGER
+	tristate "Power supply class support"
+	depends on I2C
+	depends on HUAWEI_KERNEL
+
+config HUAWEI_PMU_DSM
+	tristate "huawei dsm charger"
+	depends on HUAWEI_DSM
+
+config HUAWEI_THERMAL
+	bool "Use huawei thermal code"
+	default n
+	help
+	  Use huawei thermal code
+
 config MSM_BCL_CTL
 	bool "BCL Framework driver"
 	help
@@ -549,3 +602,4 @@ endif # POWER_SUPPLY
 
 source "drivers/power/avs/Kconfig"
 source "drivers/power/qcom/Kconfig"
+source "drivers/power/msgnotify/Kconfig"

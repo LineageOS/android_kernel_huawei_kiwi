@@ -45,6 +45,10 @@ static int battery_data_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+#define RBATT_LOW_SOC	(2)
+#endif
+
 static long battery_data_ioctl(struct file *file, unsigned int cmd,
 						unsigned long arg)
 {
@@ -77,6 +81,11 @@ static long battery_data_ioctl(struct file *file, unsigned int cmd,
 				bp.ocv_uv / 1000, bp.batt_temp, soc);
 		break;
 	case BPIOCXRBATT:
+#ifdef CONFIG_HUAWEI_KERNEL
+		if(bp.soc < RBATT_LOW_SOC) {
+			bp.soc = RBATT_LOW_SOC;
+		}
+#endif
 		rbatt_sf = interpolate_scalingfactor(
 				battery->profile->rbatt_sf_lut,
 				bp.batt_temp, bp.soc);
