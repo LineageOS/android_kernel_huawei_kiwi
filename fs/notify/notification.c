@@ -410,6 +410,10 @@ struct fsnotify_event *fsnotify_create_event(struct inode *to_tell, __u32 mask, 
 	initialize_event(event);
 
 	if (name) {
+        pr_debug("[HW %s]: [%s(%d)  P: %s(%d)]: filename=%s\n", __func__,
+                current->comm, task_pid_nr(current), current->parent->comm,task_pid_nr(current->parent),
+                name);
+
 		event->file_name = kstrdup(name, gfp);
 		if (!event->file_name) {
 			kmem_cache_free(fsnotify_event_cachep, event);
