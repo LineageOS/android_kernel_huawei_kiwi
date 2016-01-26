@@ -195,6 +195,22 @@ static ssize_t sensors_enable_store(struct device *dev,
 	ret = kstrtoul(buf, 10, &data);
 	if (ret)
 		return ret;
+	if(sensorDT_mode)
+	{
+		pr_err("[%s] enter DT_TEST data=%ld\n", __func__, data);
+		if(SENSOR_DTENABLE == data)
+		{
+			data = SENSOR_ENABLE;
+		}
+		else if(SENSOR_DTDISABLE == data)
+		{
+			data = SENSOR_DISABLE;
+		}
+		else
+		{
+			return size;
+		}
+	}
 	if (data > 1) {
 		dev_err(dev, "Invalid value of input, input=%ld\n", data);
 		return -EINVAL;
@@ -231,6 +247,15 @@ static ssize_t sensors_delay_store(struct device *dev,
 	ret = kstrtoul(buf, 10, &data);
 	if (ret)
 		return ret;
+	
+	if(sensorDT_mode)
+	{
+		if(10 != data)
+		{
+			return size;
+		}
+	}
+	
 	/* The data unit is millisecond, the min_delay unit is microseconds. */
 	if ((data * 1000) < sensors_cdev->min_delay) {
 		dev_err(dev, "Invalid value of delay, delay=%ld\n", data);
@@ -255,7 +280,7 @@ static ssize_t sensors_delay_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%u\n",
 			sensors_cdev->delay_msec);
 }
-
+/*upload the qulacom patch to realize compass MMI test*/
 static ssize_t sensors_test_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -268,11 +293,19 @@ static ssize_t sensors_test_show(struct device *dev,
 	}
 
 	ret = sensors_cdev->sensors_self_test(sensors_cdev);
-	if (ret)
+	if (ret){
+		dev_warn(dev, "self test success.(%d)\n", ret);
+	}
+	else{
 		dev_warn(dev, "self test failed.(%d)\n", ret);
-
+	}
+#ifndef CONFIG_HUAWEI_KERNEL
 	return snprintf(buf, PAGE_SIZE, "%s\n",
 			ret ? "fail" : "pass");
+#else
+	return snprintf(buf, PAGE_SIZE, "%s\n",
+			ret ? "1":"0");
+#endif
 }
 
 static ssize_t sensors_max_latency_store(struct device *dev,
@@ -469,7 +502,7 @@ static struct device_attribute sensors_class_attrs[] = {
 	__ATTR(enable_wakeup, 0664, sensors_enable_wakeup_show,
 			sensors_enable_wakeup_store),
 	__ATTR(poll_delay, 0664, sensors_delay_show, sensors_delay_store),
-	__ATTR(self_test, 0440, sensors_test_show, NULL),
+	__ATTR(self_test, 0444, sensors_test_show, NULL),
 	__ATTR(max_latency, 0660, sensors_max_latency_show,
 			sensors_max_latency_store),
 	__ATTR(flush, 0660, sensors_flush_show, sensors_flush_store),
@@ -477,7 +510,6 @@ static struct device_attribute sensors_class_attrs[] = {
 			sensors_calibrate_store),
 	__ATTR_NULL,
 };
-
 /**
  * sensors_classdev_register - register a new object of sensors_classdev class.
  * @parent: The device to register.
