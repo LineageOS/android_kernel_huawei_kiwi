@@ -22,6 +22,7 @@ struct ncp6335d_platform_data {
 	struct regulator_init_data *init_data;
 	int default_vsel;
 	int slew_rate_ns;
+	unsigned int en_delay_ms;
 	int discharge_enable;
 	bool sleep_enable;
 };

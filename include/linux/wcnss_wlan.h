@@ -15,6 +15,62 @@
 #define _WCNSS_WLAN_H_
 
 #include <linux/device.h>
+#ifdef CONFIG_HUAWEI_WIFI
+
+extern  int wlan_log_debug_mask;
+#define WLAN_ERROR  1
+#define WLAN_INFO 2
+#define WLAN_DBG  3
+
+/* error log */
+#ifndef wlan_log_err
+#define wlan_log_err(x...)                \
+do{                                     \
+    if( wlan_log_debug_mask >= WLAN_ERROR )   \
+    {                                   \
+        printk(KERN_ERR "wlan:" x); \
+    }                                   \
+                                        \
+}while(0)
+#endif
+/* opened at all times default*/
+
+/* info log */
+#ifndef wlan_log_info
+#define wlan_log_info(x...)               \
+do{                                     \
+    if( wlan_log_debug_mask >= WLAN_INFO)  \
+    {                                   \
+        printk(KERN_ERR "wlan:" x); \
+    }                                   \
+                                        \
+}while(0)
+#endif
+
+
+/* debug log */
+#ifndef wlan_log_debug
+#define wlan_log_debug(x...)              \
+do{                                     \
+    if ( wlan_log_debug_mask >= WLAN_DBG )   \
+    {                                   \
+        printk(KERN_ERR "wlan:" x); \
+    }                                   \
+                                        \
+}while(0)
+#endif
+
+#endif
+#ifdef CONFIG_HUAWEI_DSM
+#include <linux/dsm_pub.h>
+
+#define DSM_WIFI_BUF_SIZE           (1024)   /*Byte*/
+#define DSM_WIFI_MOD_NAME           "dsm_wifi"
+
+int wifi_dsm_register(void);
+int wifi_dsm_report_num(int dsm_err_no, char *err_msg, int err_code);
+int wifi_dsm_report_info(int error_no, void *log, int size);
+#endif
 
 enum wcnss_opcode {
 	WCNSS_WLAN_SWITCH_OFF = 0,
@@ -70,6 +126,10 @@ enum {
 #define PRONTO_PMU_OFFSET       0x1004
 #define WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP   BIT(5)
 
+#ifdef CONFIG_HUAWEI_WIFI
+const void *get_hw_wifi_pubfile_id(void);
+void construct_nvbin_with_pubfd(char *nvbin_path);
+#endif
 struct device *wcnss_wlan_get_device(void);
 void wcnss_get_monotonic_boottime(struct timespec *ts);
 struct resource *wcnss_wlan_get_memory_map(struct device *dev);

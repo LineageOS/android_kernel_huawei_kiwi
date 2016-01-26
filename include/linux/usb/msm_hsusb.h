@@ -2,7 +2,7 @@
  *
  * Copyright (C) 2008 Google, Inc.
  * Author: Brian Swetland <swetland@google.com>
- * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -105,6 +105,7 @@ enum msm_usb_phy_type {
 };
 
 #define IDEV_CHG_MAX	1500
+#define IDEV_CHG_FLOATED	1000
 #define IDEV_CHG_MIN	500
 #define IUNIT		100
 
@@ -270,6 +271,7 @@ enum usb_ctrl {
  */
 struct msm_otg_platform_data {
 	int *phy_init_seq;
+	int *phy_init_seq_host;
 	int (*vbus_power)(bool on);
 	unsigned power_budget;
 	enum usb_mode_type mode;
@@ -542,6 +544,7 @@ struct msm_otg {
 	bool pm_done;
 	struct qpnp_vadc_chip	*vadc_dev;
 	int ext_id_irq;
+	wait_queue_head_t	host_suspend_wait;
 };
 
 struct ci13xxx_platform_data {
@@ -734,4 +737,21 @@ static inline int msm_dwc3_reset_dbm_ep(struct usb_ep *ep)
 }
 
 #endif
+
+#ifdef CONFIG_HUAWEI_EXTERN_ID_DETECT
+/*
+ * USB ID STATUS, only support 0 or 1
+ * the USB ID is pulled up internal
+ * USB_ID_STATUS_LOW :  id is pulled down, should switch to usb host mode
+ * USB_ID_STATUS_HIGH:  id is pulled up,   should switch to usb peripheral mode
+ *
+ */
+typedef enum enum_usb_id_status_type {
+	USB_ID_STATUS_LOW = 0,
+	USB_ID_STATUS_HIGH,
+}USB_ID_STATUS_TYPE;
+
+extern void msm_id_status_changed(USB_ID_STATUS_TYPE id_state);
+#endif
+
 #endif

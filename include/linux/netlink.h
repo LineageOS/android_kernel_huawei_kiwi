@@ -2,6 +2,7 @@
 #define __LINUX_NETLINK_H
 
 
+#define NETLINK_HW_KSTATE   30  /* kstate send event to user */
 #include <linux/capability.h>
 #include <linux/skbuff.h>
 #include <linux/export.h>

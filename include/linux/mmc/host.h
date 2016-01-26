@@ -20,6 +20,10 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/pm.h>
 
+#ifdef CONFIG_HW_MMC_TEST
+#define CARD_ADDR_MAGIC 0xA5A55A5AA5A55A5ALL
+#endif
+
 struct mmc_ios {
 	unsigned int	clock;			/* clock rate */
 	unsigned int	old_rate;       /* saved clock rate */
@@ -331,6 +335,10 @@ struct mmc_host {
 #define MMC_CAP2_HS400		(MMC_CAP2_HS400_1_8V | \
 				 MMC_CAP2_HS400_1_2V)
 #define MMC_CAP2_NONHOTPLUG	(1 << 25)	/*Don't support hotplug*/
+#ifdef CONFIG_HUAWEI_KERNEL
+/* Add capabilities for custom functions, from 31 to 1 to avoid conflict with linux caps*/
+#define MMC_CAP2_POWER_OFF_NO_CARD	(1 << 31)        /* when there is no card, power off vdd and vddio*/
+#endif
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 
 	int			clk_requests;	/* internal reference counter */
@@ -436,6 +444,11 @@ struct mmc_host {
 	} perf;
 	bool perf_enable;
 #endif
+
+#ifdef CONFIG_HW_MMC_TEST
+    int test_status;            /* save mmc_test status */
+#endif
+
 	struct {
 		unsigned long	busy_time_us;
 		unsigned long	window_time;

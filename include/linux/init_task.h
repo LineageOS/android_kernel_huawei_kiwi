@@ -154,6 +154,15 @@ extern struct task_group root_task_group;
 
 #define INIT_TASK_COMM "swapper"
 
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+#define INIT_MSG_POLICY(tsk)	\
+	.ms = {						\
+		.main_looper_thread = false,\
+		.sched_time = {.tv_sec = 0, .tv_nsec = 0},		\
+	},
+#else
+#define INIT_MSG_POLICY(tsk)
+#endif
 /*
  *  INIT_TASK is used to set up the first task table, touch at
  * your own risk!. Base=0, limit=0x1fffff (=2MB)
@@ -182,6 +191,7 @@ extern struct task_group root_task_group;
 	.tasks		= LIST_HEAD_INIT(tsk.tasks),			\
 	INIT_PUSHABLE_TASKS(tsk)					\
 	INIT_CGROUP_SCHED(tsk)						\
+	INIT_MSG_POLICY(tsk)	\
 	.ptraced	= LIST_HEAD_INIT(tsk.ptraced),			\
 	.ptrace_entry	= LIST_HEAD_INIT(tsk.ptrace_entry),		\
 	.real_parent	= &tsk,						\
@@ -223,7 +233,6 @@ extern struct task_group root_task_group;
 	INIT_CPUSET_SEQ							\
 	INIT_VTIME(tsk)							\
 }
-
 
 #define INIT_CPU_TIMERS(cpu_timers)					\
 {									\

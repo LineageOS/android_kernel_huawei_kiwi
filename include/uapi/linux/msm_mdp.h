@@ -72,6 +72,13 @@
 #define FB_TYPE_3D_PANEL 0x10101010
 #define MDP_IMGTYPE2_START 0x10000
 #define MSMFB_DRIVER_VERSION	0xF9E8D701
+/*Add display color inversion function*/
+#ifdef CONFIG_HUAWEI_LCD
+#define MSMFB_DISPLAY_INVERSION	_IOWR(MSMFB_IOCTL_MAGIC, 253, unsigned  int)
+#endif
+#ifdef CONFIG_FB_AUTO_CABC
+#define MSMFB_AUTO_CABC           _IOWR(MSMFB_IOCTL_MAGIC, 255, struct msmfb_cabc_config)
+#endif
 
 /* HW Revisions for different MDSS targets */
 #define MDSS_GET_MAJOR(rev)		((rev) >> 28)
@@ -116,6 +123,7 @@ enum {
 	NOTIFY_TYPE_SUSPEND,
 	NOTIFY_TYPE_UPDATE,
 	NOTIFY_TYPE_BL_UPDATE,
+	NOTIFY_TYPE_BL_AD_ATTEN_UPDATE,
 };
 
 enum {
@@ -1113,6 +1121,26 @@ struct mdp_page_protection {
 	uint32_t page_protection;
 };
 
+#ifdef CONFIG_HUAWEI_LCD
+enum inversion_mode {
+	COLUMN_INVERSION = 0,
+	DOT_INVERSION = 2,
+};
+#endif
+
+#ifdef CONFIG_FB_AUTO_CABC
+enum cabc_mode {
+	CABC_MODE_OFF,
+	CABC_MODE_UI,
+	CABC_MODE_STILL,
+	CABC_MODE_MOVING,
+};
+struct msmfb_cabc_config {
+	uint32_t mode;
+	uint32_t dimming_on;
+	uint32_t mov_det_on;
+};
+#endif
 
 struct mdp_mixer_info {
 	int pndx;
