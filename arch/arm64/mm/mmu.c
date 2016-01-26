@@ -164,6 +164,20 @@ void mem_text_write_kernel_word(u32 *addr, u32 word)
 }
 EXPORT_SYMBOL(mem_text_write_kernel_word);
 
+void mem_text_write(u32 *addr, u32 word)
+{
+	unsigned long flags;
+
+	mem_text_writeable_spinlock(&flags);
+	mem_text_address_writeable((u64)addr);
+	*addr = word;
+	flush_icache_range((unsigned long)addr,
+			   ((unsigned long)addr + sizeof(u32)));
+	mem_text_address_restore((u64)addr);
+	mem_text_writeable_spinunlock(&flags);
+}
+EXPORT_SYMBOL(mem_text_write);
+
 /*
  * These are useful for identifying cache coherency problems by allowing the
  * cache or the cache and writebuffer to be turned off. It changes the Normal
