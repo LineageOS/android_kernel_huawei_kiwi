@@ -48,6 +48,10 @@
 
 #include <asm/uaccess.h>
 
+#ifdef CONFIG_SRECORDER
+#include <linux/srecorder.h>
+#endif
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/printk.h>
 
@@ -68,6 +72,11 @@ int console_printk[4] = {
 	MINIMUM_CONSOLE_LOGLEVEL,	/* minimum_console_loglevel */
 	DEFAULT_CONSOLE_LOGLEVEL,	/* default_console_loglevel */
 };
+
+#ifdef CONFIG_HUAWEI_KERNEL
+int KERNEL_HWFLOW = CONFIG_DEBUG_HUAWEI_FLOW_LOGLEVEL;
+EXPORT_SYMBOL(KERNEL_HWFLOW);
+#endif
 
 /*
  * Low level drivers may need that to know if they can schedule in
@@ -212,6 +221,13 @@ struct log {
 	u8 facility;		/* syslog facility */
 	u8 flags:5;		/* internal record flags */
 	u8 level:3;		/* syslog level */
+#ifdef CONFIG_HUAWEI_KERNEL
+	pid_t pid;					/* task pid */
+	char comm[TASK_COMM_LEN];	/* task name */
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+	int cpu_no;
+#endif
 #if defined(CONFIG_LOG_BUF_MAGIC)
 	u32 magic;		/* handle for ramdump analysis tools */
 #endif
@@ -237,7 +253,11 @@ static u32 log_first_idx;
 
 /* index and sequence number of the next record to store in the buffer */
 static u64 log_next_seq;
+#ifndef CONFIG_SRECORDER
 static u32 log_next_idx;
+#else
+static u32 log_next_idx __attribute__((__section__(".data")));
+#endif
 
 /* the next printk record to write to the console */
 static u64 console_seq;
@@ -258,9 +278,36 @@ static u32 clear_idx;
 #define LOG_ALIGN __alignof__(struct log)
 #endif
 #define __LOG_BUF_LEN (1 << CONFIG_LOG_BUF_SHIFT)
+
+#ifndef CONFIG_SRECORDER
 static char __log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
 static char *log_buf = __log_buf;
 static u32 log_buf_len = __LOG_BUF_LEN;
+#else
+static char __log_buf[__LOG_BUF_LEN] __attribute__((__section__(".data")));
+static char *log_buf __attribute__((__section__(".data"))) = __log_buf;
+static int log_buf_len __attribute__((__section__(".data"))) = __LOG_BUF_LEN;
+
+void* get_kernel_log_buf(void)
+{
+	return log_buf;
+}
+EXPORT_SYMBOL(get_kernel_log_buf);
+
+unsigned int get_kernel_log_buf_len(void)
+{
+	return log_buf_len;
+}
+EXPORT_SYMBOL(get_kernel_log_buf_len);
+
+void srecorder_get_printk_buf_info(unsigned long* p_log_buf, unsigned* p_log_end, unsigned* p_log_buf_len)
+{
+    *p_log_buf = (unsigned long)log_buf;
+    *p_log_end = (unsigned)log_next_idx;
+    *p_log_buf_len = log_buf_len;
+}
+EXPORT_SYMBOL(srecorder_get_printk_buf_info);
+#endif
 
 #if defined(CONFIG_OOPS_LOG_BUFFER)
 #define __OOPS_LOG_BUF_LEN (1 << CONFIG_OOPS_LOG_BUF_SHIFT)
@@ -384,6 +431,14 @@ static void log_oops_store(struct log *msg)
 			msg->level = default_message_loglevel & 7;
 			msg->flags = (LOG_NEWLINE | LOG_PREFIX) & 0x1f;
 			msg->ts_nsec = ts_nsec;
+#ifdef CONFIG_HUAWEI_KERNEL
+			msg->pid = current->pid;
+			memset(msg->comm, 0, TASK_COMM_LEN);
+			memcpy(msg->comm, current->comm, TASK_COMM_LEN-1);
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+			msg->cpu_no = smp_processor_id();
+#endif
 			eom = 1;
 		}
 
@@ -457,6 +512,15 @@ static void log_store(int facility, int level,
 	msg->facility = facility;
 	msg->level = level & 7;
 	msg->flags = flags & 0x1f;
+#ifdef CONFIG_HUAWEI_KERNEL
+	msg->pid = current->pid;
+	memset(msg->comm, 0, TASK_COMM_LEN);
+	memcpy(msg->comm, current->comm, TASK_COMM_LEN-1);
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+	msg->cpu_no = smp_processor_id();
+#endif
+	
 	LOG_MAGIC(msg);
 	if (ts_nsec > 0)
 		msg->ts_nsec = ts_nsec;
@@ -1035,6 +1099,33 @@ static size_t print_time(u64 ts, char *buf)
 		       (unsigned long)ts, rem_nsec / 1000);
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+static bool printk_task_info = 1;
+module_param_named(task_info, printk_task_info, bool, S_IRUGO | S_IWUSR);
+
+static size_t print_task_info(pid_t pid, const char *task_name, char *buf)
+{
+	if (!printk_task_info)
+		return 0;
+
+	if (!buf)
+		return snprintf(NULL, 0, "[%d, %s]", pid, task_name);
+
+	return sprintf(buf, "[%d, %s]", pid, task_name);
+}
+
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+static size_t print_cpu_info(int cpu, char* buf)
+{
+	if (!buf)
+		return snprintf(NULL, 0, "[cpu%d]", cpu);
+
+	return sprintf(buf, "[cpu%d]", cpu);
+}
+#endif
+
+#endif
+
 static size_t print_prefix(const struct log *msg, bool syslog, char *buf)
 {
 	size_t len = 0;
@@ -1054,6 +1145,13 @@ static size_t print_prefix(const struct log *msg, bool syslog, char *buf)
 		}
 	}
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	len += print_task_info(msg->pid, msg->comm, buf ? buf + len : NULL);
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+	len += print_cpu_info(msg->cpu_no, buf ? buf + len : NULL);
+#endif
+	
 	len += print_time(msg->ts_nsec, buf ? buf + len : NULL);
 	return len;
 }

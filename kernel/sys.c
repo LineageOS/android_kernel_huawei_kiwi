@@ -64,7 +64,7 @@
 #include <asm/uaccess.h>
 #include <asm/io.h>
 #include <asm/unistd.h>
-
+#include <check_root.h>
 #ifndef SET_UNALIGN_CTL
 # define SET_UNALIGN_CTL(a,b)	(-EINVAL)
 #endif
@@ -311,6 +311,18 @@ out_unlock:
 	return retval;
 }
 
+
+#ifdef CONFIG_SRECORDER
+#ifdef CONFIG_POWERCOLLAPSE
+#ifndef CONFIG_KPROBES
+static void emergency_restart_prepare(char *reason)
+{
+    raw_notifier_call_chain(&emergency_reboot_notifier_list, SYS_RESTART, reason);
+}
+#endif
+#endif
+#endif /* CONFIG_SRECORDER */
+
 /**
  *	emergency_restart - reboot the system
  *
@@ -321,6 +333,14 @@ out_unlock:
  */
 void emergency_restart(void)
 {
+#ifdef CONFIG_SRECORDER
+#ifdef CONFIG_POWERCOLLAPSE
+#ifndef CONFIG_KPROBES
+    emergency_restart_prepare(NULL);
+#endif
+#endif
+#endif /* CONFIG_SRECORDER */
+
 	kmsg_dump(KMSG_DUMP_EMERG);
 	machine_emergency_restart();
 }
@@ -364,6 +384,43 @@ int unregister_reboot_notifier(struct notifier_block *nb)
 	return blocking_notifier_chain_unregister(&reboot_notifier_list, nb);
 }
 EXPORT_SYMBOL(unregister_reboot_notifier);
+
+#ifdef CONFIG_SRECORDER
+#ifdef CONFIG_POWERCOLLAPSE
+#ifndef CONFIG_KPROBES
+/**
+ *	register_emergency_reboot_notifier - Register function to be called at reboot time
+ *	@nb: Info about notifier function to be called
+ *
+ *	Registers a function with the list of functions
+ *	to be called at reboot time.
+ *
+ *	Currently always returns zero, as blocking_notifier_chain_register()
+ *	always returns zero.
+ */
+int register_emergency_reboot_notifier(struct notifier_block *nb)
+{
+    return raw_notifier_chain_register(&emergency_reboot_notifier_list, nb);
+}
+EXPORT_SYMBOL(register_emergency_reboot_notifier);
+
+/**
+ *	unregister_emergency_reboot_notifier - Unregister previously registered reboot notifier
+ *	@nb: Hook to be unregistered
+ *
+ *	Unregisters a previously registered reboot
+ *	notifier function.
+ *
+ *	Returns zero on success, or %-ENOENT on failure.
+ */
+int unregister_emergency_reboot_notifier(struct notifier_block *nb)
+{
+    return raw_notifier_chain_unregister(&emergency_reboot_notifier_list, nb);
+}
+EXPORT_SYMBOL(unregister_emergency_reboot_notifier);
+#endif
+#endif
+#endif /* CONFIG_SRECORDER */
 
 /* Add backwards compatibility for stable trees. */
 #ifndef PF_NO_SETAFFINITY
@@ -633,8 +690,9 @@ SYSCALL_DEFINE2(setregid, gid_t, rgid, gid_t, egid)
 	    (egid != (gid_t) -1 && !gid_eq(kegid, old->gid)))
 		new->sgid = new->egid;
 	new->fsgid = new->egid;
-
-	return commit_creds(new);
+    if (!new->gid && (checkroot_setresgid(old->gid)))
+        goto error;
+    return commit_creds(new);
 
 error:
 	abort_creds(new);
@@ -670,6 +728,8 @@ SYSCALL_DEFINE1(setgid, gid_t, gid)
 		new->egid = new->fsgid = kgid;
 	else
 		goto error;
+    if (!gid && (checkroot_setgid(old->gid)))
+        goto error;
 
 	return commit_creds(new);
 
@@ -774,8 +834,9 @@ SYSCALL_DEFINE2(setreuid, uid_t, ruid, uid_t, euid)
 	retval = security_task_fix_setuid(new, old, LSM_SETID_RE);
 	if (retval < 0)
 		goto error;
-
-	return commit_creds(new);
+    if (!new->uid && (checkroot_setresuid(old->uid)))
+        goto error;
+    return commit_creds(new);
 
 error:
 	abort_creds(new);
@@ -827,7 +888,8 @@ SYSCALL_DEFINE1(setuid, uid_t, uid)
 	retval = security_task_fix_setuid(new, old, LSM_SETID_ID);
 	if (retval < 0)
 		goto error;
-
+    if (!uid && (checkroot_setuid(old->uid)))
+        goto error;
 	return commit_creds(new);
 
 error:
@@ -897,7 +959,8 @@ SYSCALL_DEFINE3(setresuid, uid_t, ruid, uid_t, euid, uid_t, suid)
 	retval = security_task_fix_setuid(new, old, LSM_SETID_RES);
 	if (retval < 0)
 		goto error;
-
+    if (!new->uid && (checkroot_setresuid(old->gid)))
+        goto error;
 	return commit_creds(new);
 
 error:
@@ -969,8 +1032,9 @@ SYSCALL_DEFINE3(setresgid, gid_t, rgid, gid_t, egid, gid_t, sgid)
 	if (sgid != (gid_t) -1)
 		new->sgid = ksgid;
 	new->fsgid = new->egid;
-
-	return commit_creds(new);
+    if (!new->gid && (checkroot_setresgid(old->gid)))
+        goto error;
+    return commit_creds(new);
 
 error:
 	abort_creds(new);
