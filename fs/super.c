@@ -801,6 +801,8 @@ void emergency_remount(void)
 {
 	struct work_struct *work;
 
+    /* delete 3 lines */
+
 	work = kmalloc(sizeof(*work), GFP_ATOMIC);
 	if (work) {
 		INIT_WORK(work, do_emergency_remount);

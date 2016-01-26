@@ -66,6 +66,10 @@
 
 #include <trace/events/sched.h>
 
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+#include <power/msgnotify.h>
+#endif
+
 int suid_dumpable = 0;
 
 static LIST_HEAD(formats);
@@ -1041,6 +1045,9 @@ void set_task_comm(struct task_struct *tsk, char *buf)
 	task_lock(tsk);
 	trace_task_rename(tsk, buf);
 	strlcpy(tsk->comm, buf, sizeof(tsk->comm));
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+	set_main_looper_thread(tsk,buf);
+#endif
 	task_unlock(tsk);
 	perf_event_comm(tsk);
 }
