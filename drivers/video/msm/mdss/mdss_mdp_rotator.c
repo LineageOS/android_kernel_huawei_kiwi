@@ -25,6 +25,7 @@
 #include "mdss_fb.h"
 #include "mdss_debug.h"
 
+#include <linux/hw_lcd_common.h>
 #define MAX_ROTATOR_SESSIONS 8
 
 static DEFINE_MUTEX(rotator_lock);
@@ -287,6 +288,10 @@ static int mdss_mdp_rotator_queue_sub(struct mdss_mdp_rotator_session *rot,
 	ATRACE_BEGIN("rotator_kickoff");
 	ret = mdss_mdp_rotator_kickoff(rot_ctl, rot, dst_data);
 	ATRACE_END("rotator_kickoff");
+	if (ret) {
+		pr_err("mdss_mdp_rotator_kickoff error : %d\n", ret);
+		goto error;
+	}
 
 	return ret;
 error:
@@ -305,8 +310,17 @@ static void mdss_mdp_rotator_commit_wq_handler(struct work_struct *work)
 	mutex_lock(&rotator_lock);
 
 	ret = mdss_mdp_rotator_queue_helper(rot);
+/* report rotator dsm error */
+#ifndef CONFIG_HUAWEI_LCD
 	if (ret)
 		pr_err("rotator queue failed\n");
+#else
+	if (ret)
+	{
+		pr_err("rotator queue failed\n");
+		lcd_report_dsm_err(DSM_LCD_MDSS_ROTATOR_ERROR_NO,ret,0);
+	}
+#endif
 
 	if (rot->rot_sync_pt_data) {
 		atomic_inc(&rot->rot_sync_pt_data->commit_cnt);

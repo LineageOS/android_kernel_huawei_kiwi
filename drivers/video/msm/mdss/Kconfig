@@ -43,3 +43,13 @@ config FB_MSM_MDSS_MDP3
 	---help---
 	The MDP3 provides support for an older version display controller
 	included in latest display sub-system, known as MDSS.
+config HUAWEI_LCD
+	depends on HUAWEI_KERNEL
+	bool "LCD display support"
+	default n
+	---help---
+	  use huawei feature
+config FB_AUTO_CABC
+	bool "Support for AUTO_CABC fuction"
+	depends on HUAWEI_KERNEL
+	default n

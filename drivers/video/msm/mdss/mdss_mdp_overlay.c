@@ -35,7 +35,8 @@
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 #include "mdss_mdp_rotator.h"
-
+/* add log on panel resume and suspend module */
+#include <linux/hw_lcd_common.h>
 #define VSYNC_PERIOD 16
 #define BORDERFILL_NDX	0x0BF000BF
 #define CHECK_BOUNDS(offset, size, max_size) \
@@ -1726,6 +1727,14 @@ static int __mdss_mdp_overlay_release_all(struct msm_fb_data_type *mfd,
 	}
 	mutex_unlock(&mdp5_data->ov_lock);
 
+/*  */
+#ifdef CONFIG_HUAWEI_LCD
+	if (cnt && mfd->panel_power_state == MDSS_PANEL_POWER_ON)
+#else
+	if (cnt)
+#endif
+		mfd->mdp.kickoff_fnc(mfd, NULL);
+
 	list_for_each_entry_safe(rot, tmp, &mdp5_data->rot_proc_list, list) {
 		if (rot->pid == pid) {
 			if (!list_empty(&rot->list))
@@ -1734,7 +1743,7 @@ static int __mdss_mdp_overlay_release_all(struct msm_fb_data_type *mfd,
 		}
 	}
 
-	return cnt;
+	return 0;
 }
 
 static int mdss_mdp_overlay_play_wait(struct msm_fb_data_type *mfd,
@@ -3610,10 +3619,13 @@ error:
 
 static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 {
-	int rc;
+	int rc, ad_ret;
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_ctl *ctl = NULL;
-
+/* add log on panel resume and suspend module */
+#ifdef CONFIG_HUAWEI_LCD
+	LCD_LOG_INFO("start %s\n",__func__);
+#endif
 	if (!mfd)
 		return -ENODEV;
 
@@ -3659,6 +3671,12 @@ panel_on:
 		pr_err("Failed to turn on fb%d\n", mfd->index);
 		mdss_mdp_overlay_off(mfd);
 		goto end;
+	}
+
+	if (mfd->mdp.ad_work_setup) {
+		ad_ret = mfd->mdp.ad_work_setup(mfd);
+		if (ad_ret)
+			pr_err("AD work queue setup failed! ret =%d\n", ad_ret);
 	}
 
 end:
@@ -3768,7 +3786,10 @@ ctl_stop:
 		}
 	}
 	mutex_unlock(&mdp5_data->ov_lock);
-
+/* add log on panel resume and suspend module */
+#ifdef CONFIG_HUAWEI_LCD
+	LCD_LOG_INFO("exit %s\n",__func__);
+#endif
 	/* Release the last reference to the runtime device */
 	rc = pm_runtime_put(&mfd->pdev->dev);
 	if (rc)
