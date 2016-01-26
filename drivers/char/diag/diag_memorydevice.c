@@ -223,7 +223,8 @@ int diag_md_copy_to_user(char __user *buf, int *pret)
 			num_data++;
 drop_data:
 			ch->ops->write_done(entry->buf, entry->len,
-					    entry->ctx, ch->ctx);
+					    entry->ctx,
+					    DIAG_MEMORY_DEVICE_MODE);
 			diag_ws_on_copy(DIAG_WS_MD);
 			spin_lock_irqsave(&entry->lock, flags);
 			entry->buf = NULL;
