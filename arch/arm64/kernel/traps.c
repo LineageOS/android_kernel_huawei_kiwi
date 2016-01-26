@@ -42,7 +42,7 @@
 #include <asm/edac.h>
 
 #include <trace/events/exception.h>
-
+#include <asm/ptrace.h>
 static const char *handler[]= {
 	"Synchronous Abort",
 	"IRQ",
