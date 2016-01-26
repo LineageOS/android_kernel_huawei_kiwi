@@ -331,7 +331,7 @@ static void *bam_ipc_log_txt;
  * D: 1 = Disconnect ACK active
  */
 
-#define BAM_DMUX_LOG(fmt, args...) \
+#define BAM_DMUX_LOG_XXX(fmt, args...) \
 do { \
 	if (bam_ipc_log_txt) { \
 		ipc_log_string(bam_ipc_log_txt, \
@@ -349,9 +349,15 @@ do { \
 	} \
 } while (0)
 
+#define BAM_DMUX_LOG(fmt, args...) \
+do { \
+	BAM_DMUX_LOG_XXX(fmt, args); \
+	pr_err(fmt, args); \
+} while (0)
+
 #define DMUX_LOG_KERR(fmt, args...) \
 do { \
-	BAM_DMUX_LOG(fmt, args); \
+	BAM_DMUX_LOG_XXX(fmt, args); \
 	pr_err(fmt, args); \
 } while (0)
 

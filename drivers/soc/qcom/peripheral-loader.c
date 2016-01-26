@@ -162,7 +162,7 @@ int pil_do_ramdump(struct pil_desc *desc, void *ramdump_dev)
 		s->size = seg->sz;
 		s++;
 	}
-
+	pil_info(desc,"do_elf_ramdump\n");
 	ret = do_elf_ramdump(ramdump_dev, ramdump_segs, count);
 	kfree(ramdump_segs);
 

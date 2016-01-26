@@ -30,6 +30,11 @@
 #include <soc/qcom/memory_dump.h>
 #include <soc/qcom/watchdog.h>
 
+#ifdef CONFIG_HUAWEI_RESET_DETECT
+#include <linux/huawei_reset_detect.h>
+#endif
+
+
 #define MODULE_NAME "msm_watchdog"
 #define WDT0_ACCSCSSNBARK_INT 0
 #define TCSR_WDT_CFG	0x30
@@ -110,6 +115,16 @@ static void dump_cpu_alive_mask(struct msm_watchdog_data *wdog_dd)
 						&wdog_dd->alive_mask);
 	printk(KERN_INFO "cpu alive mask from last pet %s\n", alive_mask_buf);
 }
+
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+static void dump_cpu_alive_mask_before_ping(void)
+{
+	char alive_mask_buf[MASK_SIZE];
+	cpulist_scnprintf(alive_mask_buf, MASK_SIZE,
+						cpu_online_mask);
+	pr_info(" cpu alive mask before ping %s\n", alive_mask_buf);
+}
+#endif
 
 static int msm_watchdog_suspend(struct device *dev)
 {
@@ -265,7 +280,7 @@ static void pet_watchdog(struct msm_watchdog_data *wdog_dd)
 	unsigned long long time_ns;
 	unsigned long long slack_ns;
 	unsigned long long bark_time_ns = wdog_dd->bark_time * 1000000ULL;
-
+	
 	for (i = 0; i < 2; i++) {
 		count = (__raw_readl(wdog_dd->base + WDT0_STS) >> 1) & 0xFFFFF;
 		if (count != prev_count) {
@@ -282,6 +297,10 @@ static void pet_watchdog(struct msm_watchdog_data *wdog_dd)
 	if (slack_ns < wdog_dd->min_slack_ns)
 		wdog_dd->min_slack_ns = slack_ns;
 	wdog_dd->last_pet = time_ns;
+#ifdef CONFIG_HUAWEI_KERNEL
+	pr_info("%s, current cpu is cpu%d\n", __func__, smp_processor_id());
+#endif
+	
 }
 
 static void keep_alive_response(void *info)
@@ -289,6 +308,10 @@ static void keep_alive_response(void *info)
 	int cpu = smp_processor_id();
 	struct msm_watchdog_data *wdog_dd = (struct msm_watchdog_data *)info;
 	cpumask_set_cpu(cpu, &wdog_dd->alive_mask);
+	
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+	pr_info("ping done cpu[%d]\n", cpu);
+#endif
 	smp_mb();
 }
 
@@ -299,13 +322,34 @@ static void keep_alive_response(void *info)
 static void ping_other_cpus(struct msm_watchdog_data *wdog_dd)
 {
 	int cpu;
+	
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+	int self_cpu;
+#endif
+	
 	cpumask_clear(&wdog_dd->alive_mask);
 	smp_mb();
+
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+	self_cpu = smp_processor_id();
+	dump_cpu_alive_mask_before_ping();
+#endif
+	
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+	for_each_cpu(cpu, cpu_online_mask) {
+		if (!cpu_idle_pc_state[cpu]){
+			pr_info("ping to cpu[%d]-->[%d] ...\n", self_cpu, cpu);
+			smp_call_function_single(cpu, keep_alive_response,
+						 wdog_dd, 1);
+		}
+	}
+#else
 	for_each_cpu(cpu, cpu_online_mask) {
 		if (!cpu_idle_pc_state[cpu])
 			smp_call_function_single(cpu, keep_alive_response,
 						 wdog_dd, 1);
 	}
+#endif
 }
 
 static void pet_watchdog_work(struct work_struct *work)
@@ -412,6 +456,11 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 		wdog_dd->last_pet, nanosec_rem / 1000);
 	if (wdog_dd->do_ipi_ping)
 		dump_cpu_alive_mask(wdog_dd);
+
+#ifdef CONFIG_HUAWEI_RESET_DETECT
+    set_reset_magic(RESET_MAGIC_WDT_BARK);
+#endif
+
 	msm_trigger_wdog_bite();
 	panic("Failed to cause a watchdog bite! - Falling back to kernel panic!");
 	return IRQ_HANDLED;

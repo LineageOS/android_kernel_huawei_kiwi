@@ -276,7 +276,12 @@ static struct bus_type subsys_bus_type = {
 
 static DEFINE_IDA(subsys_ida);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+int enable_ramdumps;
+int subsystem_restart_requested = 0;
+#else
 static int enable_ramdumps;
+#endif
 module_param(enable_ramdumps, int, S_IRUGO | S_IWUSR);
 
 struct workqueue_struct *ssr_wq;
@@ -380,9 +385,17 @@ out:
 
 static int is_ramdump_enabled(struct subsys_device *dev)
 {
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(subsystem_restart_requested == 1)
+		return 0;
+	/*if we are initiative to reset subsys, we don't go into dump
+	enable_ramdumps is already set to 0, so skip this if*/
+	else if (dev->desc->ramdump_disable_gpio)
+		return !dev->desc->ramdump_disable;
+#else
 	if (dev->desc->ramdump_disable_gpio)
 		return !dev->desc->ramdump_disable;
-
+#endif
 	return enable_ramdumps;
 }
 
@@ -733,6 +746,9 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 	struct subsys_tracking *track;
 	unsigned count;
 	unsigned long flags;
+#ifdef CONFIG_HUAWEI_KERNEL
+	int enable_ramdumps_old = 0;
+#endif
 
 	/*
 	 * It's OK to not take the registration lock at this point.
@@ -761,6 +777,14 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 
 	pr_debug("[%p]: Starting restart sequence for %s\n", current,
 			desc->name);
+#ifdef CONFIG_HUAWEI_KERNEL
+	/* disable subsystem ramdump if subsystem restart is requested */
+	if (subsystem_restart_requested) {
+		enable_ramdumps_old = enable_ramdumps;
+		enable_ramdumps = 0;
+	}
+#endif
+
 	notify_each_subsys_device(list, count, SUBSYS_BEFORE_SHUTDOWN, NULL);
 	for_each_subsys_device(list, count, NULL, subsystem_shutdown);
 	notify_each_subsys_device(list, count, SUBSYS_AFTER_SHUTDOWN, NULL);
@@ -778,6 +802,14 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 	notify_each_subsys_device(list, count, SUBSYS_BEFORE_POWERUP, NULL);
 	for_each_subsys_device(list, count, NULL, subsystem_powerup);
 	notify_each_subsys_device(list, count, SUBSYS_AFTER_POWERUP, NULL);
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	/* restore subsystem ramdump switch */
+	if (subsystem_restart_requested) {
+		enable_ramdumps = enable_ramdumps_old;
+		subsystem_restart_requested = 0;
+	}
+#endif
 
 	pr_info("[%p]: Restart sequence for %s completed.\n",
 			current, desc->name);
@@ -865,6 +897,31 @@ int subsystem_restart_dev(struct subsys_device *dev)
 		return 0;
 	}
 
+#ifdef CONFIG_HUAWEI_KERNEL
+
+	/*if we are initiative to reset modem, we must do 
+	  what RESET_SUBSYS_COUPLED do*/
+	if(subsystem_restart_requested)
+	{
+		pr_info("initialtive to reset modem\n");
+		__subsystem_restart_dev(dev);
+	}
+	else{
+		switch (dev->restart_level) {
+
+			case RESET_SUBSYS_COUPLED:
+				__subsystem_restart_dev(dev);
+				break;
+			case RESET_SOC:
+				__pm_stay_awake(&dev->ssr_wlock);
+				schedule_work(&dev->device_restart_work);
+				return 0;
+			default:
+				panic("subsys-restart: Unknown restart level!\n");
+				break;
+		}
+	}
+#else
 	switch (dev->restart_level) {
 
 	case RESET_SUBSYS_COUPLED:
@@ -878,6 +935,7 @@ int subsystem_restart_dev(struct subsys_device *dev)
 		panic("subsys-restart: Unknown restart level!\n");
 		break;
 	}
+#endif
 	module_put(dev->owner);
 	put_device(&dev->dev);
 
@@ -990,6 +1048,11 @@ static ssize_t subsys_debugfs_write(struct file *filp,
 	cmp = strstrip(buf);
 
 	if (!strcmp(cmp, "restart")) {
+#ifdef CONFIG_HUAWEI_KERNEL
+		if(subsys != NULL && subsys->desc != NULL)
+			pr_info("trigger %s reset by debugfs\n", subsys->desc->name);
+#endif
+		subsystem_restart_requested = 1;
 		if (subsystem_restart_dev(subsys))
 			return -EIO;
 	} else if (!strcmp(cmp, "get")) {
