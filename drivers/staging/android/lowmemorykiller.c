@@ -56,7 +56,15 @@
 #define _ZONE ZONE_NORMAL
 #endif
 
+#ifdef CONFIG_HUAWEI_KSTATE
+#include <linux/hw_kcollect.h>
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+extern ssize_t write_log_to_exception(const char* category, char level, const char* msg);
+static uint32_t lowmem_debug_level = 2;
+#else
 static uint32_t lowmem_debug_level = 1;
+#endif
 static short lowmem_adj[6] = {
 	0,
 	1,
@@ -73,6 +81,10 @@ static int lowmem_minfree[6] = {
 static int lowmem_minfree_size = 4;
 static int lmk_fast_run = 1;
 
+#ifdef CONFIG_LOG_JANK
+static ulong lowmem_kill_count = 0;
+static ulong lowmem_free_mem = 0;
+#endif
 static unsigned long lowmem_deathpending_timeout;
 
 #define lowmem_print(level, x...)			\
@@ -372,6 +384,14 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	int other_file;
 	unsigned long nr_to_scan = sc->nr_to_scan;
 
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+	/* judge if killing the process of the adj == 0
+	 * 0: not kill the adj 0
+	 * 1: kill the adj 0
+	 */
+	int kill_adj_0 = 0;
+#endif
+
 	if (nr_to_scan > 0) {
 		if (mutex_lock_interruptible(&scan_mutex) < 0)
 			return 0;
@@ -513,16 +533,32 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			     sc->gfp_mask);
 
 		if (lowmem_debug_level >= 2 && selected_oom_score_adj == 0) {
+			/* move the write function down below */
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+			kill_adj_0 = 1;
+#endif
 			show_mem(SHOW_MEM_FILTER_NODES);
 			dump_tasks(NULL, NULL);
 			show_mem_call_notifiers();
 		}
 
 		lowmem_deathpending_timeout = jiffies + HZ;
+#ifdef CONFIG_LOG_JANK
+		lowmem_kill_count++;
+		lowmem_free_mem += selected_tasksize * (long)(PAGE_SIZE / 1024) / 1024;
+#endif
+#ifdef CONFIG_HUAWEI_KSTATE
+		hwkillinfo(selected->tgid, SIGKILL);
+#endif
+
 		send_sig(SIGKILL, selected, 0);
 		set_tsk_thread_flag(selected, TIF_MEMDIE);
 		rem -= selected_tasksize;
 		rcu_read_unlock();
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+		if (1 == kill_adj_0)
+			write_log_to_exception("LMK-EXCEPTION", 'C', "lower memory killer exception");
+#endif
 		/* give the system time to free up the memory */
 		msleep_interruptible(20);
 		trace_almk_shrink(selected_tasksize, ret,
@@ -647,6 +683,11 @@ module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
 			 S_IRUGO | S_IWUSR);
 module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
 module_param_named(lmk_fast_run, lmk_fast_run, int, S_IRUGO | S_IWUSR);
+#ifdef CONFIG_LOG_JANK
+module_param_named(kill_count, lowmem_kill_count, ulong, S_IRUGO | S_IWUSR);
+module_param_named(free_mem, lowmem_free_mem, ulong, S_IRUGO | S_IWUSR);
+#endif
+
 
 module_init(lowmem_init);
 module_exit(lowmem_exit);

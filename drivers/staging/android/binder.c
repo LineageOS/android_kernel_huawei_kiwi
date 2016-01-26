@@ -41,7 +41,9 @@
 
 #include "binder.h"
 #include "binder_trace.h"
-
+#ifdef CONFIG_HUAWEI_KSTATE
+#include <linux/hw_kcollect.h>
+#endif
 static DEFINE_MUTEX(binder_main_lock);
 static DEFINE_MUTEX(binder_deferred_lock);
 static DEFINE_MUTEX(binder_mmap_lock);
@@ -669,6 +671,15 @@ static struct binder_buffer *binder_alloc_buf(struct binder_proc *proc,
 		return NULL;
 	}
 
+	//if async and no more async space left
+#ifdef CONFIG_HUAWEI_KSTATE
+	//data bigger 1/3 buffer or buffer free lower 100K
+	if (is_async &&
+		(proc->free_async_space < 3*(size + sizeof(struct binder_buffer)) || proc->free_async_space < 100*1024)) {
+		pr_warning("will no more async space left [freed:%zd][allocate size:%zd], unfreeze [%d]\n", proc->free_async_space, size, proc->pid);
+		hwbinderinfo(-1, proc->pid);
+	}
+#endif
 	if (is_async &&
 	    proc->free_async_space < size + sizeof(struct binder_buffer)) {
 		binder_debug(BINDER_DEBUG_BUFFER_ALLOC,
@@ -1389,6 +1400,16 @@ static void binder_transaction(struct binder_proc *proc,
 			return_error = BR_DEAD_REPLY;
 			goto err_dead_binder;
 		}
+#ifdef CONFIG_HUAWEI_KSTATE
+		/*
+		1.not oneway, sync call
+		2.called uid > 2000(SYSTEM_UID,PHONE_UID,WIFI_UID,MEDIA_UID,DRM_UID...)
+		3.pid not same
+		*/
+		if ((!(tr->flags & TF_ONE_WAY)) && (target_proc->tsk->cred->euid > 2000) && (proc->pid != target_proc->pid)) {
+			hwbinderinfo(proc->pid, target_proc->pid); //only get the binder call info
+		}
+#endif
 		if (security_binder_transaction(proc->tsk, target_proc->tsk) < 0) {
 			return_error = BR_FAILED_REPLY;
 			goto err_invalid_target_handle;
@@ -1910,7 +1931,7 @@ static int binder_thread_write(struct binder_proc *proc,
 				if (list_empty(&buffer->target_node->async_todo))
 					buffer->target_node->has_async_transaction = 0;
 				else
-					list_move_tail(buffer->target_node->async_todo.next, &thread->todo);
+					list_move_tail(buffer->target_node->async_todo.next, &proc->todo);
 			}
 			trace_binder_transaction_buffer_release(buffer);
 			binder_transaction_buffer_release(proc, buffer, NULL);
@@ -3517,13 +3538,24 @@ static int binder_transactions_show(struct seq_file *m, void *unused)
 
 static int binder_proc_show(struct seq_file *m, void *unused)
 {
+	struct binder_proc *itr;
 	struct binder_proc *proc = m->private;
 	int do_lock = !binder_debug_no_lock;
+	bool valid_proc = false;
 
 	if (do_lock)
 		binder_lock(__func__);
-	seq_puts(m, "binder proc state:\n");
-	print_binder_proc(m, proc, 1);
+
+	hlist_for_each_entry(itr, &binder_procs, proc_node) {
+		if (itr == proc) {
+			valid_proc = true;
+			break;
+		}
+	}
+	if (valid_proc) {
+		seq_puts(m, "binder proc state:\n");
+		print_binder_proc(m, proc, 1);
+	}
 	if (do_lock)
 		binder_unlock(__func__);
 	return 0;
