@@ -22,6 +22,12 @@
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 
+const char *dt_product_name = NULL;
+
+#ifdef CONFIG_HUAWEI_DSM
+int camera_is_in_probe = 0;
+#endif
+
 static struct msm_sensor_init_t *s_init;
 static struct v4l2_file_operations msm_sensor_init_v4l2_subdev_fops;
 /* Static function declaration */
@@ -55,6 +61,39 @@ static int msm_sensor_wait_for_probe_done(struct msm_sensor_init_t *s_init)
 	return rc;
 }
 
+/* use dtsi get product name instead of board id string */
+/*
+    get the product name used in vendor probe list.
+*/
+int32_t msm_get_probe_hw_product_name(void *setting)
+{
+    int32_t  length = 0;
+    struct msm_hw_product_name *hw_prodct_name = (struct msm_hw_product_name *)setting;
+
+	if (!hw_prodct_name)
+	{
+		pr_err("%s: hw_prodct_name is NULL.\n",__func__);
+		return -1;
+	}
+
+	if (!dt_product_name)
+	{
+		pr_err("%s: dt_product_name is NULL.\n",__func__);
+		return -1;
+	}
+
+	length = strlen(dt_product_name);
+
+	if(length >= MAX_PRODUCT_NAME_LENGTH)
+	{
+		length = MAX_PRODUCT_NAME_LENGTH - 1;
+	}
+
+	memcpy(hw_prodct_name->product_name,dt_product_name,sizeof(char)*length);
+
+	return 0;
+}
+
 /* Static function definition */
 static int32_t msm_sensor_driver_cmd(struct msm_sensor_init_t *s_init,
 	void *arg)
@@ -70,6 +109,9 @@ static int32_t msm_sensor_driver_cmd(struct msm_sensor_init_t *s_init,
 
 	switch (cfg->cfgtype) {
 	case CFG_SINIT_PROBE:
+#ifdef CONFIG_HUAWEI_DSM
+		camera_is_in_probe = 1;
+#endif
 		mutex_lock(&s_init->imutex);
 		s_init->module_init_status = 0;
 		rc = msm_sensor_driver_probe(cfg->cfg.setting,
@@ -83,12 +125,23 @@ static int32_t msm_sensor_driver_cmd(struct msm_sensor_init_t *s_init,
 	case CFG_SINIT_PROBE_DONE:
 		s_init->module_init_status = 1;
 		wake_up(&s_init->state_wait);
+#ifdef CONFIG_HUAWEI_DSM
+		camera_is_in_probe = 0;
+#endif
 		break;
 
 	case CFG_SINIT_PROBE_WAIT_DONE:
 		msm_sensor_wait_for_probe_done(s_init);
 		break;
+	/*use dtsi get sensor name instead of board id string*/
+	case CFG_SINIT_GET_HW_PRODUCT_NAME:
+		rc = msm_get_probe_hw_product_name(cfg->cfg.setting);
+		break;
 
+	/*use dtsi get sensor name instead of board id string*/
+	case CFG_SINIT_GET_SENSOR_CODE_LIST:
+		rc = msm_get_probe_sensor_codes(cfg->cfg.setting);
+		break;
 	default:
 		pr_err("default");
 		break;
@@ -120,7 +173,7 @@ static long msm_sensor_init_subdev_ioctl(struct v4l2_subdev *sd,
 		break;
 	}
 
-	return 0;
+	return rc;
 }
 
 #ifdef CONFIG_COMPAT
@@ -165,6 +218,20 @@ static long msm_sensor_init_subdev_fops_ioctl(
 static int __init msm_sensor_init_module(void)
 {
 	int ret = 0;
+
+	struct device_node	*of_node = NULL;
+
+    of_node = of_find_compatible_node(NULL, NULL, "qcom,hw-camera-board-id");
+
+	if (of_property_read_string(of_node, "qcom,product-name",
+		                &dt_product_name) < 0) {
+		dt_product_name = NULL;
+		pr_err("%s: don't define support product name.\n",__func__);
+	}
+	else{
+		pr_info("%s product_name = %s\n", __func__, dt_product_name);
+	}
+
 	/* Allocate memory for msm_sensor_init control structure */
 	s_init = kzalloc(sizeof(struct msm_sensor_init_t), GFP_KERNEL);
 	if (!s_init) {

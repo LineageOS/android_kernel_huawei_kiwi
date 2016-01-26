@@ -12,7 +12,7 @@
  */
 
 #define pr_fmt(fmt) "%s:%d " fmt, __func__, __LINE__
-
+#include <media/v4l2-ioctl.h>
 #include "msm_led_flash.h"
 
 #undef CDBG
@@ -57,6 +57,24 @@ static struct v4l2_subdev_core_ops msm_flash_subdev_core_ops = {
 static struct v4l2_subdev_ops msm_flash_subdev_ops = {
 	.core = &msm_flash_subdev_core_ops,
 };
+
+#ifdef CONFIG_COMPAT
+
+static long msm_led_flash_subdev_do_ioctl32(
+	struct file *file, unsigned int cmd, void *arg)
+{
+
+	struct video_device *vdev = video_devdata(file);
+	struct v4l2_subdev *sd = vdev_to_v4l2_subdev(vdev);
+	return msm_led_flash_subdev_ioctl(sd, cmd, arg);
+}
+
+static long msm_led_flash_subdev_fops_ioctl32(struct file *file, unsigned int cmd,
+	unsigned long arg)
+{
+	return video_usercopy(file, cmd, arg, msm_led_flash_subdev_do_ioctl32);
+}
+#endif
 
 static const struct v4l2_subdev_internal_ops msm_flash_internal_ops;
 
@@ -120,6 +138,12 @@ int32_t msm_led_i2c_flash_create_v4lsubdev(void *data)
 	fctrl->msm_sd.sd.entity.group_id = MSM_CAMERA_SUBDEV_LED_FLASH;
 	msm_sd_register(&fctrl->msm_sd);
 
+	msm_led_flash_v4l2_subdev_fops = v4l2_subdev_fops;
+#ifdef CONFIG_COMPAT
+	msm_led_flash_v4l2_subdev_fops.compat_ioctl32 =
+			msm_led_flash_subdev_fops_ioctl32;
+#endif
+	fctrl->msm_sd.sd.devnode->fops = &msm_led_flash_v4l2_subdev_fops;
 	CDBG("probe success\n");
 	return 0;
 }

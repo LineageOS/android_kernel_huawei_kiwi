@@ -59,6 +59,10 @@ static struct camera_vreg_t csid_8960_vreg_info[] = {
 static struct v4l2_file_operations msm_csid_v4l2_subdev_fops;
 #endif
 
+#ifdef CONFIG_HUAWEI_KERNEL
+extern bool huawei_cam_is_factory_mode(void);
+#endif
+
 static int msm_csid_cid_lut(
 	struct msm_camera_csid_lut_params *csid_lut_params,
 	struct csid_device *csid_dev)
@@ -218,12 +222,34 @@ static irqreturn_t msm_csid_irq(int irq_num, void *data)
 	}
 	irq = msm_camera_io_r(csid_dev->base +
 		csid_dev->ctrl_reg->csid_reg.csid_irq_status_addr);
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(huawei_cam_is_factory_mode() || csid_dev->csid_sof_debug == 1)
+	{
+		if(csid_dev->pdev)
+		{
+			pr_err("%s CSID%d_IRQ_STATUS_ADDR = 0x%x\n",
+				   __func__, csid_dev->pdev->id, irq);
+		}
+		else
+		{
+			pr_err("%s:%d csid_dev->pdev NULL\n", __func__, __LINE__);
+		}
+	}
+	else
+	{
+		CDBG("%s CSID%d_IRQ_STATUS_ADDR = 0x%x\n",
+			 __func__, csid_dev->pdev->id, irq);
+	}
+#else
 	if (csid_dev->csid_sof_debug == 1)
 		pr_err("%s CSID%d_IRQ_STATUS_ADDR = 0x%x\n",
 			 __func__, csid_dev->pdev->id, irq);
 	else
 		CDBG("%s CSID%d_IRQ_STATUS_ADDR = 0x%x\n",
 			 __func__, csid_dev->pdev->id, irq);
+#endif
+
 	if (irq & (0x1 <<
 		csid_dev->ctrl_reg->csid_reg.csid_rst_done_irq_bitshift))
 		complete(&csid_dev->reset_complete);
@@ -249,7 +275,18 @@ static int msm_csid_irq_routine(struct v4l2_subdev *sd, u32 status,
 {
 	struct csid_device *csid_dev = v4l2_get_subdevdata(sd);
 	irqreturn_t ret;
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(huawei_cam_is_factory_mode())
+	{
+		pr_err("%s E\n", __func__);
+	}
+	else
+	{
+		CDBG("%s E\n", __func__);
+	}
+#else
 	CDBG("%s E\n", __func__);
+#endif
 	ret = msm_csid_irq(csid_dev->irq->start, csid_dev);
 	*handled = TRUE;
 	return 0;
@@ -356,6 +393,7 @@ static int msm_csid_init(struct csid_device *csid_dev, uint32_t *csid_version)
 	CDBG("%s:%d called csid_dev->hw_version %x\n", __func__, __LINE__,
 		csid_dev->hw_version);
 	*csid_version = csid_dev->hw_version;
+
 	csid_dev->csid_sof_debug = 0;
 
 	init_completion(&csid_dev->reset_complete);
@@ -489,6 +527,22 @@ static int msm_csid_release(struct csid_device *csid_dev)
 	return 0;
 }
 
+/* optimize camera print mipi packet and frame count log*/
+static uint32_t csid_read_mipi_count(struct csid_device *csid_dev)
+{
+    uint32_t value = 0;
+    if(!csid_dev || !csid_dev->base)
+	{
+		pr_err("%s:%d\n",__func__,__LINE__);
+		return 0;
+	}
+
+    value = msm_camera_io_r(csid_dev->base + csid_dev->ctrl_reg->csid_reg.csid_stats_total_pkts_rcvd_addr);
+
+	//pr_info("%s: csid%d total mipi packet = %u\n",__func__,csid_dev->pdev->id, value);
+
+    return value;
+}
 static int32_t msm_csid_cmd(struct csid_device *csid_dev, void __user *arg)
 {
 	int rc = 0;
@@ -503,8 +557,9 @@ static int32_t msm_csid_cmd(struct csid_device *csid_dev, void __user *arg)
 	switch (cdata->cfgtype) {
 	case CSID_INIT:
 		rc = msm_csid_init(csid_dev, &cdata->cfg.csid_version);
-		CDBG("%s csid version 0x%x\n", __func__,
-			cdata->cfg.csid_version);
+	/* optimize camera print mipi packet and frame count log*/
+		pr_err("%s CSID_INIT csid version %x, mem_start=%x\n", __func__,cdata->cfg.csid_version,
+			(unsigned int)csid_dev->mem->start);
 		break;
 	case CSID_CFG: {
 		struct msm_camera_csid_params csid_params;
@@ -546,6 +601,7 @@ static int32_t msm_csid_cmd(struct csid_device *csid_dev, void __user *arg)
 			}
 			csid_params.lut_params.vc_cfg[i] = vc_cfg;
 		}
+
 		csid_dev->csid_sof_debug = 0;
 		rc = msm_csid_config(csid_dev, &csid_params);
 		for (i--; i >= 0; i--)
@@ -553,7 +609,9 @@ static int32_t msm_csid_cmd(struct csid_device *csid_dev, void __user *arg)
 		break;
 	}
 	case CSID_RELEASE:
+	/* optimize camera print mipi packet and frame count log*/
 		rc = msm_csid_release(csid_dev);
+		pr_err("%s: CSID_RELEASE\n",__func__);
 		break;
 	default:
 		pr_err("%s: %d failed\n", __func__, __LINE__);
@@ -580,6 +638,9 @@ static long msm_csid_subdev_ioctl(struct v4l2_subdev *sd,
 {
 	int rc = -ENOIOCTLCMD;
 	struct csid_device *csid_dev = v4l2_get_subdevdata(sd);
+	uint32_t csid_pkg = 0;
+	int i = 0;
+	
 	mutex_lock(&csid_dev->mutex);
 	CDBG("%s:%d id %d\n", __func__, __LINE__, csid_dev->pdev->id);
 	switch (cmd) {
@@ -589,10 +650,18 @@ static long msm_csid_subdev_ioctl(struct v4l2_subdev *sd,
 	case VIDIOC_MSM_CSID_IO_CFG:
 		rc = msm_csid_cmd(csid_dev, arg);
 		break;
+
 	case MSM_SD_NOTIFY_FREEZE: {
 		if (csid_dev->csid_state != CSID_POWER_UP)
 			break;
 		csid_dev->csid_sof_debug = 1;
+
+		for (i = 0; i < 3; i ++) {
+			csid_pkg = csid_read_mipi_count(csid_dev);
+			 pr_info("%s: csid[%d] total mipi packet = %u\n",__func__,
+			 	csid_dev->pdev->id, csid_pkg);
+			 mdelay(50);  // delay 50ms
+		}
 		break;
 	   }
 	case VIDIOC_MSM_CSID_RELEASE:
@@ -716,6 +785,8 @@ static long msm_csid_subdev_ioctl32(struct v4l2_subdev *sd,
 {
 	int rc = -ENOIOCTLCMD;
 	struct csid_device *csid_dev = v4l2_get_subdevdata(sd);
+	uint32_t csid_pkg = 0;
+	int i = 0;
 
 	mutex_lock(&csid_dev->mutex);
 	CDBG("%s:%d id %d\n", __func__, __LINE__, csid_dev->pdev->id);
@@ -730,6 +801,13 @@ static long msm_csid_subdev_ioctl32(struct v4l2_subdev *sd,
 		if (csid_dev->csid_state != CSID_POWER_UP)
 			break;
 		csid_dev->csid_sof_debug = 1;
+
+		for (i = 0; i < 3; i ++) {
+			csid_pkg = csid_read_mipi_count(csid_dev);
+			 pr_info("%s: csid[%d] total mipi packet = %u\n",__func__,
+			 	csid_dev->pdev->id, csid_pkg);
+			 mdelay(50);  // delay 50ms
+		}
 		break;
 	   }
 	case VIDIOC_MSM_CSID_RELEASE:
@@ -1003,6 +1081,9 @@ static int csid_probe(struct platform_device *pdev)
 		pr_err("%s Error registering irq ", __func__);
 		goto csid_no_resource;
 	}
+	/*init work handler*/
+	/* optimize camera print mipi packet and frame count log*/
+	new_csid_dev->csid_read_mipi_pkg = csid_read_mipi_count;
 
 	if (of_device_is_compatible(new_csid_dev->pdev->dev.of_node,
 		"qcom,csid-v2.0")) {

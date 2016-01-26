@@ -42,6 +42,8 @@
 #include "msm_camera_io_util.h"
 #include <linux/debugfs.h>
 
+#include "msm_camera_dsm.h"
+
 #define MSM_CPP_DRV_NAME "msm_cpp"
 
 #define MSM_CPP_MAX_BUFF_QUEUE	16
@@ -1620,8 +1622,7 @@ static int msm_cpp_cfg_frame(struct cpp_device *cpp_dev,
 			&buff_mgr_info);
 		if (rc < 0) {
 			rc = -EAGAIN;
-			pr_debug("%s: error getting buffer rc:%d\n",
-				 __func__, rc);
+			CPP_DBG("error getting buffer rc:%d\n", rc);
 			goto frame_msg_err;
 		}
 		new_frame->output_buffer_info[0].index = buff_mgr_info.index;
@@ -1655,8 +1656,7 @@ static int msm_cpp_cfg_frame(struct cpp_device *cpp_dev,
 			&dup_buff_mgr_info);
 		if (rc < 0) {
 			rc = -EAGAIN;
-			pr_debug("%s: error getting buffer rc:%d\n",
-				__func__, rc);
+			CPP_DBG("error getting buffer rc:%d\n", rc);
 			goto phyaddr_err;
 		}
 		new_frame->output_buffer_info[1].index =
