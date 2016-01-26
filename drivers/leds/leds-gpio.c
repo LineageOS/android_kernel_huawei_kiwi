@@ -23,6 +23,25 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/err.h>
 
+int led_debug_mask = 1;
+module_param_named(led_debug, led_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
+#define LED_ERR(x...) do {\
+    if (led_debug_mask >=0) \
+        printk(KERN_ERR x);\
+    } while (0)
+#define LED_WARN(x...) do {\
+    if (led_debug_mask >=0) \
+        printk(KERN_ERR x);\
+    } while (0)
+#define LED_INFO(x...) do {\
+    if (led_debug_mask >=1) \
+        printk(KERN_ERR x);\
+    } while (0)
+#define LED_DEBUG(x...) do {\
+    if (led_debug_mask >=2) \
+        printk(KERN_ERR x);\
+    } while (0)
+
 struct gpio_led_data {
 	struct led_classdev cdev;
 	unsigned gpio;
@@ -76,8 +95,10 @@ static void gpio_led_set(struct led_classdev *led_cdev,
 			led_dat->platform_gpio_blink_set(led_dat->gpio, level,
 							 NULL, NULL);
 			led_dat->blinking = 0;
-		} else
+		} else{
+		        LED_INFO("%s:leds tricolor set %s (%d)\n",__func__,led_dat->cdev.name, level);
 			gpio_set_value(led_dat->gpio, level);
+		}
 	}
 }
 
@@ -102,7 +123,7 @@ static int create_gpio_led(const struct gpio_led *template,
 
 	/* skip leds that aren't available */
 	if (!gpio_is_valid(template->gpio)) {
-		dev_info(parent, "Skipping unavailable LED gpio %d (%s)\n",
+		LED_INFO("Skipping unavailable LED gpio %d (%s)\n",
 				template->gpio, template->name);
 		return 0;
 	}
@@ -245,8 +266,7 @@ static int gpio_led_probe(struct platform_device *pdev)
 
 	pinctrl = devm_pinctrl_get_select_default(&pdev->dev);
 	if (IS_ERR(pinctrl))
-		dev_warn(&pdev->dev,
-			"pins are not configured from the driver\n");
+		LED_WARN("pins are not configured from the driver\n");
 
 	if (pdata && pdata->num_leds) {
 		priv = devm_kzalloc(&pdev->dev,
@@ -307,3 +327,4 @@ MODULE_AUTHOR("Raphael Assenat <raph@8d.com>, Trent Piepho <tpiepho@freescale.co
 MODULE_DESCRIPTION("GPIO LED driver");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:leds-gpio");
+
