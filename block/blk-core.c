@@ -54,7 +54,10 @@ DEFINE_IDA(blk_queue_ida);
  */
 static struct kmem_cache *request_cachep;
 
+#ifdef CONFIG_HW_SYSTEM_WR_PROTECT
 static int dis_malloc_debuggable_static = 0;
+#endif
+
 /*
  * For queue allocation
  */
