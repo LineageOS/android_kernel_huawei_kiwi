@@ -25,6 +25,15 @@ config DEFAULT_MESSAGE_LOGLEVEL
 	  that are auditing their logs closely may want to set it to a lower
 	  priority.
 
+config DEBUG_HUAWEI_FLOW_LOGLEVEL
+	int "Default message log level (0-1)"
+	depends on PRINTK && HUAWEI_KERNEL
+	range 0 1
+	default "0"
+	help
+	 Select this option to allow print some extra 
+	 huawei debug log 
+
 config ENABLE_WARN_DEPRECATED
 	bool "Enable __deprecated logic"
 	default y
@@ -299,6 +308,15 @@ config DETECT_HUNG_TASK
 	  task will stay in uninterruptible state. If lockdep is
 	  enabled then all held locks will also be reported. This
 	  feature has negligible overhead.
+
+config HW_DETECT_HUNG_TASK
+	bool "Huawei Enhance DETECT_HUNG_TASK"
+	depends on DETECT_HUNG_TASK
+	default n
+	help
+	  Say Y here to enable the Huawei enhance hungtask,
+	  Enhanced by add function of Whitelist or Blacklist,
+	  that controls the processes be monitored by hungtask.
 
 config DEFAULT_HUNG_TASK_TIMEOUT
 	int "Default timeout for hung task detection (in seconds)"
