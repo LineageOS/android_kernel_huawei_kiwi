@@ -37,7 +37,8 @@ config OPROFILE_NMI_TIMER
 config KPROBES
 	bool "Kprobes"
 	depends on MODULES
-	depends on HAVE_KPROBES
+	depends on HAVE_KPROBES && HUAWEI_KERNEL_DEBUG
+	default y if HUAWEI_KERNEL_DEBUG
 	select KALLSYMS
 	help
 	  Kprobes allows you to trap at almost any kernel address and
@@ -159,7 +160,8 @@ config ARCH_USE_BUILTIN_BSWAP
 
 config KRETPROBES
 	def_bool y
-	depends on KPROBES && HAVE_KRETPROBES
+	depends on KPROBES && HAVE_KRETPROBES && HUAWEI_KERNEL_DEBUG
+	default y if HUAWEI_KERNEL_DEBUG
 
 config USER_RETURN_NOTIFIER
 	bool
@@ -173,9 +175,13 @@ config HAVE_IOREMAP_PROT
 
 config HAVE_KPROBES
 	bool
+	depends on HUAWEI_KERNEL_DEBUG
+	default y if HUAWEI_KERNEL_DEBUG
 
 config HAVE_KRETPROBES
 	bool
+	depends on HUAWEI_KERNEL_DEBUG
+	default y if HUAWEI_KERNEL_DEBUG
 
 config HAVE_OPTPROBES
 	bool
