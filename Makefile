@@ -352,7 +352,14 @@ LDFLAGS_MODULE  =
 CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
+#Define macro to control the compile
+ifeq ($(HIDE_PRODUCT_INFO),true)
+	CFLAGS_KERNEL += -DHIDE_PRODUCT_INFO_KERNEL
+endif
 
+ifeq ($(PRODUCTION_NAME),PRODUCTION_ALE)
+	CFLAGS_KERNEL += -DPRODUCTION_ALE_KERNEL
+endif
 
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE    := \
@@ -360,7 +367,8 @@ USERINCLUDE    := \
 		-Iarch/$(hdr-arch)/include/generated/uapi \
 		-I$(srctree)/include/uapi \
 		-Iinclude/generated/uapi \
-                -include $(srctree)/include/linux/kconfig.h
+		-Idrivers/hw_fac_info \
+		-include $(srctree)/include/linux/kconfig.h
 
 # Use LINUXINCLUDE when you must reference the include/ directory.
 # Needed to be compatible with the O= option
