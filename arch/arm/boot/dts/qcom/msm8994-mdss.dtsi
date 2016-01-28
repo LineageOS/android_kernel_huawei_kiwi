@@ -169,7 +169,7 @@
 			compatible = "qcom,mdss-fb";
 		};
 	};
-/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
+
 	mdss_dsi0: qcom,mdss_dsi@fd998000 {
 		compatible = "qcom,mdss-dsi-ctrl";
 		label = "MDSS DSI CTRL->0";
@@ -218,7 +218,6 @@
 
 		qcom,mmss-ulp-clamp-ctrl-offset = <0x14>;
 		qcom,mmss-phyreset-ctrl-offset = <0x108>;
-		qcom,dsi-clk-ln-recovery;
 
 		qcom,core-supply-entries {
 			#address-cells = <1>;
@@ -332,7 +331,6 @@
 
 		qcom,mmss-ulp-clamp-ctrl-offset = <0x14>;
 		qcom,mmss-phyreset-ctrl-offset = <0x108>;
-		qcom,dsi-clk-ln-recovery;
 
 		qcom,core-supply-entries {
 			#address-cells = <1>;

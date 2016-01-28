@@ -12,6 +12,7 @@
 
 #include "msm8939-qrd.dtsi"
 #include "dsi-panel-nt35596-1080p-skuk-video.dtsi"
+#include "msm8939-camera-sensor-qrd.dtsi"
 / {
 	model = "Qualcomm Technologies, Inc. MSM8939 QRD SKUK";
 	compatible = "qcom,msm8939-qrd-skuk", "qcom,msm8939-qrd", "qcom,msm8939", "qcom,qrd";
@@ -75,16 +76,16 @@
 		qcom,msm-mbhc-hphl-swh = <1>;
 		qcom,msm-mbhc-gnd-swh = <0>;
 		qcom,msm-micbias1-ext-cap;
-		qcom,msm-hs-micbias-type = "external";
+		qcom,msm-hs-micbias-type = "internal";
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
 			"SPK_RX_BIAS", "MCLK",
 			"INT_LDO_H", "MCLK",
 			"MIC BIAS External", "Handset Mic",
-			"MIC BIAS External2", "Headset Mic",
+			"MIC BIAS Internal2", "Headset Mic",
 			"MIC BIAS External", "Secondary Mic",
 			"AMIC1", "MIC BIAS External",
-			"AMIC2", "MIC BIAS External2",
+			"AMIC2", "MIC BIAS Internal2",
 			"AMIC3", "MIC BIAS External";
 		pinctrl-names = "cdc_lines_act",
 				"cdc_lines_sus";
@@ -121,36 +122,6 @@
 		asoc-codec = <&stub_codec>, <&pm8916_tombak_dig>;
 		asoc-codec-names = "msm-stub-codec.1", "tombak_codec";
 	};
-        /* add gpio config for tri-color-led */
-        gpio-leds {
-                compatible = "gpio-leds";
-                status = "okay";
-                pinctrl-names = "default";
-                pinctrl-0 = <&gpio_led_off>;
-
-                red {
-                        gpios = <&msm_gpio 8 0>;
-                        label = "red";
-                        linux,default-trigger = "none";
-                        default-state = "off";
-                        retain-state-suspended;
-                };
-
-                green {
-                        gpios = <&msm_gpio 9 0>;
-                        label = "green";
-                        linux,default-trigger = "none";
-                        default-state = "off";
-                        retain-state-suspended;
-                };
-
-                blue {
-                        gpios = <&msm_gpio 10 0>;
-                        label = "blue";
-                        linux,default-trigger = "none";
-                        default-state = "off";
-                };
-        };
 };
 
 
@@ -184,7 +155,7 @@
 	};
 
 	tps65132-en-pin {
-		qcom,pins = <&gp 97>, <&gp 32>;
+		qcom,pins = <&gp 97>, <&gp 98>;
 		qcom,num-grp-pins = <2>;
 		label = "tps65132_en_pins";
 		qcom,pin-func = <0>;
@@ -197,7 +168,42 @@
 };
 
 &i2c_0 { /* BLSP1 QUP2 */
-    /* removed lines */
+	avago@39 { /* Ambient light and proximity sensor */
+		compatible = "avago,apds9930";
+		reg = <0x39>;
+		pinctrl-names = "default","sleep";
+		pinctrl-0 = <&apds99xx_default>;
+		pinctrl-1 = <&apds99xx_sleep>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <113 0x2002>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		avago,irq-gpio = <&msm_gpio 113 0x2002>;
+		avago,ps-threshold = <600>;
+		avago,ps-hysteresis-threshold = <500>;
+		avago,ps-pulse = <8>;
+		avago,ps-pgain = <0>;
+		avago,als-B = <186>;
+		avago,als-C = <75>;
+		avago,als-D = <129>;
+		avago,ga-value = <560>;
+	};
+
+	bosch@18 { /* Accelerometer sensor */
+		compatible = "bosch,bma2x2";
+		reg = <0x18>;
+		pinctrl-names = "bma_default","bma_sleep";
+		pinctrl-0 = <&bma2x2_int1_default &bma2x2_int2_default>;
+		pinctrl-1 = <&bma2x2_int1_sleep &bma2x2_int2_sleep>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <112 0x2002>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		bosch,init-interval = <200>;
+		bosch,place = <2>;
+		bosch,gpio-int1 = <&msm_gpio 112 0x2002>;
+		bosch,gpio-int2 = <&msm_gpio 114 0x2002>;
+	};
 
 	memsic@30 { /* Magnetic field sensor */
 		compatible = "memsic,mmc3416x";
@@ -208,7 +214,20 @@
 		memsic,auto-report;
 	};
 
-	/* < remove here because gpio 115 used in another dtsi */
+	mpu6050@68 { /* Gyroscope and accelerometer sensor combo */
+		compatible = "invn,mpu6050";
+		reg = <0x68>;
+		pinctrl-names = "mpu_default","mpu_sleep";
+		pinctrl-0 = <&mpu6050_default>;
+		pinctrl-1 = <&mpu6050_sleep>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <115 0x2002>;
+		vdd-supply = <&pm8916_l17>;
+		vlogic-supply = <&pm8916_l16>;
+		vi2c-supply = <&pm8916_l6>;
+		invn,gpio-int = <&msm_gpio 115 0x2002>;
+		invn,place = "Portrait Down Back Side";
+	};
 
 	tps65132@3e {
 		compatible = "ti,tps65132";
@@ -221,8 +240,8 @@
 		regulators {
 			tps65132_pos: pos-boost {
 				regulator-name = "tps65132-pos";
-				regulator-min-microvolt = <5400000>;
-				regulator-max-microvolt = <5400000>;
+				regulator-min-microvolt = <5800000>;
+				regulator-max-microvolt = <5800000>;
 				ti,discharge-enable;
 				ti,enable-time = <800>;
 				ti,current-limit = <200000>;
@@ -231,43 +250,62 @@
 
 			tps65132_neg: neg-boost {
 				regulator-name = "tps65132-neg";
-				regulator-min-microvolt = <5400000>;
-				regulator-max-microvolt = <5400000>;
+				regulator-min-microvolt = <5800000>;
+				regulator-max-microvolt = <5800000>;
 				ti,discharge-enable;
 				ti,enable-time = <800>;
 				ti,current-limit = <40000>;
-				ti,en-gpio = <&msm_gpio 32 0>;
+				ti,en-gpio = <&msm_gpio 98 0>;
 			};
 		};
 	};
 };
 
+&sdc2_cd_on {
+	/delete-property/ bias-pull-up;
+	bias-pull-down;
+};
 
-/*remove usb otg for not use*/
+&sdc2_cd_off {
+	/delete-property/ bias-disable;
+	bias-pull-down;
+};
+
+&sdhc_2 {
+	qcom,nonhotplug;
+	interrupts = <0 1>;
+	interrupt-map = <0 &intc 0 125 0
+		1 &intc 0 221 0>;
+	interrupt-names = "hc_irq", "pwr_irq";
+	/delete-property/ cd-gpios;
+};
+
+&usb_otg {
+       qcom,hsusb-otg-mode = <3>;
+       qcom,usbid-gpio = <&msm_gpio 110 0>;
+       pinctrl-names = "default";
+       pinctrl-0 = <&usbid_default>;
+       vbus_otg-supply = <&smb1360_otg_supply>;
+};
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 };
+
 &pmx_mdss {
-	qcom,num-grp-pins = <1>;
-	qcom,pins = <&gp 25>;
-};
-&pmx_mdss_te {
-qcom,num-grp-pins = <1>;
-qcom,pins = <&gp 24>;
+	qcom,num-grp-pins = <2>;
+	qcom,pins = <&gp 1>, <&gp 25>;
 };
 
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_nt35596_1080p_skuk_video>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
-	pinctrl-0 = <&mdss_te_active>;
-	pinctrl-1 = <&mdss_te_suspend>;
+	pinctrl-0 = <&mdss_dsi_active>;
+	pinctrl-1 = <&mdss_dsi_suspend>;
 
 	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
-	qcom,platform-tp-vci-gpio = <&msm_gpio 112 0>;
-	qcom,platform-te-gpio = <&msm_gpio 24 0>;
-	/* remove to ATH config file */
-	vddio-incell-supply = <&pm8916_l16>;
+	qcom,platform-bklight-en-gpio = <&msm_gpio 1 0>;
+
 	vsp-supply = <&tps65132_pos>;
 	vsn-supply = <&tps65132_neg>;
 
@@ -280,30 +318,23 @@ qcom,pins = <&gp 24>;
 
 		qcom,panel-supply-entry@2 {
 			reg = <2>;
-			qcom,supply-name = "vddio-incell";
-			qcom,supply-min-voltage = <1800000>;
-			qcom,supply-max-voltage = <1800000>;
-			qcom,supply-enable-load = <100000>;
-			qcom,supply-disable-load = <0>;
-		};
-		qcom,panel-supply-entry@3 {
-			reg = <3>;
 			qcom,supply-name = "vsp";
-			qcom,supply-min-voltage = <5400000>;
-			qcom,supply-max-voltage = <5400000>;
+			qcom,supply-min-voltage = <5800000>;
+			qcom,supply-max-voltage = <5800000>;
 			qcom,supply-enable-load = <200>;
 			qcom,supply-disable-load = <0>;
 		};
 
-		qcom,panel-supply-entry@4 {
-			reg = <4>;
+		qcom,panel-supply-entry@3 {
+			reg = <3>;
 			qcom,supply-name = "vsn";
-			qcom,supply-min-voltage = <5400000>;
-			qcom,supply-max-voltage = <5400000>;
+			qcom,supply-min-voltage = <5800000>;
+			qcom,supply-max-voltage = <5800000>;
 			qcom,supply-enable-load = <40>;
 			qcom,supply-disable-load = <0>;
 		};
 	};
+
 };
 
 &dsi_nt35596_1080p_skuk_video {

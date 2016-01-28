@@ -23,64 +23,6 @@
 };
 
 &soc {
-	/*delete i2c configuration of maxim charger module from here*/
-
-	sound {
-		compatible = "qcom,msm8x16-audio-codec";
-		qcom,model = "msm8939-snd-card-skuk";
-		qcom,msm-snd-card-id = <0>;
-		qcom,msm-codec-type = "internal";
-		qcom,msm-ext-pa = "primary";
-		qcom,msm-mbhc-hphl-swh = <1>;
-		qcom,msm-mbhc-gnd-swh = <0>;
-		qcom,msm-micbias1-ext-cap;
-		qcom,msm-hs-micbias-type = "external";
-		qcom,audio-routing =
-			"RX_BIAS", "MCLK",
-			"SPK_RX_BIAS", "MCLK",
-			"INT_LDO_H", "MCLK",
-			"MIC BIAS External", "Handset Mic",
-			"MIC BIAS External2", "Headset Mic",
-			"MIC BIAS External", "Secondary Mic",
-			"AMIC1", "MIC BIAS External",
-			"AMIC2", "MIC BIAS External2",
-			"AMIC3", "MIC BIAS External";
-		pinctrl-names = "cdc_lines_act",
-				"cdc_lines_sus";
-		pinctrl-0 = <&cdc_pdm_lines_act>;
-		pinctrl-1 = <&cdc_pdm_lines_sus>;
-		asoc-platform = <&pcm0>, <&pcm1>, <&voip>, <&voice>,
-				<&loopback>, <&compress>, <&hostless>,
-				<&afe>, <&lsm>, <&routing>, <&lpa>;
-		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1",
-				"msm-voip-dsp", "msm-pcm-voice", "msm-pcm-loopback",
-				"msm-compress-dsp", "msm-pcm-hostless", "msm-pcm-afe",
-				"msm-lsm-client", "msm-pcm-routing", "msm-pcm-lpa";
-		asoc-cpu = <&dai_hdmi>, <&dai_mi2s0>, <&dai_mi2s1>,
-				<&dai_mi2s2>, <&dai_mi2s3>, <&sb_0_rx>, <&sb_0_tx>,
-				<&sb_1_rx>, <&sb_1_tx>, <&sb_3_rx>, <&sb_3_tx>,
-				<&sb_4_rx>, <&sb_4_tx>, <&sb_5_tx>, <&bt_sco_rx>,
-				<&bt_sco_tx>, <&int_fm_rx>, <&int_fm_tx>, <&afe_pcm_rx>,
-				<&afe_pcm_tx>, <&afe_proxy_rx>, <&afe_proxy_tx>,
-				<&incall_record_rx>, <&incall_record_tx>, <&incall_music_rx>,
-				<&incall_music_2_rx>;
-		asoc-cpu-names = "msm-dai-q6-hdmi.8", "msm-dai-q6-mi2s.0",
-				"msm-dai-q6-mi2s.1", "msm-dai-q6-mi2s.2",
-				"msm-dai-q6-mi2s.3", "msm-dai-q6-dev.16384",
-				"msm-dai-q6-dev.16385", "msm-dai-q6-dev.16386",
-				"msm-dai-q6-dev.16387", "msm-dai-q6-dev.16390",
-				"msm-dai-q6-dev.16391", "msm-dai-q6-dev.16392",
-				"msm-dai-q6-dev.16393", "msm-dai-q6-dev.16395",
-				"msm-dai-q6-dev.12288", "msm-dai-q6-dev.12289",
-				"msm-dai-q6-dev.12292", "msm-dai-q6-dev.12293",
-				"msm-dai-q6-dev.224", "msm-dai-q6-dev.225",
-				"msm-dai-q6-dev.241", "msm-dai-q6-dev.240",
-				"msm-dai-q6-dev.32771", "msm-dai-q6-dev.32772",
-				"msm-dai-q6-dev.32773", "msm-dai-q6-dev.32770";
-		asoc-codec = <&stub_codec>, <&pm8916_tombak_dig>;
-		asoc-codec-names = "msm-stub-codec.1", "tombak_codec";
-	};
-
 	i2c@78ba000 { /* BLSP1 QUP6 */
 		nfc-nci@e {
 			compatible = "qcom,nfc-nci";
@@ -110,7 +52,7 @@
 			qcom,vib-vtg-level-mV = <3100>;
 		};
 	};
-	/*
+
 	qcom,pm8916@0 {
 		qcom,leds@a100 {
 			status = "okay";
@@ -128,7 +70,6 @@
 			};
 		};
 	};
-	*/
 };
 
 /* CoreSight */
@@ -176,8 +117,7 @@
 
 &sdhc_1 {
 	vdd-supply = <&pm8916_l8>;
-	qcom,vdd-always-on;
-	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-voltage-level = <2900000 2900000>;
 	qcom,vdd-current-level = <200 400000>;
 
 	vdd-io-supply = <&pm8916_l5>;
@@ -197,12 +137,10 @@
 
 &sdhc_2 {
 	vdd-supply = <&pm8916_l11>;
-	qcom,vdd-always-on;
 	qcom,vdd-voltage-level = <2800000 2950000>;
 	qcom,vdd-current-level = <15000 400000>;
 
 	vdd-io-supply = <&pm8916_l12>;
-	qcom,vdd-io-always-on;
 	qcom,vdd-io-voltage-level = <1800000 2950000>;
 	qcom,vdd-io-current-level = <200 50000>;
 
@@ -215,7 +153,11 @@
 	interrupts = <0 1 2>;
 	#interrupt-cells = <1>;
 	interrupt-map-mask = <0xffffffff>;
+	interrupt-map = <0 &intc 0 125 0
+			1 &intc 0 221 0
+			2 &msm_gpio 38 0>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
+	cd-gpios = <&msm_gpio 38 0x0>;
 
 	status = "ok";
 };
@@ -245,7 +187,7 @@
 };
 
 &apc_vreg_corner {
-	/*move this to msm8939-regulator.dtsi*/
+	vdd-apc-supply = <&fan53555>;
 	qcom,cpr-step-quotient = <26>;
 	qcom,cpr-apc-volt-step = <12500>;
 	qcom,cpr-up-threshold = <2>;

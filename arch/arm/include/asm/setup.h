@@ -15,13 +15,8 @@
 #define __ASMARM_SETUP_H
 
 #include <uapi/asm/setup.h>
-#ifdef CONFIG_HUAWEI_KERNEL
-/* runmode : factory , normal */
-//#define ATAG_RUNMODE_FLAG  0x54410102
 
-extern bool is_runmode_factory(void);
 
-#endif
 #define __tag __used __attribute__((__section__(".taglist.init")))
 #define __tagtable(tag, fn) \
 static const struct tagtable __tagtable_##fn __tag = { tag, fn }

@@ -250,20 +250,6 @@
 			<  6079 /*  398.4 MHz */ >;
 	};
 
-	mincpubw: qcom,mincpubw {
-		compatible = "qcom,devbw";
-		governor = "powersave";
-		qcom,src-dst-ports = <1 512>;
-		qcom,active-only;
-		qcom,bw-tbl =
-			<  1525 /*  100   MHz */ >,
-			<  2636 /*  172.8 MHz */ >,
-			<  3955 /*  259.2 MHz */ >,
-			<  5346 /*  350.4 MHz */ >,
-			<  5712 /*  374.4 MHz */ >,
-			<  6079 /*  398.4 MHz */ >;
-	};
-
 	devfreq-cpufreq {
 		cpubw-cpufreq {
 		target-dev = <&cpubw>;
@@ -277,16 +263,6 @@
 			<  499200  2636 >,
 			<  800000  5346 >,
 			< 1209600  6079 >;
-		};
-
-		mincpubw-cpufreq {
-		target-dev = <&mincpubw>;
-		cpu-to-dev-map-0 =
-			< 1113600 2636 >,
-			< 1651200 5346 >;
-		cpu-to-dev-map-4 =
-			< 998400 2636 >,
-			< 1209600 5346 >;
 		};
 
 		cci-cpufreq {
@@ -480,11 +456,8 @@
 
 		qcom,cpr-fuse-corners = <3>;
 		qcom,cpr-voltage-ceiling = <1050000 1150000 1350000>;
-		qcom,cpr-voltage-floor = <1050000 1150000 1100000>;
-                /* we support ncp(0x1c , 0x18) & fan */
+		qcom,cpr-voltage-floor = <1050000 1050000 1100000>;
 		vdd-apc-supply = <&ncp6335d>;
-		vdd-apc-optional-prim-supply = <&fan53555>;
-		vdd-apc-optional-sec-supply = <&ncp6335d_a18>;
 
 		qcom,vdd-mx-corner-map = <4 5 7>;
 		qcom,vdd-mx-vmin-method = <4>;
@@ -592,18 +565,12 @@
 			<0 0 0 0 0 0 0 0 0 0 0 0 0 (20000) 0 0 0 0 0 0 0 (20000) 0 0 0 0 0 0>,
 			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
 		qcom,cpr-voltage-floor-override =
-			<0xffffffff 0xffffffff 1050000 1050000 1050000 1150000
-			1150000 1150000 1150000 1150000 1150000 1150000 1150000
-			1150000 1150000 1150000 1100000 1100000 1100000 1100000
+			<0xffffffff 0xffffffff 1050000 1050000 1050000 1050000
+			1050000 1050000 1050000 1050000 1050000 1050000 1050000
+			1050000 1050000 1100000 1100000 1100000 1100000 1100000
 			1100000 1100000 1100000 1100000 1100000 1100000 1100000
 			1100000 1100000 1100000>;
 		qcom,cpr-enable;
-	};
-	qcom,csiphy@1b0ac00 {
-	    qcom,revision-v3;
-	};
-	qcom,csiphy@1b0b000 {
-	    qcom,revision-v3;
 	};
 };
 
@@ -617,5 +584,24 @@
 	qcom,no-cpu-affinity;
 };
 
+&clock_gcc {
+	compatible = "qcom,gcc-8936-v3";
+};
 
+&gdsc_oxili_gx {
+	clock-names = "core_root_clk", "gmem_clk";
+	clocks = <&clock_gcc clk_gfx3d_clk_src>,
+	         <&clock_gcc  clk_gcc_oxili_gmem_gate_clk>;
+	qcom,enable-root-clk;
+	status = "okay";
+};
 
+&mdss_dsi0 {
+	qcom,platform-regulator-settings = [03 08 07 00 20 07 01];
+	/delete-property/ qcom,regulator-ldo-mode;
+};
+
+&mdss_dsi1 {
+	qcom,platform-regulator-settings = [03 08 07 00 20 07 01];
+	/delete-property/ qcom,regulator-ldo-mode;
+};

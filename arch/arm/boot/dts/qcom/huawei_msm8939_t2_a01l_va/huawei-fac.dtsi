@@ -1,9 +1,0 @@
- / {
-        huawei_fac_info {
-                  compatible = "huawei,hw_fac_info";
-                  fac,product_name = "HUAWEI FDR-A01L";
-                  fac,hardware_ver = "SH1FDRA01LM";
-                  fac,software_ver = "MSM8939_FDR_A01L_VA";
-                  status = "ok";
-        };
-};
