@@ -182,7 +182,9 @@ else
 	# annotated or signed tagged state (as git describe only
 	# looks at signed or annotated tags - git tag -a/-s) and
 	# LOCALVERSION= is not specified
+	if test "${LOCALVERSION+set}" != "set"; then
 		res="$res"
+	fi
 fi
 
 echo "$res"
