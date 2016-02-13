@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI KIW-TL00H";
+                  fac,hardware_ver = "HL2KIWMAC";
+                  fac,software_ver = "MSM8939_KIW_TL00H_VD";
+                  status = "ok";
+        };
+};

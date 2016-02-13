@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI ALE_L04";
+                  fac,hardware_ver = "HL6ALICEM";
+                  fac,software_ver = "MSM8939_ALE_L04_VB";
+                  status = "ok";
+        };
+};

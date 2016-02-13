@@ -1,0 +1,19 @@
+&i2c_6 { /* BLSP1 QUP6 */
+	status = "disabled";
+	};
+&spi_6 {
+	status = "ok";
+	fpc1020-spi@0 {
+		compatible = "fpc,fpc1020";
+		reg = <0>;
+		interrupt-parent = <&msm_gpio>;
+		spi-max-frequency = <5000000>;
+		fpc1020,irq_gpio = <&msm_gpio 120 0>;
+		fpc1020,reset_gpio = <&msm_gpio 119 0>;
+		fpc1020,moduleid_gpio = <&msm_gpio 117 0>;
+		vdd-supply = <&pm8916_l6>;
+		fpc1020,vdd = "vdd";
+		interrupts = <120 0>;
+		status = "ok";
+		};
+	};

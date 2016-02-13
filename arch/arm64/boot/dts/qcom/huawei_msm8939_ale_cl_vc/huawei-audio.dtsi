@@ -1,0 +1,28 @@
+/ {
+    huawei_audio_info {
+        compatible = "huawei,hw_audio_info";
+        product-identifier = "Alice";
+        speaker-pa = "tfa9895";
+        pa-i2c = "i2c_0";
+        builtin-master-mic-exist;
+        builtin-2nd-mic-exist;
+        hand_held_master_mic_strategy;
+        status = "ok";
+        loud_speaker_second_mic_strategy;
+        product-btsco-nrec-adapt;
+    };
+};
+&soc {
+    sound {
+        qcom,msm-micbias1-ext-cap;
+        qcom,msm-ext-pa = "quaternary";
+        pinctrl-names = "cdc_lines_act",
+            "cdc_lines_sus",
+            "cdc_lines_quat_ext_act",
+            "cdc_lines_quat_ext_sus";
+        pinctrl-0 = <&cdc_pdm_lines_act>;
+        pinctrl-1 = <&cdc_pdm_lines_sus>;
+        pinctrl-2 = <&cdc_pdm_lines_act &ext_cdc_tlmm_lines_act>;
+        pinctrl-3 = <&cdc_pdm_lines_sus &ext_cdc_tlmm_lines_sus>;
+    };
+};

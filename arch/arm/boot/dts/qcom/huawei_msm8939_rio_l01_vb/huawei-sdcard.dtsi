@@ -1,0 +1,32 @@
+&soc {
+        huawei,huawei-gpio-info {
+                compatible = "huawei-gpio-info";
+                huawei,voltage-active-high;
+        };
+     };
+
+&sdhc_2 {
+	interrupt-map = <0 &intc 0 125 0
+		1 &intc 0 221 0
+		2 &msm_gpio 109 0>;
+	cd-gpios = <&msm_gpio 109 0x0>;
+	/delete-property/ qcom,vdd-always-on;
+	/delete-property/ qcom,vdd-io-always-on;
+	huawei,support-uhs;
+};
+&tlmm_pinmux {
+	sdhc2_cd_pin {
+		qcom,pins = <&gp 109>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "cd-gpio";
+		sdc2_cd_on: cd_on {
+			drive-strength = <2>;
+			bias-disable;       /* NO PULL */
+		};
+		sdc2_cd_off: cd_off {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+};

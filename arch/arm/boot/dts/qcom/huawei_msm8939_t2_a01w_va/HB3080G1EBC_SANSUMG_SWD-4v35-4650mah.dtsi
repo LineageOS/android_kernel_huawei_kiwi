@@ -1,0 +1,134 @@
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,sansumg-4v35-4650mAh-swd-data {
+	qcom,fcc-mah = <4650>;
+	qcom,default-rbatt-mohm = <117>;
+	qcom,rbatt-capacitive-mohm = <50>;
+	qcom,flat-ocv-threshold-uv = <3800000>;
+	qcom,max-voltage-uv = <4350000>;
+	qcom,v-cutoff-uv = <3400000>;
+	qcom,chg-term-ua = <150000>;
+	qcom,batt-id-kohm = <200>;
+	qcom,battery-type = "HB3080G1EBC_SANSUMG_SWD";
+
+	qcom,warm-bat-decidegc = <420>;
+	qcom,warm-bat-mv = <4100>;
+	qcom,ibatmax-warm-ma = <700>;
+
+	qcom,cool-bat-decidegc = <100>;
+	qcom,cool-bat-mv = <4350>;
+	qcom,ibatmax-cool-ma = <600>;
+
+	qcom,hot-bat-decidegc = <520>;
+	qcom,cold-bat-decidegc = <0>;
+	qcom,ibat-acc-lut {
+	    qcom,lut-col-legend = <(-20) 0 25>;
+		qcom,lut-row-legend = <0 250 500 1000>;
+		qcom,lut-data = <4724 4744 4746>,
+		                <2108 4696 4734>,
+						<1288 4506 4717>,
+						<112 3728 4675>;
+	};
+	qcom,rbatt-sf-lut {
+		qcom,lut-col-legend = <(-20) 0 25 40 60>;
+		qcom,lut-row-legend =
+		        <100 95 90 85 80>,
+				<75 70 65 60 55>,
+				<50 45 40 35 30>,
+				<25 20 16 13 11>,
+				<10 9 8 7 6>,
+				<5 4 3 2 1>,
+				<0>;
+		qcom,lut-data =
+                                <1667 285 99 86 83>,
+                                <1662 285 99 86 83>,
+                                <1524 287 100 86 84>,
+                                <1438 291 102 87 84>,
+                                <1267 295 104 88 85>,
+                                <1221 306 109 91 87>,
+                                <1181 268 111 92 87>,
+                                <1173 262 120 97 91>,
+                                <1203 256 119 98 92>,
+                                <1252 248 102 89 86>,
+                                <1308 246 100 87 85>,
+                                <1362 245 101 87 85>,
+                                <1415 248 101 88 86>,
+                                <1465 259 103 89 87>,
+                                <1524 279 101 88 86>,
+                                <1590 299 100 86 85>,
+                                <1662 315 100 86 85>,
+                                <1724 332 102 86 85>,
+                                <1674 343 101 85 85>,
+                                <1747 363 102 86 85>,
+                                <1785 375 102 87 85>,
+                                <1832 392 103 88 85>,
+                                <1877 412 104 87 86>,
+                                <1926 431 107 89 87>,
+                                <1976 451 109 90 87>,
+                                <2113 465 109 88 85>,
+                                <2404 486 108 89 85>,
+                                <2870 516 110 91 86>,
+                                <3747 569 115 92 89>,
+                                <7494 1138 229 104 178>,
+                                <14988 2277 458 209 356>;
+	};
+
+	qcom,fcc-temp-lut {
+		qcom,lut-col-legend = <(-20) 0 25 40 60>;
+		qcom,lut-data = <4821 4840 4844 4836 4806>;
+	};
+
+	qcom,pc-temp-ocv-lut {
+		qcom,lut-col-legend = <(-20) 0 25 40 60>;
+		qcom,lut-row-legend =
+	    <100 95 90 85 80>,
+				<75 70 65 60 55>,
+				<50 45 40 35 30>,
+				<25 20 16 13 11>,
+				<10 9 8 7 6>,
+				<5 4 3 2 1>,
+				<0>;
+		qcom,lut-data =
+                                <4326 4326 4322 4316 4309>,
+                                <4198 4248 4255 4252 4248>,
+                                <4121 4191 4199 4196 4192>,
+                                <4070 4139 4146 4142 4138>,
+                                <3970 4089 4094 4091 4087>,
+                                <3922 4040 4048 4043 4040>,
+                                <3874 3965 3992 3997 3996>,
+                                <3840 3924 3958 3959 3956>,
+                                <3822 3890 3914 3916 3914>,
+                                <3809 3856 3868 3868 3867>,
+                                <3795 3828 3838 3839 3838>,
+                                <3781 3806 3816 3817 3816>,
+                                <3767 3788 3798 3799 3797>,
+                                <3753 3776 3783 3783 3782>,
+                                <3738 3764 3770 3766 3761>,
+                                <3720 3748 3755 3748 3736>,
+                                <3700 3726 3738 3730 3716>,
+                                <3679 3708 3715 3708 3694>,
+                                <3660 3699 3693 3685 3672>,
+                                <3641 3694 3688 3681 3670>,
+				<3630 3691 3687 3680 3669>,
+				<3617 3688 3685 3679 3668>,
+				<3602 3684 3684 3678 3667>,
+				<3586 3676 3682 3675 3664>,
+				<3566 3662 3676 3669 3657>,
+				<3540 3638 3656 3646 3629>,
+				<3508 3602 3613 3600 3582>,
+				<3463 3548 3548 3539 3520>,
+				<3396 3462 3458 3453 3431>,
+				<3279 3312 3310 3315 3283>,
+				<3019 3010 3024 3000 3000>;
+	};
+};
