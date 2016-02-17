@@ -207,6 +207,12 @@ config ARCH_MSM8916
 	  This enables support for the MSM8916 chipset. If you dont
 	  know what do here, say N
 
+config ARCH_MSM8916_KIWI
+	bool "Honor 5X MSM8916 Variant"
+	depends on ARCH_MSM8916
+	help
+	  Enable support for the Honor 5X
+
 config ARCH_MSM8994
 	bool "Enable Support for Qualcomm MSM8994"
 	depends on ARCH_MSM
