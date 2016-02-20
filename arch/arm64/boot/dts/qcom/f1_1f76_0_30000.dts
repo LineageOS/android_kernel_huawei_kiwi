@@ -160,7 +160,7 @@
 		};
 	};
 
-	soc {
+	soc: soc {
 		#address-cells = <0x1>;
 		#size-cells = <0x1>;
 		ranges = <0x0 0x0 0x0 0xffffffff>;
@@ -10214,3 +10214,5 @@
 		status = "ok";
 	};
 };
+
+#include "cyanogenmod-huawei-common.dtsi"
