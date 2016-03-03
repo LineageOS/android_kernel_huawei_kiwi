@@ -1420,12 +1420,18 @@ CONFIG_HUAWEI_WIFI=y
 # CONFIG_MWIFIEX is not set
 
 #
-# Enable WiMAX (Networking options) to see the WiMAX drivers
+# Qualcomm Atheros Prima WLAN module
 #
-# CONFIG_WAN is not set
-# CONFIG_DANIPC is not set
-# CONFIG_VMXNET3 is not set
-# CONFIG_ISDN is not set
+# CONFIG_PRIMA_WLAN is not set
+CONFIG_PRONTO_WLAN=m
+# CONFIG_PRIMA_WLAN_BTAMP is not set
+CONFIG_PRIMA_WLAN_LFR=y
+CONFIG_PRIMA_WLAN_OKC=y
+CONFIG_PRIMA_WLAN_11AC_HIGH_TP=y
+CONFIG_QCOM_TDLS=y
+CONFIG_WLAN_FEATURE_11W=y
+CONFIG_QCOM_VOWIFI_11R=y
+CONFIG_ENABLE_LINUX_REG=y
 
 #
 # Input device support
