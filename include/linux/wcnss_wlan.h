@@ -67,9 +67,6 @@ do{                                     \
 #define DSM_WIFI_BUF_SIZE           (1024)   /*Byte*/
 #define DSM_WIFI_MOD_NAME           "dsm_wifi"
 
-int wifi_dsm_register(void);
-int wifi_dsm_report_num(int dsm_err_no, char *err_msg, int err_code);
-int wifi_dsm_report_info(int error_no, void *log, int size);
 #endif
 
 enum wcnss_opcode {

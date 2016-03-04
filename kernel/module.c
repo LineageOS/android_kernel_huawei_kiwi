@@ -1202,12 +1202,6 @@ static int check_version(Elf_Shdr *sechdrs,
 bad_version:
 	printk("%s: disagrees about version of symbol %s\n",
 	       mod->name, symname);
-#ifdef CONFIG_HUAWEI_DSM
-	if(NULL != strstr(mod->name,"wlan"))
-	{
-	    wifi_dsm_report_num(DSM_WIFI_ROOT_NOT_RIGHT_ERR,"root is not right",0);
-	}
-#endif
 	return 0;
 }
 
