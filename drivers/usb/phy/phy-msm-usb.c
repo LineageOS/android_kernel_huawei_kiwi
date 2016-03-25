@@ -1762,28 +1762,13 @@ static void msm_otg_notify_host_mode(struct msm_otg *motg, bool host_mode)
 static int msm_otg_notify_chg_type(struct msm_otg *motg)
 {
 	static int charger_type;
-#ifdef CONFIG_HUAWEI_KERNEL
-	static int chg_type = -1;
-#endif
 
 	/*
 	 * TODO
 	 * Unify OTG driver charger types and power supply charger types
 	 */
-	/* should use the same type to compare */
-#ifdef CONFIG_HUAWEI_KERNEL
-	if (chg_type == motg->chg_type)
-	{
-		return 0;
-	}
-	else
-	{
-		chg_type = motg->chg_type;
-	}
-#else
 	if (charger_type == motg->chg_type)
 		return 0;
-#endif
 
 	if (motg->chg_type == USB_SDP_CHARGER)
 		charger_type = POWER_SUPPLY_TYPE_USB;
@@ -5584,7 +5569,7 @@ static int msm_otg_probe(struct platform_device *pdev)
 	}
 
 	motg->usb_psy.name = "usb";
-	motg->usb_psy.type = POWER_SUPPLY_TYPE_UNKNOWN;
+	motg->usb_psy.type = POWER_SUPPLY_TYPE_USB;
 	motg->usb_psy.supplied_to = otg_pm_power_supplied_to;
 	motg->usb_psy.num_supplicants = ARRAY_SIZE(otg_pm_power_supplied_to);
 	motg->usb_psy.properties = otg_pm_power_props_usb;
