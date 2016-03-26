@@ -659,7 +659,7 @@ static void rmnet_map_complement_ipv6_txporthdr_csum_field(void *ip6hdr)
  *   - RMNET_MAP_CHECKSUM_SW: Unsupported packet for UL checksum offload.
  */
 int rmnet_map_checksum_uplink_packet(struct sk_buff *skb,
-	struct net_device *orig_dev, uint32_t egres_data_format)
+	struct net_device *orig_dev, uint32_t egress_data_format)
 {
 	unsigned char ip_version;
 	struct rmnet_map_ul_checksum_header_s *ul_header;
