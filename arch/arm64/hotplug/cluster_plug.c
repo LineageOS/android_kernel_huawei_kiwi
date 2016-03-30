@@ -35,7 +35,7 @@
 #undef DEBUG_CLUSTER_PLUG
 
 #define CLUSTER_PLUG_MAJOR_VERSION	1
-#define CLUSTER_PLUG_MINOR_VERSION	0
+#define CLUSTER_PLUG_MINOR_VERSION	1
 
 #define DEF_HYSTERESIS			(10)
 #define DEF_LOAD_THRESH			(70)
@@ -60,6 +60,8 @@ module_param(sampling_time, uint, 0664);
 static unsigned int cur_hysteresis = DEF_HYSTERESIS;
 
 static bool suspended = false;
+
+static u16 offlined_cpus = 0;
 
 struct cp_cpu_info {
 	u64 prev_cpu_wall;
@@ -103,6 +105,17 @@ static unsigned int calculate_loaded_cpus(void)
 	return loaded_cpus;
 }
 
+bool was_offlined(unsigned int cpu)
+{
+	bool ret = (offlined_cpus & (1<<cpu)) > 0;
+
+#ifdef DEBUG_CLUSTER_PLUG
+	if (ret) pr_info("CPU %d was offline\n", cpu);
+#endif
+
+	return ret;
+}
+
 static void __ref plug_clusters(bool enable_little)
 {
 	unsigned int cpu;
@@ -119,6 +132,7 @@ static void __ref plug_clusters(bool enable_little)
 			if (cpu_online(cpu)) continue;
 			if (powerhal_override && cpu < 4) continue;
 			ret = cpu_up(cpu);
+			offlined_cpus &= ~(1<<cpu);
 
 			/* PowerHAL may force big cores offline */
 			if (ret == -EPERM && cpu < 4) {
@@ -127,13 +141,15 @@ static void __ref plug_clusters(bool enable_little)
 			}
 		} else {
 			cpu_down(cpu);
+			offlined_cpus |= (1<<cpu);
 		}
 	}
 }
 
 static void __ref cluster_plug_work_fn(struct work_struct *work)
 {
-	unsigned int loaded_cpus, online_cpus;
+	unsigned int loaded_cpus, online_cpus, cpu;
+	bool early_return = false;
 
 	if (cluster_plug_active) {
 		online_cpus = num_online_cpus();
@@ -142,7 +158,12 @@ static void __ref cluster_plug_work_fn(struct work_struct *work)
 		pr_info("loaded_cpus: %u\n", loaded_cpus);
 #endif
 
-		if (!suspended) {
+		for_each_present_cpu(cpu) {
+			early_return = 	(cpu_online(cpu) && !was_offlined(cpu)) ||
+				(!cpu_online(cpu) && was_offlined(cpu);
+		}
+
+		if (!suspended && !early_return) {
 			if (loaded_cpus >= 3) {
 				cur_hysteresis = hysteresis;
 				if (online_cpus <= 4)
@@ -178,8 +199,10 @@ static void __ref cluster_plug_suspend(struct early_suspend *handler)
 
 		// put rest of the cores to sleep unconditionally!
 		for_each_online_cpu(cpu) {
-			if (cpu != 0)
+			if (cpu != 0) {
 				cpu_down(cpu);
+				offlined_cpus |= (1<<cpu);
+			}
 		}
 	}
 }
@@ -202,7 +225,10 @@ static void __ref cluster_plug_resume(struct early_suspend *handler)
 		for_each_possible_cpu(cpu) {
 			if (cpu == 0)
 				continue;
-			cpu_up(cpu);
+			if (was_offlined(cpu)) {
+				cpu_up(cpu);
+				offlined_cpus &= ~(1<<cpu);
+			}
 		}
 	}
 	queue_delayed_work_on(0, clusterplug_wq, &cluster_plug_work,
@@ -255,3 +281,4 @@ MODULE_DESCRIPTION("'cluster_plug' - A cluster based hotplug for homogeneous"
 MODULE_LICENSE("GPL");
 
 late_initcall(cluster_plug_init);
+
