@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7faddb67_f9c6df16",
+        "filename": "arch/arm64/hotplug/cluster_plug.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 6351
+      },
+      "writtenOn": "2016-03-30T23:24:55Z",
+      "side": 1,
+      "message": "This needs ( .. \u0026\u0026 ..) || (.. \u0026\u0026 ..) parenthesis added.\n\nThe indenting is also wonky.",
+      "revId": "e912286f74059804bf677f9bab5595d51be99d54",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
