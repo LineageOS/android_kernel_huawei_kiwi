@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7faddb67_fb0ec9e3",
+        "filename": "arch/arm64/hotplug/cluster_plug.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 13881
+      },
+      "writtenOn": "2016-04-05T02:40:10Z",
+      "side": 1,
+      "message": "You should be able to get rid of this variable. It was used with the powersuspend hook stuff what we both dropped.",
+      "range": {
+        "startLine": 54,
+        "startChar": 12,
+        "endLine": 54,
+        "endChar": 21
+      },
+      "revId": "1adb16659e20c27f930605d9877e4de2882b715f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
