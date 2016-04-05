@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7faddb67_6c4a1d56",
+        "filename": "arch/arm64/hotplug/cluster_plug.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 13881
+      },
+      "writtenOn": "2016-04-05T20:41:09Z",
+      "side": 1,
+      "message": "This function needs to be declared __ref, else it fails to build on 32 bit ARM. Functions that call cpu_up need to go in a cpuinit section.",
+      "range": {
+        "startLine": 136,
+        "startChar": 12,
+        "endLine": 136,
+        "endChar": 30
+      },
+      "revId": "5f63eb1faa5b5cc97db67faa2c832c154ac70a98",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7faddb67_8c47594c",
+        "filename": "arch/arm64/hotplug/cluster_plug.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 13881
+      },
+      "writtenOn": "2016-04-05T20:41:09Z",
+      "side": 1,
+      "message": "This will also need to be made __ref",
+      "range": {
+        "startLine": 176,
+        "startChar": 11,
+        "endLine": 176,
+        "endChar": 12
+      },
+      "revId": "5f63eb1faa5b5cc97db67faa2c832c154ac70a98",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7faddb67_cc0f912c",
+        "filename": "arch/arm64/hotplug/cluster_plug.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 13881
+      },
+      "writtenOn": "2016-04-05T20:41:09Z",
+      "side": 1,
+      "message": "For consistency, it would be nice to have this a one line declaration like the others",
+      "range": {
+        "startLine": 216,
+        "startChar": 0,
+        "endLine": 216,
+        "endChar": 11
+      },
+      "revId": "5f63eb1faa5b5cc97db67faa2c832c154ac70a98",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
