@@ -135,21 +135,30 @@ static int qpnp_vib_write_u8(struct qpnp_vib *vib, u8 *data, u16 reg)
 	return rc;
 }
 
-static int qpnp_vibrator_config(struct qpnp_vib *vib)
+static int configure_vtg_ctl_register(struct qpnp_vib *vib)
 {
 	u8 reg = 0;
 	int rc;
 
-	/* Configure the VTG CTL regiser */
 	rc = qpnp_vib_read_u8(vib, &reg, QPNP_VIB_VTG_CTL(vib->base));
 	if (rc < 0)
 		return rc;
 	reg &= ~QPNP_VIB_VTG_SET_MASK;
 	reg |= (vib->vtg_level & QPNP_VIB_VTG_SET_MASK);
 	rc = qpnp_vib_write_u8(vib, &reg, QPNP_VIB_VTG_CTL(vib->base));
+	if (!rc)
+		vib->reg_vtg_ctl = reg;
+	return rc;
+}
+
+static int qpnp_vibrator_config(struct qpnp_vib *vib)
+{
+	u8 reg = 0;
+	int rc;
+
+	rc = configure_vtg_ctl_register(vib);
 	if (rc)
 		return rc;
-	vib->reg_vtg_ctl = reg;
 
 	/* Configure the VIB ENABLE regiser */
 	rc = qpnp_vib_read_u8(vib, &reg, QPNP_VIB_EN_CTL(vib->base));
@@ -410,7 +419,6 @@ static ssize_t qpnp_vib_level_store(struct device *dev,
 					 timed_dev);
 	int val;
 	int rc;
-	u8 reg = 0;
 
 	rc = kstrtoint(buf, 10, &val);
 	if (rc) {
@@ -428,16 +436,9 @@ static ssize_t qpnp_vib_level_store(struct device *dev,
 
 	vib->vtg_level = val;
 
-	/* Configure the VTG CTL regiser */
-	rc = qpnp_vib_read_u8(vib, &reg, QPNP_VIB_VTG_CTL(vib->base));
-	if (rc < 0) {
-		pr_info("qpnp: error while reading vibration control register\n");
-		}
-	reg &= ~QPNP_VIB_VTG_SET_MASK;
-	reg |= (vib->vtg_level & QPNP_VIB_VTG_SET_MASK);
-	rc = qpnp_vib_write_u8(vib, &reg, QPNP_VIB_VTG_CTL(vib->base));
+	rc = configure_vtg_ctl_register(vib);
 	if (rc)
-		pr_info("qpnp: error while writing vibration control register\n");
+		return rc;
 
 	return strnlen(buf, count);
 }
