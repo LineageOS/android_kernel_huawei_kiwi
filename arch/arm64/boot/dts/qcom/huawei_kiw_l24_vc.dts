@@ -19,3 +19,4 @@
 	qcom,board-id = <8070 0> , <8070 4>;
 	huawei,modem_id = <0xFFB4010F 0x0>;
 };
+#include "cyanogenmod-huawei-common.dtsi"
