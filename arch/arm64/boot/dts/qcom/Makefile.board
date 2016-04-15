@@ -94,34 +94,6 @@ dtb-$(CONFIG_ARCH_MSM8916) += 	huawei_kiw_l23_vc.dtb \
 	huawei_ath_ul01_vb3.0.dtb \
 	huawei_kiw_al10_vd.dtb \
 
-# The kernel source appears to be missing the KIW-L24 dtb files, these were extracted
-# from the stock boot.img
-dtb-$(CONFIG_ARCH_MSM8916) += \
-	107_1f76_0_0.dtb \
-	107_1f76_0_30000.dtb \
-	107_1f76_4_0.dtb \
-	107_1f76_4_30000.dtb \
-	107_1f86_0_0.dtb \
-	107_1f86_0_30000.dtb \
-	107_1f86_4_0.dtb \
-	107_1f86_4_30000.dtb \
-	ef_1f76_0_0.dtb \
-	ef_1f76_0_30000.dtb \
-	ef_1f76_4_0.dtb \
-	ef_1f76_4_30000.dtb \
-	ef_1f86_0_0.dtb \
-	ef_1f86_0_30000.dtb \
-	ef_1f86_4_0.dtb \
-	ef_1f86_4_30000.dtb \
-	f1_1f76_0_0.dtb \
-	f1_1f76_0_30000.dtb \
-	f1_1f76_4_0.dtb \
-	f1_1f76_4_30000.dtb \
-	f1_1f86_0_0.dtb \
-	f1_1f86_0_30000.dtb \
-	f1_1f86_4_0.dtb \
-	f1_1f86_4_30000.dtb
-
  
  
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE_NAMES))
