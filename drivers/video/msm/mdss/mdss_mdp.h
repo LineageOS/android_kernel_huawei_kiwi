@@ -955,5 +955,5 @@ int  mdss_mdp_ctl_reset(struct mdss_mdp_ctl *ctl);
 #ifdef CONFIG_HUAWEI_LCD
 void mdss_dsi_status_check_ctl(struct msm_fb_data_type *mfd, int sheduled);
 #endif
-
+int mdss_mdp_pp_set_comform_coff(unsigned int coff_val, unsigned int update_flag);
 #endif /* MDSS_MDP_H */

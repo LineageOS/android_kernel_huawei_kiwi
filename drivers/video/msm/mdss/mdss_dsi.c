@@ -106,68 +106,116 @@ static int mdss_dsi_regulator_init(struct platform_device *pdev)
 }
 
 /*T2 10 LCD on*/
+/*Delete useless GPIO,change power on/off sequence*/
 static int hw_request_gpios(struct mdss_dsi_ctrl_pdata* ctrl_pdata)
 {
 	int ret = 0;
 
-	if (gpio_is_valid(ctrl_pdata->disp_en_pvcc)){
-		ret = gpio_request(ctrl_pdata->disp_en_pvcc, "disp_en_pvcc");
-		if (ret){
-			pr_err("request disp_en_pvcc gpio failed,ret=%d\n", ret);
-			goto disp_en_pvcc_gpio_err;
+	if (1 == ctrl_pdata->which_product_pad){
+		if (gpio_is_valid(ctrl_pdata->disp_vsn_gpio102)){
+			ret = gpio_request(ctrl_pdata->disp_vsn_gpio102, "disp_vsn_gpio102");
+			if (ret){
+				pr_err("request disp_vsn_gpio102 gpio failed,ret=%d\n", ret);
+				goto disp_vsn_gpio102_request_err;
+			}
+		}
+
+		if (gpio_is_valid(ctrl_pdata->disp_vsp_gpio100)){
+			ret = gpio_request(ctrl_pdata->disp_vsp_gpio100, "disp_vsp_gpio100");
+			if (ret){
+				pr_err("request disp_vsp_gpio100 gpio failed,ret=%d\n", ret);
+				goto disp_vsp_gpio100_request_err;
+			}
+		}
+
+		if (gpio_is_valid(ctrl_pdata->disp_reset_gpio32)){
+			ret = gpio_request(ctrl_pdata->disp_reset_gpio32, "disp_reset_gpio32");
+			if (ret){
+				pr_err("request disp_reset_gpio32 gpio failed,ret=%d\n", ret);
+				goto disp_reset_gpio32_request_err;
+			}
+		}
+
+		if (gpio_is_valid(ctrl_pdata->disp_vled_gpio97)){
+			ret = gpio_request(ctrl_pdata->disp_vled_gpio97, "disp_vled_gpio97");
+			if (ret){
+				pr_err("request disp_vled_gpio97 gpio failed,ret=%d\n", ret);
+				goto disp_vled_gpio97_request_err;
+			}
+		}
+
+		if (gpio_is_valid(ctrl_pdata->disp_bl_gpio109)){
+			ret = gpio_request(ctrl_pdata->disp_bl_gpio109, "disp_bl_gpio109");
+			if (ret){
+				pr_err("request disp_bl_gpio109 gpio failed,ret=%d\n", ret);
+				goto disp_bl_gpio109_request_err;
+			}
+		}
+	}
+	else{
+		if (gpio_is_valid(ctrl_pdata->disp_power_backlight)){
+			ret = gpio_request(ctrl_pdata->disp_power_backlight, "disp_power_backlight");
+			if (ret){
+				pr_err("request disp_power_backlight gpio failed,ret=%d\n", ret);
+				goto disp_power_backlight_gpio_err;
+			}
+		}
+
+		if (gpio_is_valid(ctrl_pdata->disp_power_panel)){
+			ret = gpio_request(ctrl_pdata->disp_power_panel, "disp_power_panel");
+			if (ret){
+				pr_err("request disp_power_panel gpio failed,ret=%d\n", ret);
+				goto disp_power_panel_gpio_err;
+			}
+		}
+
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio_vled)){
+			ret = gpio_request(ctrl_pdata->disp_en_gpio_vled, "disp_en_gpio_vled");
+			if (ret){
+				pr_err("request disp_en_gpio_vled gpio failed,ret=%d\n", ret);
+				goto disp_en_gpio_vled_gpio_request_err;
+			}
 		}
 	}
 
-	if (gpio_is_valid(ctrl_pdata->disp_en_qvcc)){
-		ret = gpio_request(ctrl_pdata->disp_en_qvcc, "disp_en_qvcc");
-		if (ret){
-			pr_err("request disp_en_qvcc gpio failed,ret=%d\n", ret);
-			goto disp_en_qvcc_gpio_err;
-		}
-	}
-
-	if (gpio_is_valid(ctrl_pdata->disp_en_gpio_vsp)){
-		ret = gpio_request(ctrl_pdata->disp_en_gpio_vsp, "disp_en_gpio_vsp");
-		if (ret){
-			pr_err("request disp_en_gpio_vsp gpio failed,ret=%d\n", ret);
-			goto disp_en_gpio_vsp_gpio_request_err;
-		}
-	}
-
-	if (gpio_is_valid(ctrl_pdata->disp_en_gpio_vsn)){
-		ret = gpio_request(ctrl_pdata->disp_en_gpio_vsn, "disp_en_gpio_vsn");
-		if (ret){
-			pr_err("request disp_en_gpio_vsn gpio failed,ret=%d\n", ret);
-			goto disp_en_gpio_vsn_gpio_request_err;
-		}
-	}
-
-	if (ctrl_pdata->tp_vcc_ctrl_by_lcd
-		&& gpio_is_valid(ctrl_pdata->disp_tp_en_vcc)){
-		ret = gpio_request(ctrl_pdata->disp_tp_en_vcc, "disp_tp_en_vcc");
-		if (ret){
-			pr_err("request disp_tp_en_vcc gpio failed,ret=%d\n", ret);
-			goto disp_tp_en_vcc_gpio_err;
-		}
-	}
 	return ret;
-disp_tp_en_vcc_gpio_err:
-	if (gpio_is_valid(ctrl_pdata->disp_en_gpio_vsn)){
-		gpio_free(ctrl_pdata->disp_en_gpio_vsn);
+
+disp_bl_gpio109_request_err:
+	if (gpio_is_valid(ctrl_pdata->disp_bl_gpio109)){
+		gpio_free(ctrl_pdata->disp_bl_gpio109);
 	}
-disp_en_gpio_vsn_gpio_request_err:
-	if (gpio_is_valid(ctrl_pdata->disp_en_gpio_vsp)){
-		gpio_free(ctrl_pdata->disp_en_gpio_vsp);
+
+disp_vled_gpio97_request_err:
+	if (gpio_is_valid(ctrl_pdata->disp_vled_gpio97)){
+		gpio_free(ctrl_pdata->disp_vled_gpio97);
 	}
-disp_en_gpio_vsp_gpio_request_err:
-	if (gpio_is_valid(ctrl_pdata->disp_en_qvcc)){
-		gpio_free(ctrl_pdata->disp_en_qvcc);
+
+disp_reset_gpio32_request_err:
+	if (gpio_is_valid(ctrl_pdata->disp_reset_gpio32)){
+		gpio_free(ctrl_pdata->disp_reset_gpio32);
 	}
-disp_en_qvcc_gpio_err:
-	if (gpio_is_valid(ctrl_pdata->disp_en_pvcc)){
-		gpio_free(ctrl_pdata->disp_en_pvcc);
+
+disp_vsp_gpio100_request_err:
+	if (gpio_is_valid(ctrl_pdata->disp_vsp_gpio100)){
+		gpio_free(ctrl_pdata->disp_vsp_gpio100);
 	}
-disp_en_pvcc_gpio_err:
+
+disp_vsn_gpio102_request_err:
+	if (gpio_is_valid(ctrl_pdata->disp_vsn_gpio102)){
+		gpio_free(ctrl_pdata->disp_vsn_gpio102);
+	}
+
+	return ret;
+
+disp_en_gpio_vled_gpio_request_err:
+	if (gpio_is_valid(ctrl_pdata->disp_power_panel)){
+		gpio_free(ctrl_pdata->disp_power_panel);
+	}
+disp_power_panel_gpio_err:
+	if (gpio_is_valid(ctrl_pdata->disp_power_backlight)){
+		gpio_free(ctrl_pdata->disp_power_backlight);
+	}
+disp_power_backlight_gpio_err:
 	return ret;
 }
 
@@ -177,37 +225,90 @@ static void hw_panel_power_en(struct mdss_panel_data* pdata, int enable)
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
 
 	if (enable){
-		if (gpio_is_valid(ctrl_pdata->disp_en_qvcc)){
-			gpio_set_value((ctrl_pdata->disp_en_qvcc), enable);
-			pr_info("%s,%d set en qvcc = %d \n", __func__, __LINE__, enable);
+		if (1 == ctrl_pdata->which_product_pad){
+			if (gpio_is_valid(ctrl_pdata->disp_bl_gpio109)){
+				gpio_set_value((ctrl_pdata->disp_bl_gpio109), enable);
+		       }
+		       mdelay(5);
+
+			if (gpio_is_valid(ctrl_pdata->disp_vsp_gpio100)){
+				gpio_set_value((ctrl_pdata->disp_vsp_gpio100), enable);
+			}
+			mdelay(1);
+			if (gpio_is_valid(ctrl_pdata->disp_vsn_gpio102)){
+				gpio_set_value((ctrl_pdata->disp_vsn_gpio102), enable);
+			}
+
+			mdelay(5);
+
+		        if (gpio_is_valid(ctrl_pdata->disp_reset_gpio32)){
+				gpio_set_value((ctrl_pdata->disp_reset_gpio32), enable);
+				pr_info("%s,%d set disp_reset_gpio32 = %d \n", __func__, __LINE__, enable);
+		        }
+		        mdelay(5);
+
+		        if (gpio_is_valid(ctrl_pdata->disp_vled_gpio97)){
+				gpio_set_value((ctrl_pdata->disp_vled_gpio97), enable);
+				pr_info("%s,%d set disp_vled_gpio97 = %d \n", __func__, __LINE__, enable);
+		        }
+		        mdelay(5);
 		}
-		mdelay(5);
-		if (gpio_is_valid(ctrl_pdata->disp_en_pvcc)){
-			gpio_set_value((ctrl_pdata->disp_en_pvcc), enable);
-			pr_info("%s,%d set en pvcc = %d \n", __func__, __LINE__, enable);
+		else{
+			if (gpio_is_valid(ctrl_pdata->disp_power_panel)){
+				gpio_set_value((ctrl_pdata->disp_power_panel), enable);
+				pr_info("%s,%d set disp_power_panel = %d \n", __func__, __LINE__, enable);
+			}
+			if (gpio_is_valid(ctrl_pdata->disp_power_backlight)){
+				gpio_set_value((ctrl_pdata->disp_power_backlight), enable);
+				pr_info("%s,%d set disp_power_backlight = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(50);
 		}
-		if (ctrl_pdata->tp_vcc_ctrl_by_lcd
-			&& gpio_is_valid(ctrl_pdata->disp_tp_en_vcc)){
-			gpio_direction_output((ctrl_pdata->disp_tp_en_vcc), enable);
-			pr_info("%s,%d set tp en vcc = %d \n", __func__, __LINE__, enable);
-		}
-		mdelay(2);
 	} else {
-		if (gpio_is_valid(ctrl_pdata->disp_en_pvcc)){
-			gpio_set_value((ctrl_pdata->disp_en_pvcc), enable);
-			pr_info("%s,%d set en pvcc = %d \n", __func__, __LINE__, enable);
+		if (1 == ctrl_pdata->which_product_pad){
+			if (gpio_is_valid(ctrl_pdata->disp_vled_gpio97)){
+				gpio_set_value((ctrl_pdata->disp_vled_gpio97), enable);
+				pr_info("%s,%d set disp_vled_gpio97 = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(5);
+
+			if (gpio_is_valid(ctrl_pdata->disp_vsn_gpio102)){
+				gpio_set_value((ctrl_pdata->disp_vsn_gpio102), enable);
+				pr_info("%s,%d set disp_vsn_gpio102 = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(5);
+
+			if (gpio_is_valid(ctrl_pdata->disp_vsp_gpio100)){
+				gpio_set_value((ctrl_pdata->disp_vsp_gpio100), enable);
+				pr_info("%s,%d set disp_vsp_gpio100 = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(5);
+
+			if (gpio_is_valid(ctrl_pdata->disp_reset_gpio32)){
+				gpio_set_value((ctrl_pdata->disp_reset_gpio32), enable);
+				pr_info("%s,%d set disp_reset_gpio32 = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(5);
+
+			if (gpio_is_valid(ctrl_pdata->disp_bl_gpio109)){
+				gpio_set_value((ctrl_pdata->disp_bl_gpio109), enable);
+				pr_info("%s,%d set disp_bl_gpio109 = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(5);
+
 		}
-		if (ctrl_pdata->tp_vcc_ctrl_by_lcd
-			&& gpio_is_valid(ctrl_pdata->disp_tp_en_vcc)){
-			gpio_direction_output((ctrl_pdata->disp_tp_en_vcc), enable);
-			pr_info("%s,%d set tp en vcc = %d \n", __func__, __LINE__, enable);
+		else{
+			if (gpio_is_valid(ctrl_pdata->disp_power_backlight)){
+				gpio_set_value((ctrl_pdata->disp_power_backlight), enable);
+				pr_info("%s,%d set disp_power_backlight = %d \n", __func__, __LINE__, enable);
+			}
+
+			if (gpio_is_valid(ctrl_pdata->disp_power_panel)){
+				gpio_set_value((ctrl_pdata->disp_power_panel), enable);
+				pr_info("%s,%d set disp_power_panel = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(500);
 		}
-		mdelay(5);
-		if (gpio_is_valid(ctrl_pdata->disp_en_qvcc)){
-			gpio_set_value((ctrl_pdata->disp_en_qvcc), enable);
-			pr_info("%s,%d set en qvcc = %d \n", __func__, __LINE__, enable);
-		}
-		mdelay(2);
 	}
 }
 
@@ -252,9 +353,22 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 		 */
 		if (DSI_CORE_PM == i)
 			continue;
-		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data[i].vreg_config,
-			ctrl_pdata->power_data[i].num_vreg, 0);
+		/*
+		*merge qcom patch from 02098626: 08_20_patches.zip
+		*add delay time before vddio-incell enable  for ATH JDINT35695. if vddio-incell pull down time is smaller then 80ms.
+		*/
+		if(!strcmp(ctrl_pdata->panel_data.panel_info.panel_name, "JDI_NT35695_5P2_1080P_CMD"))
+		{
+			ret = msm_dss_enable_vreg_ath_jdi(
+				ctrl_pdata->power_data[i].vreg_config,
+				ctrl_pdata->power_data[i].num_vreg, 0); 
+		}
+		else
+		{
+			ret = msm_dss_enable_vreg(
+				ctrl_pdata->power_data[i].vreg_config,
+				ctrl_pdata->power_data[i].num_vreg, 0);
+		}
 		if (ret)
 			pr_err("%s: failed to disable vregs for %s\n",
 				__func__, __mdss_dsi_pm_name(i));
@@ -290,6 +404,7 @@ static int mdss_dsi_panel_power_off_pad(struct mdss_panel_data *pdata)
 #endif
 
 	{
+		hw_panel_power_en(pdata, 0);
 		ret = msm_dss_enable_vreg(
 			ctrl_pdata->power_data[DSI_PANEL_PM].vreg_config,
 			ctrl_pdata->power_data[DSI_PANEL_PM].num_vreg, 0);
@@ -297,7 +412,6 @@ static int mdss_dsi_panel_power_off_pad(struct mdss_panel_data *pdata)
 			pr_err("%s: failed to disable vregs for %s\n",
 				__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
 		mdelay(2);
-		hw_panel_power_en(pdata, 0);
 	}
 end:
 	return ret;
@@ -324,9 +438,22 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 		 */
 		if (DSI_CORE_PM == i)
 			continue;
-		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data[i].vreg_config,
-			ctrl_pdata->power_data[i].num_vreg, 1);
+		/*
+		*merge qcom patch from 02098626: 08_20_patches.zip
+		*add delay time before vddio-incell enable  for ATH JDINT35695. if vddio-incell pull down time is smaller then 80ms.
+		*/
+		if(!strcmp(ctrl_pdata->panel_data.panel_info.panel_name, "JDI_NT35695_5P2_1080P_CMD"))
+		{
+			ret = msm_dss_enable_vreg_ath_jdi(
+				ctrl_pdata->power_data[i].vreg_config,
+				ctrl_pdata->power_data[i].num_vreg, 1);
+		}
+		else
+		{
+			ret = msm_dss_enable_vreg(
+				ctrl_pdata->power_data[i].vreg_config,
+				ctrl_pdata->power_data[i].num_vreg, 1);
+		}
 		if (ret) {
 			pr_err("%s: failed to enable vregs for %s\n",
 				__func__, __mdss_dsi_pm_name(i));
@@ -388,7 +515,6 @@ static int mdss_dsi_panel_power_on_pad(struct mdss_panel_data *pdata)
 
 
 	{
-		hw_panel_power_en(pdata, 1);
 		ret = msm_dss_enable_vreg(
 			ctrl_pdata->power_data[DSI_PANEL_PM].vreg_config,
 			ctrl_pdata->power_data[DSI_PANEL_PM].num_vreg, 1);
@@ -398,6 +524,7 @@ static int mdss_dsi_panel_power_on_pad(struct mdss_panel_data *pdata)
 			goto error_enable;
 		}
 		mdelay(2);
+		hw_panel_power_en(pdata, 1);
 	}
 
 	if (pdata->panel_info.cont_splash_enabled ||
@@ -1472,6 +1599,32 @@ int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
 	mutex_unlock(&ctrl->mutex);
 	return 0;
 }
+/*rename gpio*/
+#ifdef CONFIG_HUAWEI_LCD
+static void hw_panel_bias_en(struct mdss_panel_data *pdata, int enable)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+	if (gpio_is_valid(ctrl_pdata->disp_en_gpio_vled))
+	{
+		gpio_set_value((ctrl_pdata->disp_en_gpio_vled), enable);
+		pr_debug("%s,%d set en disp_en_gpio_vled = %d \n",__func__,__LINE__,enable);
+	}
+
+	if(enable){
+		ctrl_pdata->hw_led_en_flag = 1;
+	}else {
+		ctrl_pdata->hw_led_en_flag = 0;
+	}
+
+}
+#endif
 
 static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 				  int event, void *arg)
@@ -1508,6 +1661,13 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		pdata->panel_info.esd_rdy = true;
 		break;
 	case MDSS_EVENT_BLANK:
+		if (ctrl_pdata->hw_product_pad)
+		{
+			if (1 != ctrl_pdata->which_product_pad){
+				hw_panel_bias_en(pdata,0);
+				mdelay(200);
+			}
+		}
 		power_state = (int) (unsigned long) arg;
 		if (ctrl_pdata->off_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_blank(pdata, power_state);
@@ -2141,62 +2301,77 @@ int dsi_panel_device_register(struct device_node *pan_node,
 
 /*T2 10 LCD on*/
 #ifdef CONFIG_HUAWEI_LCD
-	rc = of_property_read_u32(ctrl_pdev->dev.of_node,
-						"huawei,platform-product-pad",&ctrl_pdata->hw_product_pad);
 
-	if (ctrl_pdata->hw_product_pad == 1) {
-		ctrl_pdata->disp_en_pvcc = of_get_named_gpio(ctrl_pdev->dev.of_node,
-				"huawei,platform-en-pvcc", 0);
-		if (!gpio_is_valid(ctrl_pdata->disp_en_pvcc)) {
-			pr_err("%s:%d, disp_en_pvcc  not specified\n",
-				__func__, __LINE__);
-		}
-		ctrl_pdata->disp_en_qvcc = of_get_named_gpio(ctrl_pdev->dev.of_node,
-				"huawei,platform-en-qvcc", 0);
-		if (!gpio_is_valid(ctrl_pdata->disp_en_qvcc)) {
-			pr_err("%s:%d, disp_en_qvcc  not specified\n",
-				__func__, __LINE__);
-		}
-		ctrl_pdata->disp_en_gpio_vsp = of_get_named_gpio(ctrl_pdev->dev.of_node,
-				 "qcom,platform-enable-gpio-vsp", 0);
-		if (!gpio_is_valid(ctrl_pdata->disp_en_gpio_vsp)) {
-			pr_err("%s:%d, vsp enable gpio not specified\n",
-				__func__, __LINE__);
-		}
-		ctrl_pdata->disp_en_gpio_vsn = of_get_named_gpio(ctrl_pdev->dev.of_node,
-				"qcom,platform-enable-gpio-vsn", 0);
-		if (!gpio_is_valid(ctrl_pdata->disp_en_gpio_vsn)) {
-			pr_err("%s:%d, vsn enable gpio not specified\n",
-				__func__, __LINE__);
-		}
+	pr_info("%s: which_product_pad = %d  \n", __func__, ctrl_pdata->which_product_pad);
+	pr_info("%s: hw_product_pad = %d  \n", __func__, ctrl_pdata->hw_product_pad);
+	if (1 == ctrl_pdata->hw_product_pad) {
+		if (1 == ctrl_pdata->which_product_pad){
+			ctrl_pdata->disp_vsn_gpio102 = of_get_named_gpio(ctrl_pdev->dev.of_node,
+				"qcom,platform-vsn-gpio102", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_vsn_gpio102))
+				pr_err("%s: qcom,platform-vsn-gpio102 not specified\n", __func__);
 
-		/*tp vcc ctrl by lcd?*/
-		rc = of_property_read_u32(ctrl_pdev->dev.of_node,
-				"huawei,platform-tp-vcc-ctrl-by-lcd", &ctrl_pdata->tp_vcc_ctrl_by_lcd);
-		if (ctrl_pdata->tp_vcc_ctrl_by_lcd) {
-			ctrl_pdata->disp_tp_en_vcc = of_get_named_gpio(ctrl_pdev->dev.of_node,
-				"huawei,platform-tp-en-vcc", 0);
-			if (!gpio_is_valid(ctrl_pdata->disp_tp_en_vcc)) {
-				pr_info("%s:%d, disp_tp_en_vcc  not specified\n",
+			ctrl_pdata->disp_vsp_gpio100 = of_get_named_gpio(ctrl_pdev->dev.of_node,
+				"qcom,platform-vsp-gpio100", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_vsp_gpio100))
+				pr_err("%s: qcom,platform-vsp-gpio100 not specified\n", __func__);
+
+			ctrl_pdata->disp_reset_gpio32 = of_get_named_gpio(ctrl_pdev->dev.of_node,
+				"qcom,platform-reset-gpio32", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_reset_gpio32))
+				pr_err("%s: qcom,platform-reset-gpio32 not specified\n", __func__);
+
+			ctrl_pdata->disp_vled_gpio97 = of_get_named_gpio(ctrl_pdev->dev.of_node,
+				"qcom,platform-vled-gpio97", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_vled_gpio97))
+				pr_err("%s: qcom,platform-vled-gpio97 not specified\n", __func__);
+
+			ctrl_pdata->disp_bl_gpio109 = of_get_named_gpio(ctrl_pdev->dev.of_node,
+				"qcom,platform-bl-gpio109", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_bl_gpio109))
+				pr_err("%s: qcom,platform-bl-gpio109 not specified\n", __func__);
+		}
+		else{
+			ctrl_pdata->disp_power_backlight = of_get_named_gpio(ctrl_pdev->dev.of_node,
+				"huawei,platform-power-blk", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_power_backlight)) {
+				pr_err("%s:%d, disp_power_backlight  not specified\n",
 					__func__, __LINE__);
 			}
-		}
+			ctrl_pdata->disp_power_panel = of_get_named_gpio(ctrl_pdev->dev.of_node,
+					"huawei,platform-power-panel", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_power_panel)) {
+				pr_err("%s:%d, disp_power_panel  not specified\n",
+					__func__, __LINE__);
+			}
+			ctrl_pdata->disp_en_gpio_vled = of_get_named_gpio(ctrl_pdev->dev.of_node,
+					 "huawei,platform-enable-vled", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_en_gpio_vled)) {
+				pr_err("%s:%d, vled enable gpio not specified\n",
+					__func__, __LINE__);
+			}
 
+			pr_info("%s:rst_gpio:%d, disp_en_gpio_vled:%d, disp_power_panel:%d, disp_power_backlight:%d\n",
+						__func__, ctrl_pdata->rst_gpio,
+						ctrl_pdata->disp_en_gpio_vled,ctrl_pdata->disp_power_panel,
+						ctrl_pdata->disp_power_backlight);
+		}
 		rc =  hw_request_gpios(ctrl_pdata);
 		if (rc){
 			pr_err("gpio request failed\n");
 		}
-	} else {
-		ctrl_pdata->disp_en_pvcc = -1;
-		ctrl_pdata->disp_tp_en_vcc = -1;
-		ctrl_pdata->disp_en_qvcc = -1;
-		ctrl_pdata->disp_en_gpio_vsp = -1;
-		ctrl_pdata->disp_en_gpio_vsn = -1;
+	}else{
+		ctrl_pdata->disp_power_backlight = -1;
+		ctrl_pdata->disp_power_panel = -1;
+		ctrl_pdata->disp_en_gpio_vled = -1;
+
+		ctrl_pdata->disp_vsn_gpio102 = -1;
+		ctrl_pdata->disp_vsp_gpio100 = -1;
+		ctrl_pdata->disp_reset_gpio32 = -1;
+		ctrl_pdata->disp_vled_gpio97 = -1;
+		ctrl_pdata->disp_bl_gpio109 = -1;
 	}
-	pr_info("%s:rst_gpio:%d, disp_en_gpio_vsp:%d, disp_en_gpio_vsn:%d, disp_tp_en_vcc:%d\n",
-						__func__, ctrl_pdata->rst_gpio,
-						ctrl_pdata->disp_en_gpio_vsp,ctrl_pdata->disp_en_gpio_vsn,
-						ctrl_pdata->disp_tp_en_vcc);
+
 #endif
 	ctrl_pdata->tp_vci_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
 			 "qcom,platform-tp-vci-gpio", 0);

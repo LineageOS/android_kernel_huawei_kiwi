@@ -159,3 +159,32 @@
 		clock-names = "cam_src_clk", "cam_clk";
 	};
 };
+
+&soc {
+	tlmm_pinmux: pinctrl@1000000 {
+                 cam_sensor_mclk0 {
+			/* MCLK */
+			qcom,pins = <&gp 26>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "cam-sensor-mclk0";
+			/* active state */
+			cam_sensor_mclk0_default: default {
+				drive-strength = <4>; /* 4 MA */
+				bias-disable = <0>; /* No PULL */
+			};
+                };
+		cam_sensor_mclk1 {
+			/* MCLK */
+			qcom,pins = <&gp 27>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <1>;
+			label = "cam-sensor-mclk1";
+			/* active state */
+			cam_sensor_mclk1_default: default {
+				drive-strength = <4>; /* 4 MA */
+				bias-disable = <0>; /* No PULL */
+			};
+                };
+        };
+};

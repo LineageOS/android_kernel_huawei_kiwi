@@ -368,6 +368,7 @@ struct qpnp_bms_chip {
 #endif
 #ifdef CONFIG_HUAWEI_KERNEL
 	struct delayed_work		report_soc_work;
+	bool					resume_soc_work;
 #endif
 };
 
@@ -2160,11 +2161,15 @@ static int report_vm_bms_soc(struct qpnp_bms_chip *chip)
 #define HW_REPORT_SOC_LOW_THRESHOLD	5		/* 5%*/
 static int get_report_soc_time(struct qpnp_bms_chip *chip)
 {
-	if (chip->last_soc >= HW_REPORT_SOC_THRESHOLD)
+	int soc = 0;
+	
+	soc = (chip->ui_soc_tag) ? chip->ui_soc : chip->last_soc;
+
+	if (soc >= HW_REPORT_SOC_THRESHOLD)
 	{
 		return HIGH_SOC_REPORT_TIME;
 	}
-	else if (chip->last_soc >= HW_REPORT_SOC_LOW_THRESHOLD)
+	else if (soc >= HW_REPORT_SOC_LOW_THRESHOLD)
 	{
 		return MIDL_SOC_REPORT_TIME;
 	}
@@ -2183,7 +2188,16 @@ static void report_soc_work(struct work_struct *work)
 	int soc = 0;
 
 	mutex_lock(&chip->last_soc_mutex);
-	soc = report_vm_bms_soc(chip);
+	if (!chip->resume_soc_work)
+	{
+		soc = report_vm_bms_soc(chip);
+	}
+	else
+	{
+		soc = prev_soc;
+		/* after skip this work loop, make sure get bms soc in the next */
+		chip->resume_soc_work = false;
+	}
 
 	if (prev_soc != soc)
 	{
@@ -4866,6 +4880,7 @@ static int qpnp_vm_bms_probe(struct spmi_device *spmi)
 		msecs_to_jiffies(chip->dt.cfg_voltage_soc_timeout_ms));
 	
 #ifdef CONFIG_HUAWEI_KERNEL
+	chip->resume_soc_work = false;
 	schedule_delayed_work(&chip->report_soc_work, 0);
 #endif
 
@@ -5065,6 +5080,7 @@ static int bms_resume(struct device *dev)
 	int rc, monitor_soc_delay = 0;
 	unsigned long tm_now_sec;
 	struct qpnp_bms_chip *chip = dev_get_drvdata(dev);
+	static unsigned long tm_prev_sec = 0;
 
 	if (chip->apply_suspend_config) {
 		if (chip->dt.cfg_force_s3_on_suspend) {
@@ -5106,7 +5122,14 @@ static int bms_resume(struct device *dev)
 	schedule_delayed_work(&chip->monitor_soc_work,
 				msecs_to_jiffies(monitor_soc_delay));
 #ifdef CONFIG_HUAWEI_KERNEL
-	schedule_delayed_work(&chip->report_soc_work, 0);
+	chip->resume_soc_work = true;
+	if (0 == tm_prev_sec || ((tm_now_sec - tm_prev_sec)*1000) >= get_report_soc_time(chip))
+	{
+		tm_prev_sec = tm_now_sec;
+		chip->resume_soc_work = false;
+	}
+	/* delay 100ms to avoid the battery virtual voltage */
+	schedule_delayed_work(&chip->report_soc_work, msecs_to_jiffies(100));
 #endif
 
 	return 0;

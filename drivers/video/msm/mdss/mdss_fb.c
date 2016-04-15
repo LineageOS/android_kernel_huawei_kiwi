@@ -554,6 +554,47 @@ static ssize_t mdss_show_mipi_crc_check(struct device *dev,
 	ret = scnprintf(buf, PAGE_SIZE, "%d\n",ret);
 	return ret;
 }
+static ssize_t mdss_show_lcd_cabc_mode(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	int ret;
+	LCD_LOG_DBG("fb%d inversion mode = %d\n", mfd->index, mfd->panel_info->cabc_mode);
+	ret = scnprintf(buf, PAGE_SIZE, "%d\n",mfd->panel_info->cabc_mode);
+	return ret;
+}
+
+static ssize_t mdss_store_lcd_cabc_mode(struct device *dev,
+			     struct device_attribute *attr,const char *buf, size_t count)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_data *pdata = NULL;
+	int ret;
+	char ** last = NULL;
+	u32 temp = 0;
+	temp = simple_strtoul(buf, last, 0);
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+
+	if ((pdata) && (pdata->lcd_set_cabc_mode)&&(mfd->panel_power_state == MDSS_PANEL_POWER_ON))
+	{
+		if(temp != mfd->panel_info->cabc_mode)
+		{
+			ret = pdata->lcd_set_cabc_mode(pdata,temp);
+			if(ret)
+				return ret;
+
+			mfd->panel_info->cabc_mode = temp;
+		}
+	}
+	else
+	{
+		LCD_LOG_ERR("This panel maybe sleep ,or can not support set cabc mode\n");
+		return -EINVAL;
+	}
+	return count;
+}
 static ssize_t mdss_show_lcd_checksum(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -844,6 +885,7 @@ static DEVICE_ATTR(inversion_mode, S_IRUGO|S_IWUSR|S_IWGRP, mdss_show_inversion_
 static DEVICE_ATTR(panel_status, S_IRUGO, mdss_show_panel_status, NULL);
 static DEVICE_ATTR(mipi_crc, S_IRUGO, mdss_show_mipi_crc_check, NULL);
 static DEVICE_ATTR(lcd_checksum, S_IRUGO, mdss_show_lcd_checksum, NULL);
+static DEVICE_ATTR(lcd_cabc_mode, S_IRUGO|S_IWUSR|S_IWGRP, mdss_show_lcd_cabc_mode, mdss_store_lcd_cabc_mode);
 #endif
 static DEVICE_ATTR(msm_fb_src_split_info, S_IRUGO, mdss_fb_get_src_split_info,
 	NULL);
@@ -867,6 +909,7 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_panel_status.attr,
 	&dev_attr_mipi_crc.attr,
 	&dev_attr_lcd_checksum.attr,
+	&dev_attr_lcd_cabc_mode.attr,
 #endif
 	NULL,
 };

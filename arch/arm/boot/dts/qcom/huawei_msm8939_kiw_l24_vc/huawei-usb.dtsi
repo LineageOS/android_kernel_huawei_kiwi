@@ -1,0 +1,6 @@
+&usb_otg {
+	qcom,hsusb-otg-mode = <1>;
+	vbus_otg-supply = <&bq24296_otg_supply>;
+	qcom,hsusb-otg-phy-init-seq =
+		<0x74 0x80 0x6B 0x81 0x35 0x82 0x33 0x83 0xffffffff>;
+};

@@ -867,6 +867,15 @@ struct mdp_pp_init_data {
 	uint32_t init_request;
 };
 
+/*fix conflict load pp_calib*.xml and color temprature
+(color temprature become invalid after reboot)*/
+struct mdp_color_temprature_data {
+	uint32_t block;
+	uint32_t ops;
+	uint32_t attenuation_coeff;  // *1000
+	uint32_t modify_flag;          // 0: no need modify;  1: modify blue; 2: modify red
+};
+
 enum {
 	MDP_PP_DISABLE,
 	MDP_PP_ENABLE,
@@ -968,7 +977,9 @@ struct mdss_calib_cfg {
 	uint32_t ops;
 	uint32_t calib_mask;
 };
-
+/* add color temperature setting ioctl for avoid display partial red*/
+/*fix conflict load pp_calib*.xml and color temprature
+(color temprature become invalid after reboot)*/
 enum {
 	mdp_op_pcc_cfg,
 	mdp_op_csc_cfg,
@@ -987,8 +998,15 @@ enum {
 	mdp_op_calib_dcm_state,
 	mdp_op_max,
 	mdp_op_pp_init_cfg,
+	mdp_op_led_pcc_cfg,
+	mdp_op_pre_pcc_cfg,  //for colortemprature
 };
 
+enum{
+	CT_NO_NEED_MODIFY,
+	CT_MODIFY_BLUE,
+	CT_MODIFY_RED,
+};
 enum {
 	WB_FORMAT_NV12,
 	WB_FORMAT_RGB_565,
@@ -1019,6 +1037,9 @@ struct msmfb_mdp_pp {
 		struct mdp_calib_config_buffer calib_buffer;
 		struct mdp_calib_dcm_state calib_dcm;
 		struct mdp_pp_init_data init_data;
+/*fix conflict load pp_calib*.xml and color temprature
+(color temprature become invalid after reboot)*/
+		struct mdp_color_temprature_data color_temp_data;
 	} data;
 };
 

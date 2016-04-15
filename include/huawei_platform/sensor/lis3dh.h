@@ -94,6 +94,7 @@ struct lis3dh_acc_platform_data {
 	/* i2c gpio */
 	unsigned int i2c_scl_gpio;
 	unsigned int i2c_sda_gpio;
+	bool gsensor_need_filter;
 };
 
 #ifdef CONFIG_HUAWEI_KERNEL
@@ -153,9 +154,22 @@ struct lis3dh_acc_platform_data {
 #define ODR200		0x60  /* 200Hz output data rate */
 #define ODR400		0x70  /* 400Hz output data rate */
 #define ODR1250		0x90  /* 1250Hz output data rate */
-
-
-
+#define FILTER_PARAMETER	16
+#define ODR_1000MS	1000
+#define ODR_100MS	100
+#define ODR_40MS	40
+#define ODR_20MS	20
+#define ODR_10MS	10
+#define ODR_5MS		5
+#define ODR_3MS		3
+#define ODR_1MS		1
+#define FILTERATION_1TIMES	1
+#define FILTERATION_3TIMES	3
+#define FILTERATION_5TIMES	5
+#define FILTERATION_10TIMES	10
+#define FILTERATION_20TIMES	20
+#define FILTERATION_34TIMES	34
+#define FILTERATION_100TIMES	100
 #define	FIFO_SRC_REG		0x2F	/*	FiFo source reg	*/
 #define REG1_ODR_MASK			0XF0
 #define REG1_ODR_SHIFT			4
@@ -373,7 +387,13 @@ struct lis3dh_acc_data {
 	char* dsm_buf;          						/* buf to record error or exception */
 #endif
 
-
+	/*
+	*	vibrator_first variation record the motor start to vibrator
+	*	vibrator_last variation record the motor last to vibrator
+	*/
+	int filtration_times;
+	int odr_value;
+	int last_raw_data[3];
 };
 
 #endif

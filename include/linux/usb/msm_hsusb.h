@@ -312,8 +312,7 @@ struct msm_otg_platform_data {
 #define PHY_VBUS_VALID_OVERRIDE		BIT(4)
 
 /* Timeout (in msec) values (min - max) associated with OTG timers */
-
-#define TA_WAIT_VRISE	100	/* ( - 100)  */
+#define TA_WAIT_VRISE	400	/* ( - 100)  */
 #define TA_WAIT_VFALL	500	/* ( - 1000) */
 
 /*

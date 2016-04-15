@@ -523,6 +523,8 @@ int msm_flash_lm3646_led_on(struct msm_led_flash_ctrl_t *fctrl, void * pdata)
 		regmaxcurrent = matrix->max_current_torch<<4;
 		LM3646_DBG("%s:mode is SET_TORCH_MODE.\n", __func__);
 	}
+
+	//delete some lines
 	
 	rc = i2c_func->i2c_write(i2c_client, REG_FLASH_TIMEOUT, FLASH_TIMEOUT_TIME, MSM_CAMERA_I2C_BYTE_DATA);
 	rc = i2c_func->i2c_write(i2c_client, REG_LED1_FLASH_CURRENT_CONTROL, regcurrentflash, MSM_CAMERA_I2C_BYTE_DATA);
@@ -594,6 +596,7 @@ int msm_flash_lm3646_torch(struct msm_led_flash_ctrl_t *fctrl)
 	unsigned char val = 0;
 	struct msm_camera_i2c_client *i2c_client =NULL;
 	struct msm_camera_i2c_fn_t * i2c_func =NULL;
+	unsigned char maxcurrent = SET_MAX_CURRENT;
 
 	LM3646_DBG("%s:%d called\n", __func__, __LINE__);
 
@@ -657,11 +660,24 @@ int msm_flash_lm3646_torch(struct msm_led_flash_ctrl_t *fctrl)
 				.DualLedMode = DUAL_LED_MODE_TORCH,
 				.CurrentIndex = fctrl->df_torch_type,
 				};
+
+			if ( fctrl->flip_id )
+			{
+				cfg.CurrentIndex = 0x06;
+				LM3646_DBG("%s: flip_id=1.\n", __func__);
+			}
 			return msm_flash_lm3646_led_on(fctrl, &cfg);
 		}
 	}
 
-	rc = i2c_func->i2c_write(i2c_client, REG_MAX_CURRENT, SET_MAX_CURRENT, MSM_CAMERA_I2C_BYTE_DATA);
+	if  ( fctrl->flip_id )
+	{
+		val = ( 0x80 | 0x06);
+		maxcurrent = 0x0c;
+		LM3646_DBG("%s:fctrl->flip_id=%d\n", __func__, fctrl->flip_id);
+	}
+
+	rc = i2c_func->i2c_write(i2c_client, REG_MAX_CURRENT, maxcurrent, MSM_CAMERA_I2C_BYTE_DATA);
 	rc = i2c_func->i2c_write(i2c_client, REG_LED1_TORCH_CURRENT_CONTROL, val, MSM_CAMERA_I2C_BYTE_DATA);	
 	rc = i2c_func->i2c_write(i2c_client, ENABLE_REGISTER, SET_TORCH_MODE, MSM_CAMERA_I2C_BYTE_DATA);
 

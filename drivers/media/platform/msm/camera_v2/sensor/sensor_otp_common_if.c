@@ -62,6 +62,9 @@
 #define IMX219_OFILM_PAD_RG_RATIO_TYPICAL 0x271
 #define IMX219_OFILM_PAD_BG_RATIO_TYPICAL 0x2ba
 
+#define S5K3M2_SUNNY_RG_RATIO_TYPICAL 0x1FE
+#define S5K3M2_SUNNY_BG_RATIO_TYPICAL 0x224
+
 struct otp_function_t otp_function_lists []=
 {
 	#include "sensor_otp_kiw.h"

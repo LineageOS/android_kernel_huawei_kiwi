@@ -172,6 +172,7 @@ struct cyttsp5_core_platform_data {
 	u16 vendor_id;
 	u16 product_id;
 	const char *product_name;
+	const char *chip_name;
 
 	struct cyttsp5_power_config * power_config;
 
@@ -201,6 +202,7 @@ struct cyttsp5_core_platform_data {
 	unsigned int holster_support;
 	int fw_update_logic;
 	int input_register_early;
+	unsigned int mmi_test_support;
 };
 
 struct touch_framework {
@@ -253,6 +255,7 @@ static inline struct cyttsp5_platform_data *cyttsp5_get_platform_data(struct dev
 	return (struct cyttsp5_platform_data *)dev->platform_data;
 }
 
-
+int cyttsp5_command_response(struct device *dev,u8 *buf);
+int cyttsp5_send_command(struct device *dev,char *buf);
 
 #endif /* _LINUX_CYTTSP5_CORE_H */

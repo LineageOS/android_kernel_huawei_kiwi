@@ -130,7 +130,7 @@ extern u8 tp_color_data;
 #ifdef VERBOSE_DEBUG
 #define CY_HID_OUTPUT_TIMEOUT			2000
 #else
-#define CY_HID_OUTPUT_TIMEOUT			200
+#define CY_HID_OUTPUT_TIMEOUT			300
 #endif
 #define CY_HID_OUTPUT_START_BOOTLOADER_TIMEOUT	2000
 #define CY_HID_OUTPUT_USER_TIMEOUT		8000
@@ -943,6 +943,7 @@ struct cyttsp5_core_data {
 	unsigned int holster_support;
 	unsigned int holster_mode_enabled;
 	struct cyttsp5_wakeup_keys *wakeup_keys;
+	unsigned int mmi_test_support;
 	bool wake_initiated_by_device;
 	bool wait_until_wake;
 	bool transient_state;
@@ -1012,6 +1013,41 @@ enum scan_data_type_list {
 	CY_BAL_DIFF,
 };
 #endif
+#ifdef TTHE_TUNER_SUPPORT
+struct heatmap_param {
+	bool scan_start;
+	enum scan_data_type_list data_type; /* raw, base, diff */
+	int num_element;
+};
+#endif
+
+#define CY_MAX_CONFIG_BYTES    256
+#define CYTTSP5_TTHE_TUNER_GET_PANEL_DATA_FILE_NAME "get_panel_data"
+#define TTHE_TUNER_MAX_BUF	(CY_MAX_PRBUF_SIZE * 3)
+
+struct cyttsp5_device_access_data {
+	struct device *dev;
+	struct cyttsp5_sysinfo *si;
+	struct mutex sysfs_lock;
+	u8 status;
+	u16 response_length;
+	bool sysfs_nodes_created;
+	struct kobject mfg_test;
+	u8 panel_scan_data_id;
+	u8 get_idac_data_id;
+	u8 calibrate_sensing_mode;
+	u8 calibrate_initialize_baselines;
+	u8 baseline_sensing_mode;
+#ifdef TTHE_TUNER_SUPPORT
+	struct heatmap_param heatmap;
+	struct dentry *tthe_get_panel_data_debugfs;
+	struct mutex debugfs_lock;
+	u8 tthe_get_panel_data_buf[TTHE_TUNER_MAX_BUF];
+	u8 tthe_get_panel_data_is_open;
+#endif
+	u8 ic_buf[CY_MAX_PRBUF_SIZE];
+	u8 response_buf[CY_MAX_PRBUF_SIZE];
+};
 
 struct cyttsp5_bus_ops {
 	u16 bustype;
@@ -1143,4 +1179,12 @@ struct cyttsp5_sysinfo *_cyttsp5_request_sysinfo(struct device *dev);
 
 extern const struct dev_pm_ops cyttsp5_pm_ops;
 
+static inline struct cyttsp5_device_access_data *cyttsp5_get_device_access_data(
+	struct device *dev)
+{
+	return cyttsp5_get_dynamic_data(dev, CY_MODULE_DEVICE_ACCESS);
+}
+int cyttsp5_ic_parse_input(struct device *dev, const char *buf,
+		size_t buf_size, u8 *ic_buf, size_t ic_buf_size);
+void cyttsp5_procfs_create(void);
 #endif /* _CYTTSP5_REGS_H */

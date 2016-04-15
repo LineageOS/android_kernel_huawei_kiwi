@@ -63,9 +63,6 @@ module_param_named(debug_mask, mmc_debug_mask, int,
 	} while (0)
 #endif /* CONFIG_HUAWEI_KERNEL */
 
-#ifdef CONFIG_HUAWEI_KERNEL
-extern void set_always_on(struct sdhci_host *host, int ret);
-#endif
 #define MAX_TUNING_LOOP 40
 
 #ifdef CONFIG_HUAWEI_KERNEL
@@ -2236,9 +2233,6 @@ static int sdhci_get_cd(struct mmc_host *mmc)
 	sdhci_runtime_pm_get(host);
 	ret = sdhci_do_get_cd(host);
 	sdhci_runtime_pm_put(host);
-#ifdef CONFIG_HUAWEI_KERNEL
-    set_always_on(host,ret);
-#endif
 	return ret;
 }
 

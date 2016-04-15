@@ -346,10 +346,13 @@ struct mdss_pp_res_type {
 	struct pp_sts_type pp_disp_sts[MDSS_BLOCK_DISP_NUM];
 	/* physical info */
 	struct pp_hist_col_info *dspp_hist;
+    struct mdp_pcc_cfg_data saved_pcc_disp_cfg[MDSS_BLOCK_DISP_NUM];
 };
 
 static DEFINE_MUTEX(mdss_pp_mutex);
 static struct mdss_pp_res_type *mdss_pp_res;
+
+static unsigned int g_attenuation_coff=0; /*0~99%*/
 
 static u32 pp_hist_read(char __iomem *v_addr,
 				struct pp_hist_col_info *hist_info);
@@ -2117,6 +2120,8 @@ int mdss_mdp_pp_init(struct device *dev)
 			init_completion(&vig[i].pp_res.hist.first_kick);
 		}
 	}
+
+    g_attenuation_coff=0;
 exit_err:
 	mutex_unlock(&mdss_pp_mutex);
 	return ret;
@@ -2715,6 +2720,22 @@ int mdss_mdp_pcc_config(struct mdp_pcc_cfg_data *config,
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 	} else {
 		mdss_pp_res->pcc_disp_cfg[disp_num] = *config;
+        mdss_pp_res->saved_pcc_disp_cfg[disp_num]= *config;
+        if(g_attenuation_coff)
+		{
+			unsigned long temp_blue;
+			pr_info(": coff=%d old r=%x, g=%x, b=%x\n", g_attenuation_coff,
+                                mdss_pp_res->pcc_disp_cfg[disp_num].r.r,
+                                mdss_pp_res->pcc_disp_cfg[disp_num].g.g,
+                                mdss_pp_res->pcc_disp_cfg[disp_num].b.b);
+			temp_blue = (unsigned)mdss_pp_res->pcc_disp_cfg[disp_num].b.b;
+			temp_blue = ((temp_blue*g_attenuation_coff)+50)/100;
+			mdss_pp_res->pcc_disp_cfg[disp_num].b.b = (unsigned int)temp_blue;
+			pr_info(": coff=%d new r=%x, g=%x, b=%x\n", g_attenuation_coff,
+                                mdss_pp_res->pcc_disp_cfg[disp_num].r.r,
+                                mdss_pp_res->pcc_disp_cfg[disp_num].g.g,
+                                mdss_pp_res->pcc_disp_cfg[disp_num].b.b);
+		}
 		mdss_pp_res->pp_disp_flags[disp_num] |= PP_FLAGS_DIRTY_PCC;
 	}
 
@@ -5735,4 +5756,60 @@ int mdss_mdp_calib_config_buffer(struct mdp_calib_config_buffer *cfg,
 
 	kfree(buff_org);
 	return ret;
+}
+
+static void pp_update_pcc_config(unsigned int disp_num)
+{
+        u32 flags;
+        char __iomem *base;
+        struct pp_sts_type *pp_sts;
+
+        mutex_lock(&mdss_pp_mutex);
+        if (disp_num < MDSS_BLOCK_DISP_NUM)
+            flags = mdss_pp_res->pp_disp_flags[disp_num];
+        else
+            flags = 0;
+        base = mdss_mdp_get_dspp_addr_off(disp_num);
+        pp_sts = &mdss_pp_res->pp_disp_sts[disp_num];
+        pp_pcc_config(flags, base + MDSS_MDP_REG_DSPP_PCC_BASE, pp_sts,	&mdss_pp_res->pcc_disp_cfg[disp_num]);
+        mutex_unlock(&mdss_pp_mutex);
+}
+
+int mdss_mdp_pp_set_comform_coff(unsigned int coff_val, unsigned int update_flag)
+{
+	int ret=0;
+	struct msmfb_mdp_pp pp;
+	unsigned int copyback=0;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+
+
+	if(!(coff_val >= 0 && coff_val <= 80)){
+		return -EINVAL;
+	}
+
+	if (mdata->pp_enable == MDP_PP_DISABLE ) {
+		pr_err("set invalid for MDP_PP_DISABLE\n");
+		return -EPERM;
+	}
+
+
+	g_attenuation_coff = 100-coff_val;
+	if(g_attenuation_coff == 100)
+		g_attenuation_coff = 0;
+
+	if(update_flag){
+		memset(&pp,0x0,sizeof(struct msmfb_mdp_pp));
+		pp.data.pcc_cfg_data= mdss_pp_res->saved_pcc_disp_cfg[0];  /*0: MDP_LOGICAL_BLOCK_DISP_0 */
+		pp.data.pcc_cfg_data.ops = MDP_PP_OPS_ENABLE | MDP_PP_OPS_WRITE;
+		pr_info("saved_blue_per=%d, r.r=%x, g.g=%x, b.b=%x \n", g_attenuation_coff, pp.data.pcc_cfg_data.r.r, pp.data.pcc_cfg_data.g.g, pp.data.pcc_cfg_data.b.b);
+
+		ret = mdss_mdp_pcc_config(&pp.data.pcc_cfg_data, &copyback);
+		if(ret){
+			pr_err("mdss_mdp_pcc_config  failed\n");
+		}
+		pp_update_pcc_config(0);
+	}
+
+	return ret;
+
 }

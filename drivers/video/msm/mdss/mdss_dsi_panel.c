@@ -23,6 +23,7 @@
 #include <linux/err.h>
 
 #include "mdss_dsi.h"
+/*add boe esd  solutions*/
 #ifdef CONFIG_LOG_JANK
 #include <linux/log_jank.h>
 #endif
@@ -39,6 +40,10 @@ static bool enable_initcode_debugging = FALSE;
 module_param_named(enable_initcode_debugging, enable_initcode_debugging, bool, S_IRUGO | S_IWUSR);
 extern struct msmfb_cabc_config g_cabc_cfg_foresd;
 extern bool enable_PT_test;
+/*<add cabc node>*/
+#define CABC_OFF 0
+#define CABC_MOVING 1
+#define CABC_STILL 2
 #endif
 #define DT_CMD_HDR 6
 
@@ -235,6 +240,19 @@ static struct dsi_cmd_desc backlight_cmd = {
 	led_pwm1
 };
 
+static char unlock_part1[] = {0x00, 0x00};	/* DTYPE_GEN_LWRITE */
+static char unlock_part2[] = {0x99, 0x95, 0x27};	/* DTYPE_GEN_LWRITE */
+static char lock_part1[] = {0x00, 0x00};	/* DTYPE_GEN_LWRITE */
+static char lock_part2[] = {0x99, 0x11, 0x11};	/* DTYPE_GEN_LWRITE */
+
+static struct dsi_cmd_desc backlight_cmd_boe[] = {
+	{{DTYPE_GEN_LWRITE, 0, 0, 0, 0, sizeof(unlock_part1)},unlock_part1},
+	{{DTYPE_GEN_LWRITE, 0, 0, 0, 0, sizeof(unlock_part2)},unlock_part2},
+	{{DTYPE_DCS_WRITE1, 0, 0, 0, 0, sizeof(led_pwm1)},led_pwm1},
+	{{DTYPE_GEN_LWRITE, 0, 0, 0, 0, sizeof(lock_part1)},lock_part1},
+	{{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(lock_part2)},lock_part2},
+};
+
 static char led_pwm_pad[2] = {0x9f, 0x0};
 static struct dsi_cmd_desc backlight_cmd_pad = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm_pad)},
@@ -270,9 +288,16 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	led_pwm1[1] = (unsigned char)level;
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
-	cmdreq.cmds = &backlight_cmd;
-	cmdreq.cmds_cnt = 1;
-	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
+	if (!strcmp(pinfo->panel_name,"BOE_OTM1901_5P5_1080P_VIDEO")) {
+            cmdreq.cmds = backlight_cmd_boe;
+	    cmdreq.cmds_cnt = sizeof(backlight_cmd_boe) / sizeof((backlight_cmd_boe)[0]);
+	    cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL | CMD_REQ_HS_MODE;
+	}
+	else {
+            cmdreq.cmds = &backlight_cmd;
+	    cmdreq.cmds_cnt = 1;
+	    cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
+	}
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
@@ -289,12 +314,41 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 static void mdss_dsi_panel_bklt_dcs_pad(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
 	pr_err("%s: level=%d\n", __func__, level);
-	led_pwm_pad[1] =(unsigned char)level;
-	chang_page_index0[1]=(unsigned char)Page0_param0;
-	chang_page_index1[1]=(unsigned char)Page0_param1;
+	if (1 == ctrl->which_product_pad)
+	{
+		led_pwm1[1] = (unsigned char)level;
+		mdss_dsi_panel_cmds_send_ex(ctrl,backlight_cmd);
+	}
+	else
+	{
+		led_pwm_pad[1] =(unsigned char)level;
+		chang_page_index0[1]=(unsigned char)Page0_param0;
+		chang_page_index1[1]=(unsigned char)Page0_param1;
+		mdss_dsi_panel_cmds_send_ex(ctrl,page_cmd0_pad);
+		mdss_dsi_panel_cmds_send_ex(ctrl,page_cmd1_pad);
+		mdss_dsi_panel_cmds_send_ex(ctrl,backlight_cmd_pad);
+	}
+
+}
+
+
+#define Page2_param0			0xBB
+#define Page2_param1			0x22
+#define cabc_moving_set			0x00
+static char cabc_moving_pad[2] = {0x90, 0x0};
+static struct dsi_cmd_desc moving_cmd_pad = {
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(cabc_moving_pad)},
+	cabc_moving_pad
+};
+
+static void mdss_dsi_panel_cabc_moving_pad(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	led_pwm_pad[1] =(unsigned char)cabc_moving_set;
+	chang_page_index0[1]=(unsigned char)Page2_param0;
+	chang_page_index1[1]=(unsigned char)Page2_param1;
 	mdss_dsi_panel_cmds_send_ex(ctrl,page_cmd0_pad);
 	mdss_dsi_panel_cmds_send_ex(ctrl,page_cmd1_pad);
-	mdss_dsi_panel_cmds_send_ex(ctrl,backlight_cmd_pad);
+	mdss_dsi_panel_cmds_send_ex(ctrl,moving_cmd_pad);
 }
 
 
@@ -348,7 +402,7 @@ rst_gpio_err:
 disp_en_gpio_err:
 	return rc;
 }
-
+/*Rename GPIO*/
 #ifdef CONFIG_HUAWEI_LCD
 static void hw_panel_bias_en(struct mdss_panel_data *pdata, int enable)
 {
@@ -359,18 +413,16 @@ static void hw_panel_bias_en(struct mdss_panel_data *pdata, int enable)
 	}
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
-	if (gpio_is_valid(ctrl_pdata->disp_en_gpio_vsp))
+	if (gpio_is_valid(ctrl_pdata->disp_en_gpio_vled))
 	{
-		gpio_set_value((ctrl_pdata->disp_en_gpio_vsp), enable);
-		pr_info("%s,%d set en disp_en_gpio_vsp = %d \n",__func__,__LINE__,enable);
+		gpio_set_value((ctrl_pdata->disp_en_gpio_vled), enable);
+		pr_info("%s,%d set en disp_en_gpio_vled = %d \n",__func__,__LINE__,enable);
 	}
-	mdelay(25);
-	if (gpio_is_valid(ctrl_pdata->disp_en_gpio_vsn))
-	{
-		gpio_set_value((ctrl_pdata->disp_en_gpio_vsn), enable);
-		pr_info("%s,%d set en disp_en_gpio_vsn = %d \n",__func__,__LINE__,enable);
+	if(enable){
+		ctrl_pdata->hw_led_en_flag = 1;
+	}else {
+		ctrl_pdata->hw_led_en_flag = 0;
 	}
-
 }
 #endif
 /* optimize code */
@@ -420,10 +472,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 				usleep(pinfo->rst_seq[i] * 1000);
 			}
 		}
-		if (ctrl_pdata->hw_product_pad) {
-			LCD_MDELAY(20);
-			hw_panel_bias_en(pdata,1);
-		}
+		//delete
 	#else
 		if (!pinfo->cont_splash_enabled) {
 			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
@@ -468,11 +517,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
-
-		if (ctrl_pdata->hw_product_pad) {
-			hw_panel_bias_en(pdata,0);
-			LCD_MDELAY(10);
-		}
+		//delete
 
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
 		//Pull the reset to low-high-low only when truly_hx8399a module's leakage current be tested in PT.
@@ -742,6 +787,13 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
+	if (1==ctrl_pdata->hw_product_pad && 0 != bl_level && 0 == ctrl_pdata->hw_led_en_flag) {
+		if (1 != ctrl_pdata->which_product_pad){
+			//mdelay(250);
+			hw_panel_bias_en(pdata,1);
+			mdss_dsi_panel_cabc_moving_pad(ctrl_pdata);
+		}
+	}
 	/*
 	 * Some backlight controllers specify a minimum duty cycle
 	 * for the backlight brightness. If the brightness is less
@@ -1146,6 +1198,45 @@ out:
 }
 
 /*Add display color inversion function*/
+
+/*<add cabc node>*/
+static int mdss_dsi_lcd_set_cabc_mode(struct mdss_panel_data *pdata,unsigned int cabc_mode)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	int ret = 0;
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	switch(cabc_mode)
+	{
+
+		case CABC_OFF:
+			if (ctrl_pdata->dsi_panel_cabc_off_cmds.cmd_cnt)
+				mdss_dsi_panel_cmds_send(ctrl_pdata, &ctrl_pdata->dsi_panel_cabc_off_cmds);
+			break;
+
+		case CABC_MOVING:
+			if (ctrl_pdata->dsi_panel_cabc_moving_cmds.cmd_cnt)
+				mdss_dsi_panel_cmds_send(ctrl_pdata, &ctrl_pdata->dsi_panel_cabc_moving_cmds);
+			break;
+
+		case CABC_STILL:
+			if (ctrl_pdata->dsi_panel_cabc_still_cmds.cmd_cnt)
+				mdss_dsi_panel_cmds_send(ctrl_pdata, &ctrl_pdata->dsi_panel_cabc_still_cmds);
+			break;
+
+		default:
+			ret = -EINVAL;
+			LCD_LOG_ERR("%s: invalid cabc mode: %d\n", __func__, cabc_mode);
+			break;
+	}
+	LCD_LOG_INFO("exit %s : cabc mode= %d\n",__func__,cabc_mode);
+	return ret;
+}
 static int mdss_dsi_lcd_set_display_inversion(struct mdss_panel_data *pdata,unsigned int inversion_mode)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -2381,6 +2472,8 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	ctrl_pdata->reg_expect_value = (!rc ? tmp : 0x1c);
 	rc = of_property_read_u32(np, "huawei,product-pad-flag", &tmp);
 	ctrl_pdata->hw_product_pad = (!rc ? tmp : 0);
+	rc = of_property_read_u32(np, "huawei,which-product-pad", &tmp);
+	ctrl_pdata->which_product_pad = (!rc ? tmp : 0);
 
 	rc = of_property_read_u32(np, "huawei,reg-long-read-count", &tmp);
 	ctrl_pdata->reg_expect_count = (!rc ? tmp : 3);
@@ -2390,10 +2483,22 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		"qcom,panel-inverse-on-cmds", "qcom,inverse-on-cmds-dsi-state");
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->dsi_panel_inverse_off_cmds,
 		"qcom,panel-inverse-off-cmds", "qcom,inverse-on-cmds-dsi-state");
+	/*<add cabc node>*/
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->dsi_panel_cabc_off_cmds,
+		"qcom,panel-cabc-off-cmds", "qcom,cabc-off-cmds-dsi-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->dsi_panel_cabc_moving_cmds,
+		"qcom,panel-cabc-moving-cmds", "qcom,cabc-moving-cmds-dsi-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->dsi_panel_cabc_still_cmds,
+		"qcom,panel-cabc-still-cmds", "qcom,cabc-still-cmds-dsi-state");
+	pinfo->cabc_mode =1;		//default: moving mode;set cabc_mode=1
 	mdss_panel_parse_esd_dt(np,ctrl_pdata);
 	rc = of_property_read_u32(np, "huawei,mdss-dsi-lens-type", &tmp);
 	pinfo->lens_type= (!rc ? tmp : 0);
 	mdss_panel_parse_frame_checksum_dt(np,ctrl_pdata);
+
+	if(ctrl_pdata->hw_product_pad){
+		pinfo->support_mode |= 0x01; /*support lcd_comform_mode */
+	}
 #endif
 	return 0;
 
@@ -2453,6 +2558,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->panel_data.set_inversion_mode = mdss_dsi_panel_inversion_ctrl;
 	ctrl_pdata->panel_data.check_panel_status= mdss_dsi_check_panel_status;
 	ctrl_pdata->panel_data.lcd_set_display_inversion = mdss_dsi_lcd_set_display_inversion;
+	ctrl_pdata->panel_data.lcd_set_cabc_mode = mdss_dsi_lcd_set_cabc_mode;
 	ctrl_pdata->panel_data.check_panel_mipi_crc = mdss_dsi_check_mipi_crc;
 	ctrl_pdata->panel_data.panel_frame_checksum = mdss_lcd_frame_checksum;
 #endif

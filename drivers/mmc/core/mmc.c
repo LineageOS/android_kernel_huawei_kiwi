@@ -335,12 +335,21 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	}
 
 	card->ext_csd.rev = ext_csd[EXT_CSD_REV];
+#ifdef CONFIG_HUAWEI_KERNEL
+	if (card->ext_csd.rev > 8) {
+		pr_err("%s: unrecognised EXT_CSD revision %d\n",
+			mmc_hostname(card->host), card->ext_csd.rev);
+		err = -EINVAL;
+		goto out;
+	}
+#else
 	if (card->ext_csd.rev > 7) {
 		pr_err("%s: unrecognised EXT_CSD revision %d\n",
 			mmc_hostname(card->host), card->ext_csd.rev);
 		err = -EINVAL;
 		goto out;
 	}
+#endif
 
 	/* fixup device after ext_csd revision field is updated */
 	mmc_fixup_device(card, mmc_fixups);

@@ -53,9 +53,9 @@
 static unsigned short bh1745_atime[6] = {160, 320, 640, 1280, 2560, 5120};
 static unsigned char bh1745_again[3] = {1, 2, 16};
 static int dim_flag = 0;
-static long cofficient_judge = 242;
-static long cofficient_red[2]={1565, 932};
-static long cofficient_green[2] = {9053, 8607};
+static long cofficient_judge = 246;
+static long cofficient_red[2]={423, 234};
+static long cofficient_green[2] = {2399, 2227};
 static long cofficient_blue[2] = {0,0};
 enum tp_color_id{
 	GOLD = 0,

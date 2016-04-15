@@ -1028,6 +1028,21 @@ static int msm_external_pa_put(struct snd_kcontrol *kcontrol, struct snd_ctl_ele
             ad_loge("%s: afe_set_lpass_clock QUATERNARY_MI2S_TX failed\n", __func__);
             //return ret;
         } 
+
+        if (atomic_read(&pdata->mclk_rsc_ref) > 0) 
+        {
+			atomic_dec(&pdata->mclk_rsc_ref);
+			ad_logd("%s: mclk_rsc_ref %d\n", __func__, atomic_read(&pdata->mclk_rsc_ref));
+		}
+
+		if ((atomic_read(&quat_mi2s_clk_ref) == 0) && (atomic_read(&pdata->mclk_rsc_ref) == 0)) 
+	    {
+			msm8x16_enable_codec_ext_clk(codec, 0, true);
+			ret = pinctrl_select_state(pinctrl_info.pinctrl, pinctrl_info.cdc_lines_sus);
+			if (ret < 0)
+				ad_loge("%s: error at pinctrl state select\n", __func__);
+		}
+
 	}
 	return ret;
 }
@@ -2695,6 +2710,7 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
     const char *spk_ext_pa_enable_gpio = "qcom,spk-ext-pa-enable-gpio";
     const char *spk_ext_pa_switch_vdd_gpio = "qcom,spk-ext-pa-switch-vdd-gpio";
     const char *spk_ext_pa_switch_in_gpio = "qcom,spk-ext-pa-switch-in-gpio";
+	const char *pa_enable_gpio_on_delayms = "qcom,pa-enable-gpio-on-delayms";
 	const char *ptr = NULL;
 	const char *type = NULL;
 	const char *ext_pa_str = NULL;
@@ -2902,6 +2918,8 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
             if(ret < 0)
             {
                 ad_loge("%s: gpio_request spk_ext_pa_boost_gpio failed",__func__);
+            }else{
+               gpio_direction_output(pdata->spk_ext_pa_boost_gpio, 0);
             }
         }
     }
@@ -2916,6 +2934,8 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
             if(ret < 0)
             {
                 ad_loge("%s: gpio_request spk_ext_pa_enable_gpio failed",__func__);
+            }else{
+                gpio_direction_output(pdata->spk_ext_pa_enable_gpio, 0);
             }
         }
     }
@@ -2931,6 +2951,8 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
             if(ret < 0)
             {
                 ad_loge("%s: gpio_request spk_ext_pa_switch_vdd_gpio failed",__func__);
+            }else{
+                gpio_direction_output(pdata->spk_ext_pa_switch_vdd_gpio, 0);
             }
         }
     }
@@ -2946,9 +2968,19 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
             if(ret < 0)
             {
                 ad_loge("%s: gpio_request spk_ext_pa_switch_in_gpio failed",__func__);
+            }else{
+               gpio_direction_output(pdata->spk_ext_pa_switch_in_gpio, 0);
             }
-		}
+	  }
 	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, pa_enable_gpio_on_delayms, &pdata->spk_pa_enable_delaytime);
+	if (ret) {
+		ad_loge("%s: missing %s in dt node, then delay 0ms\n", __func__, pa_enable_gpio_on_delayms);
+		pdata->spk_pa_enable_delaytime = 0;
+	}
+
+	INIT_DELAYED_WORK(&pdata->spk_pa_enable_dwork, spk_pa_enable_set_fn);
 
 	ret = of_get_named_gpio_flags(of_audio_node, "huawei,hac_gpio", 0, NULL);
 	if (ret < 0) {
@@ -2996,6 +3028,7 @@ static int msm8x16_asoc_machine_remove(struct platform_device *pdev)
 		iounmap(pdata->vaddr_gpio_mux_mic_ctl);
 	snd_soc_unregister_card(card);
 	gpio_free(hac_en_gpio);
+    cancel_delayed_work_sync(&pdata->spk_pa_enable_dwork);
     if((pdata->spk_ext_pa_boost_gpio) >= 0)
         gpio_free(pdata->spk_ext_pa_boost_gpio);
     if((pdata->spk_ext_pa_enable_gpio) >= 0)

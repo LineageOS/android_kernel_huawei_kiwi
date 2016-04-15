@@ -83,6 +83,7 @@ static int firmware_update = 0;
 struct pn547_dev	{
 	wait_queue_head_t	read_wq;
 	struct mutex		read_mutex;
+	struct mutex		irq_wake_mutex;
 	struct device		*dev;
 	struct i2c_client	*client;
 	struct miscdevice	pn547_device;
@@ -96,6 +97,7 @@ struct pn547_dev	{
 	unsigned int		irq_gpio;
 	unsigned int		clk_req_gpio;
 	bool				irq_enabled;
+	bool			irq_wake_enabled;
 	spinlock_t		irq_enabled_lock;
 	bool		       	do_reading;
 	struct wake_lock   wl;
@@ -225,6 +227,52 @@ static void nfc_dsm_report(int error_no,int error_code)
 	return;
 }
 #endif
+
+/*
+ *FUNCTION: pn547_disable_irq_wake
+ *DESCRIPTION: disable irq wakeup function
+ *Parameters
+ * struct  pn547_dev *: device structure
+ *RETURN VALUE
+ * none
+ */
+static void pn547_disable_irq_wake(struct pn547_dev *pn547_dev)
+{
+	int ret = 0;
+
+	mutex_lock(&pn547_dev->irq_wake_mutex);
+	if (pn547_dev->irq_wake_enabled) {
+		pn547_dev->irq_wake_enabled = false;
+		ret = irq_set_irq_wake(pn547_dev->client->irq,0);
+		if (ret) {
+			pr_err("%s failed: ret=%d\n", __func__, ret);
+		}
+	}
+	mutex_unlock(&pn547_dev->irq_wake_mutex);
+}
+
+/*
+ *FUNCTION: pn547_enable_irq_wake
+ *DESCRIPTION: enable irq wakeup function
+ *Parameters
+ * struct  pn547_dev *: device structure
+ *RETURN VALUE
+ * none
+ */
+static void pn547_enable_irq_wake(struct pn547_dev *pn547_dev)
+{
+	int ret = 0;
+
+	mutex_lock(&pn547_dev->irq_wake_mutex);
+	if (!pn547_dev->irq_wake_enabled) {
+		pn547_dev->irq_wake_enabled = true;
+		ret = irq_set_irq_wake(pn547_dev->client->irq,1);
+		if (ret) {
+			pr_err("%s failed: ret=%d\n", __func__, ret);
+		}
+	}
+	mutex_unlock(&pn547_dev->irq_wake_mutex);
+}
 
 /*FUNCTION: get_nfc_config_name
   *DESCRIPTION: get nfc configure files' name from device tree system, save result in global variable
@@ -1385,14 +1433,14 @@ static long pn547_dev_ioctl(struct file *filp,
 			pr_err("%s power on\n", __func__);
 			gpio_set_value(pn547_dev->firm_gpio, 0);
 			gpio_set_value(pn547_dev->ven_gpio, 1);// 1
-			irq_set_irq_wake(pn547_dev->client->irq,1);
+			pn547_enable_irq_wake(pn547_dev);
 			msleep(20);
 		} else  if (arg == 0) {
 			/* power off */
 			pr_err("%s power off\n", __func__);
 			gpio_set_value(pn547_dev->firm_gpio, 0);
 			gpio_set_value(pn547_dev->ven_gpio, 0); //0
-			irq_set_irq_wake(pn547_dev->client->irq,0);
+			pn547_disable_irq_wake(pn547_dev);
 			msleep(60);
 		} else if (arg == 3) {
 			pr_info("%s Read Cancel\n", __func__);
@@ -1689,7 +1737,7 @@ static int pn547_probe(struct i2c_client *client,
 	pn547_dev->sim_status = CARD_UNKNOWN;
 	pn547_dev->enable_status = ENABLE_START;    
 	pn547_dev->nfc_clk = nfc_clk;
-    
+	pn547_dev->irq_wake_enabled = false;
 	/*check if nfc chip is ok*/
 	ret = check_pn547(client, pn547_dev);
 	if(ret < 0){
@@ -1703,6 +1751,7 @@ static int pn547_probe(struct i2c_client *client,
 	/* Initialise mutex and work queue */
 	init_waitqueue_head(&pn547_dev->read_wq);
 	mutex_init(&pn547_dev->read_mutex);
+	mutex_init(&pn547_dev->irq_wake_mutex);
 	spin_lock_init(&pn547_dev->irq_enabled_lock);
        wake_lock_init(&pn547_dev->wl,WAKE_LOCK_SUSPEND,"nfc_locker");
 	pn547_dev->pn547_device.minor = MISC_DYNAMIC_MINOR;
@@ -1749,6 +1798,7 @@ err_request_irq_failed:
 
 err_misc_register:
 	mutex_destroy(&pn547_dev->read_mutex);
+	mutex_destroy(&pn547_dev->irq_wake_mutex);
 	kfree(pn547_dev);
 err_exit:
 err_i2c:
@@ -1782,6 +1832,7 @@ static int pn547_remove(struct i2c_client *client)
 	free_irq(client->irq, pn547_dev);
 	misc_deregister(&pn547_dev->pn547_device);
 	mutex_destroy(&pn547_dev->read_mutex);
+	mutex_destroy(&pn547_dev->irq_wake_mutex);
 	wake_lock_destroy(&pn547_dev->wl);
 	remove_sysfs_interfaces(&client->dev);
 	if (pn547_dev->nfc_clk) {

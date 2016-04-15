@@ -1251,9 +1251,7 @@ static int battery_monitor_capacity_changed(struct bq27510_device_info *di)
             }
         }
     }
-
-    pmu_log_info("bat_exist value is %d,curr_capacity is %d,prev_capacity is %d\n",bat_exist,curr_capacity,di->prev_capacity);
-
+    pmu_log_info("bat_exist = %d,curr_capacity = %d,prev_capacity = %d,capacity_debounce_count = %d,charge_full_count = %d,last_soc_unbound = %d\n",bat_exist,curr_capacity,di->prev_capacity,di->capacity_debounce_count,di->charge_full_count,di->last_soc_unbound);
     /* Debouncing of power on init. */
     if (di->capacity == -1)
     {
@@ -1302,10 +1300,7 @@ static int battery_monitor_capacity_changed(struct bq27510_device_info *di)
             di->charge_full_count = CHARGE_FULL_TIME;
         }
     }
-    else if(bq_device && (get_charge_status(di) == POWER_SUPPLY_STATUS_FULL))
-    {
-        di->charge_full_count = CHARGE_FULL_TIME;
-    }
+/*delete the no use code*/
     else
     {
         di->charge_full_count = 0;
@@ -1352,8 +1347,17 @@ static int battery_monitor_capacity_changed(struct bq27510_device_info *di)
                      di->prev_capacity, curr_capacity,bq27510_battery_voltage(di));
             return 0;
         }
+#ifdef PRODUCTION_ALE_KERNEL
         if(!di->last_soc_unbound)
         {
+#else
+        if(!di->last_soc_unbound || (!atomic_read(&battery_full_flag) && 100 == di->capacity))
+        {
+            if(di->last_soc_unbound)
+            {
+                di->last_soc_unbound = false;
+            }
+#endif
             ramp_step = MAX_SOC_CHANGE;
 #ifndef PRODUCTION_ALE_KERNEL
             if(abs(curr_capacity - di->prev_capacity) > MAX_SOC_CHANGE)
@@ -1393,15 +1397,22 @@ static int battery_monitor_capacity_changed(struct bq27510_device_info *di)
         }
         di->prev_capacity = curr_capacity;
         di->capacity_debounce_count = 0;
+#ifndef PRODUCTION_ALE_KERNEL
+        di->charge_full_count = 0;
+#endif
     }
     else if (++di->capacity_debounce_count >= CAPACITY_DEBOUNCE_MAX)
     {
+#ifdef PRODUCTION_ALE_KERNEL
         if (bq_device && is_usb_chg_exist() == CHARGER_ONLINE && (di->charge_full_count >= CHARGE_FULL_TIME))
         {
+#else
+        if (bq_device && is_usb_chg_exist() == CHARGER_ONLINE && (di->charge_full_count >= CHARGE_FULL_TIME) && (di->capacity > CAPACITY_RAMP_DOWN))
+        {
+#endif
             curr_capacity = CAPACITY_FULL;
             set_charge_status(di, POWER_SUPPLY_STATUS_FULL);
         }
-
         di->capacity = curr_capacity;
         di->capacity_debounce_count = 0;
         if(bq_device && (get_charge_status(di) == POWER_SUPPLY_STATUS_FULL))

@@ -131,18 +131,55 @@
 		txc,ps_wave = <20>;
 		txc,ps_defalt_crosstalk = <50>;
 	};
+	avago@52 {
+		compatible = "avago,apds9251";
+		reg = <0x52>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		apds9251,tp_moudle_count = <3>;
+		/*[module_id] [CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		apds9251,cal_data0 = "2","118","1747","999","903","907","6233","6002","5046","24","16","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"106","1748","999","999","1000","1096","1001","932","31","20","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"112","1737","797","901","1011","20516","11358","9328","154","108","100";
+		/*[module_id] [CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		apds9251,cal_data1 = "4","123","1742","1001","1001","1000","4638","4168","3720","24","15","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"109","1748","999","999","1000","904","807","807","30","18","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"112","1738","796","901","1124","13604","6163","5362","154","90","68";
+		/*[module_id] [CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		apds9251,cal_data2 = "5","9976","1490","948","1048","1150","2470","2475","2261","25","15","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"6491","1636","946","1054","1159","1043","1004","940","30","19","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"14588","1008","939","1211","1256","13043","11270","9600","58","25","10";
+	};
 	rohm@38 {
 		compatible = "rohm,bh1745";
 		reg = <0x38>;
 		vdd-supply = <&pm8916_l17>;
 		vio-supply = <&pm8916_l6>;
-		bh1745,tp_moudle_count = <1>;
-		/*[module_id] [golden judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
+		bh1745,tp_moudle_count = <3>;
+		/*JDI [module_id] [golden judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
 		bh1745,cal_data0 = "2","328","980","257","6636","6801","0","0",
 		/*[white judge] r[0] r[1] g[0]  g[1] b[0] b[1]*/
 		"211","205","102","855","808","0","0",
 		/*[blue judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
 		"646","4100","1248","14018","10972","0","0";
+		/*BOE [module_id] [golden judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
+		bh1745,cal_data1 = "4","271","750","389","4558","4011","0","0",
+		/*[white judge] r[0] r[1] g[0]  g[1] b[0] b[1]*/
+		"210","205","102","855","808","0","0",
+		/*[blue judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
+		"470","1557","906","4811","3250","0","0";
+		/*LG [module_id] [golden judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
+		bh1745,cal_data2 = "5","330","980","257","6636","6801","0","0",
+		/*[white judge] r[0] r[1] g[0]  g[1] b[0] b[1]*/
+		"212","205","102","855","808","0","0",
+		/*[blue judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
+		"648","4100","1248","14018","10972","0","0";
 	};
 
 	st@19 {

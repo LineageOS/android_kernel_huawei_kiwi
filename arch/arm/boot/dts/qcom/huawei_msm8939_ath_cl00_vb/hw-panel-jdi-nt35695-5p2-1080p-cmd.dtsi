@@ -44,6 +44,7 @@
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
 		qcom,mdss-dsi-on-command = [29 00 00 00 00 00 02 FF 20
+					29 00 00 00 00 00 02 10 02
 					29 00 00 00 00 00 02 FB 01
 					29 00 00 00 00 00 02 68 03
 					29 00 00 00 00 00 02 FF 22

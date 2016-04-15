@@ -725,6 +725,11 @@ static int mmc_blk_ioctl_cmd(struct block_device *bdev,
 		err = PTR_ERR(card);
 		goto cmd_done;
 	}
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	if (mmc_bus_needs_resume(card->host)) {
+		mmc_resume_bus(card->host);
+	}
+#endif
 
 	cmd.opcode = idata->ic.opcode;
 	cmd.arg = idata->ic.arg;
@@ -1737,8 +1742,8 @@ static int mmc_blk_err_check(struct mmc_card *card,
 					" %s %s\n", mmc_hostname(card->host),
 					req->rq_disk->disk_name, __func__);
 #ifdef CONFIG_HW_SD_HEALTH_DETECT
-				if (mmc_card_sd(card))
-					mmc_diag_sd_health_status(req->rq_disk,MMC_BLK_STUCK_IN_PRG_ERR);
+                if (mmc_card_sd(card))
+                    mmc_diag_sd_health_status(req->rq_disk,MMC_BLK_STUCK_IN_PRG_ERR);
 #endif
 				return MMC_BLK_CMD_ERR;
 			}
@@ -2747,20 +2752,20 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 	u8 reqs = 0;
 
 #ifdef CONFIG_HW_SD_HEALTH_DETECT
-	unsigned long long time1 = 0;
-	unsigned int rq_byte=0;
+    unsigned long long time1 = 0;
+    unsigned int rq_byte=0;
 #endif
 
 	if (!rqc && !mq->mqrq_prev->req)
 		return 0;
 
 #ifdef CONFIG_HW_SD_HEALTH_DETECT
-	if(!strcmp(current->comm,"mmcqd/1"))
-	{
-		mmc_trigger_ro_check(rqc,md->disk,md->read_only);
-		time1 = sched_clock();
-		rq_byte = mmc_calculate_ioworkload_and_rwspeed(time1,rqc,md->disk);
-	}
+    if(!strcmp(current->comm,"mmcqd/1"))
+    {
+        mmc_trigger_ro_check(rqc,md->disk,md->read_only);
+        time1 = sched_clock();
+        rq_byte = mmc_calculate_ioworkload_and_rwspeed(time1,rqc,md->disk);
+    }
 #endif
 
 	if (rqc) {
@@ -2805,10 +2810,10 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 		mmc_queue_bounce_post(mq_rq);
 
 #ifdef CONFIG_HW_SD_HEALTH_DETECT
-		if(mmc_card_sd(card))
-		{
-			mmc_diag_sd_health_status(md->disk,mmc_get_rw_status(status));
-		}
+        if(mmc_card_sd(card))
+        {
+            mmc_diag_sd_health_status(md->disk,mmc_get_rw_status(status));
+        }
 #endif
 
 		switch (status) {
@@ -2940,10 +2945,10 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 	} while (ret);
 
 #ifdef CONFIG_HW_SD_HEALTH_DETECT
-	if(!strcmp(current->comm,"mmcqd/1"))
-	{
-		mmc_calculate_rw_size(time1,rq_byte,rqc);
-	}
+    if(!strcmp(current->comm,"mmcqd/1"))
+    {
+        mmc_calculate_rw_size(time1,rq_byte,rqc);
+    }
 #endif
 
 	return 1;
@@ -3543,14 +3548,21 @@ static int mmc_blk_probe(struct mmc_card *card)
 	mmc_fixup_device(card, blk_fixups);
 
 #ifdef CONFIG_HW_SD_HEALTH_DETECT
-	if(mmc_card_sd(card))
-	{
-		mmc_clear_report_info();
-	}
+    if(mmc_card_sd(card))
+    {
+        mmc_clear_report_info();
+    }
 #endif
 
 #ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+#ifdef CONFIG_HUAWEI_KERNEL
+	if (mmc_card_sd(card)) {
+		printk("%s: set manual_resume in mmc_blk_probe.\n", mmc_hostname(card->host));
+		mmc_set_bus_resume_policy(card->host, 1);
+	}
+#else
 	mmc_set_bus_resume_policy(card->host, 1);
+#endif
 #endif
 	if (mmc_add_disk(md))
 		goto out;
@@ -3593,7 +3605,17 @@ static void mmc_blk_remove(struct mmc_card *card)
 	mmc_blk_remove_req(md);
 	mmc_set_drvdata(card, NULL);
 #ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+#ifdef CONFIG_HUAWEI_KERNEL
+	if (mmc_card_sd(card)) {
+		printk("%s: clear manual_resume and need_resume in mmc_blk_remove.\n", mmc_hostname(card->host));
+		mmc_set_bus_resume_policy(card->host, 0);
+		card->host->bus_resume_flags &= ~MMC_BUSRESUME_NEEDS_RESUME;
+	}
+#else
 	mmc_set_bus_resume_policy(card->host, 0);
+#endif
+
+
 #endif
 }
 

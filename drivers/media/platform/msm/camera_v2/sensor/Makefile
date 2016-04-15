@@ -14,6 +14,7 @@ obj-$(CONFIG_MSM_CAMERA_SENSOR) += sensor_otp_ov13850.o sensor_otp_ov5648.o sens
 obj-$(CONFIG_MSM_CAMERA_SENSOR) += sensor_otp_imx328_sunny_p13n10a.o
 obj-$(CONFIG_MSM_CAMERA_SENSOR) += sensor_otp_ar1335_sunny_f13m01f.o
 obj-$(CONFIG_MSM_CAMERA_SENSOR) += sensor_otp_imx214.o
+obj-$(CONFIG_MSM_CAMERA_SENSOR) += sensor_otp_s5k3m2.o
 obj-$(CONFIG_MT9M114) += mt9m114.o
 obj-$(CONFIG_OV5645) += ov5645.o
 obj-$(CONFIG_OV5645) += ov7695.o

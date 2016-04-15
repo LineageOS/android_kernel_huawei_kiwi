@@ -254,6 +254,8 @@ int usb_update_thread(void *__unused)
     return 0;
 }
 #endif
+
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
 static void enable_emergency_dload_mode(void)
 {
 	int ret;
@@ -278,6 +280,7 @@ static void enable_emergency_dload_mode(void)
 	if (ret)
 		pr_err("Failed to set secure EDLOAD mode: %d\n", ret);
 }
+#endif
 
 static int dload_set(const char *val, struct kernel_param *kp)
 {
@@ -420,8 +423,12 @@ static void msm_restart_prepare(const char *cmd)
 			if (!ret)
 				__raw_writel(0x6f656d00 | (code & 0xff),
 					     restart_reason);
+
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
+#endif
+
 #ifdef CONFIG_FEATURE_HUAWEI_EMERGENCY_DATA
 		} else if (!strncmp(cmd, "mountfail", strlen("mountfail"))) {
 		    __raw_writel(MOUNTFAIL_MAGIC_NUM, restart_reason);

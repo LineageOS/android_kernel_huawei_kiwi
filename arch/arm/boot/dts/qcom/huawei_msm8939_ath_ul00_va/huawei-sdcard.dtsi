@@ -10,8 +10,6 @@
 		2 &msm_gpio 38 0>;
 	cd-gpios = <&msm_gpio 38 0x0>;
 	qcom,vdd-io-voltage-level = <2950000 2950000>;
-        /*Add node for allowing to power off ldo when has no sdcard*/
-        huawei,power-off-no-card;
 };
 &tlmm_pinmux {
 	sdhc2_cd_pin {

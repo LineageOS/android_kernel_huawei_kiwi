@@ -230,6 +230,9 @@ static unsigned int cyttsp5_get_panel_name(char *panel_name, unsigned int length
 	case FW_TRULY:
 		strncpy(panel_name, "Truly", length);
 		break;
+	case FW_MUTTO:
+		strncpy(panel_name, "Mutto", length);
+		break;
     case FW_GIS:
         strncpy(panel_name, "Gis", length);
         break;
@@ -267,23 +270,20 @@ static void cyttsp5_calibrate_idacs(struct work_struct *calibration_work)
 		tp_log_err("%s:suspend_scanning fail, rc:%d\n", __func__, rc);
 		goto release;
 	}
-
 	for (mode = 0; mode < 3; mode++) {
 		rc = cmd->nonhid_cmd->calibrate_idacs(dev, 0, mode, &status);
 		if (rc < 0) {
 			tp_log_err("%s:calibrate_idacs fail, rc:%d, mode:%d\n", __func__, rc, mode);
-			goto release;
+			goto resume_scan;
 		}
 	}
+	tp_log_info("%s:%d Calibration Done\n", __func__,__LINE__);
 
+resume_scan:
 	rc = cmd->nonhid_cmd->resume_scanning(dev, 0);
 	if (rc < 0) {
 		tp_log_err("%s:resume_scanning fail, rc:%d\n", __func__, rc);
-		goto release;
 	}
-
-	tp_log_info("%s: Calibration Done\n", __func__);
-
 release:
 	cmd->release_exclusive(dev);
 exit:
@@ -915,6 +915,7 @@ static char *generate_firmware_filename(struct device *dev)
 	const char *product_name = NULL;
 	struct cyttsp5_platform_data *pdata = cyttsp5_get_platform_data(dev);
 	struct cyttsp5_core_platform_data *core_pdata = pdata->core_pdata;
+	u8 panel_id;
 #else /* CONFIG_HUAWEI_KERNEL */
 	u8 panel_id;
 #endif /* CONFIG_HUAWEI_KERNEL */
@@ -929,7 +930,23 @@ static char *generate_firmware_filename(struct device *dev)
 	
 #ifdef CONFIG_HUAWEI_KERNEL
 	product_name = core_pdata->product_name;
-	snprintf(filename, FILENAME_LEN_MAX, "%s_fw.bin", product_name);
+	panel_id = cyttsp5_get_panel_id(dev);
+	tp_log_info("%s, panel id = %d\n", __func__, panel_id);
+	if ( 0 == strncmp(core_pdata->product_name, PHONE_NAME_KIWI, sizeof(PHONE_NAME_KIWI))
+		&& ( FW_EELY == panel_id || FW_MUTTO == panel_id || FW_TRULY == panel_id)) {
+		char panel_name[PANEL_NAME_LEN_MAX] = {0};
+		int result = 0;
+		result = cyttsp5_get_panel_name(panel_name, PANEL_NAME_LEN_MAX - 1, panel_id);
+		if (result > 0) {
+			snprintf(filename, FILENAME_LEN_MAX, "%s_%s_fw.bin", product_name, panel_name);
+		} else {
+			snprintf(filename, FILENAME_LEN_MAX, "%s_fw.bin", product_name);
+		}
+	} else {
+		/* 1. not kiw; 2. could not get panel id; 3. panel is not EEL or MUT or TRU. */
+		/* keep original fw name in all above situation */
+		snprintf(filename, FILENAME_LEN_MAX, "%s_fw.bin", product_name);
+	}
 #else /* CONFIG_HUAWEI_KERNEL */
 	panel_id = cyttsp5_get_panel_id(dev);
 	if (panel_id == PANEL_ID_NOT_ENABLED)
@@ -1558,17 +1575,28 @@ static void cyttsp5_set_app_info(struct device * dev)
 	int panel_id = UNKNOW_PRODUCT_MODULE;
 	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
 	struct cyttsp5_cydata *cydata = &cd->sysinfo.cydata;
+	struct cyttsp5_platform_data *pdata = cyttsp5_get_platform_data(dev);
+	struct cyttsp5_core_platform_data *core_pdata = pdata->core_pdata;
 	
 	/* get panel name */
 	panel_id = cyttsp5_get_panel_id(dev);
 	cyttsp5_get_panel_name(panel_name, PANEL_NAME_LEN_MAX - 1, panel_id);
-	
-	snprintf(touch_info, APP_INFO_VALUE_LENTH - 1, 
-				"cyttsp5_%s_%d.%d.%d", 
-				panel_name, 
+
+	if ((core_pdata->chip_name) && (strcmp(core_pdata->chip_name, "CS448") == 0)) {
+		snprintf(touch_info, APP_INFO_VALUE_LENTH - 1,
+				"CS448_%s_%d.%d.%d",
+				panel_name,
 				cydata->fw_ver_major,
 				cydata->fw_ver_minor,
 				cydata->fw_ver_conf);
+	} else {
+		snprintf(touch_info, APP_INFO_VALUE_LENTH - 1,
+				"cyttsp5_%s_%d.%d.%d",
+				panel_name,
+				cydata->fw_ver_major,
+				cydata->fw_ver_minor,
+				cydata->fw_ver_conf);
+	}
 #ifdef CONFIG_APP_INFO
 	app_info_set("touch_panel", touch_info);
 #endif

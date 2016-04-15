@@ -262,9 +262,6 @@ struct sdhci_msm_reg_data {
 	/* is low power mode setting required for this regulator? */
 	bool lpm_sup;
 	bool set_voltage_sup;
-    /* is this regulator needs to power off when there is no card */
-    /* add it for differentiating beteen sdcard needed power off and other cards*/
-    bool is_power_off_without_card;
 };
 
 /*
@@ -1775,27 +1772,6 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 		pdata->mpm_sdiowakeup_int = mpm_int;
 	else
 		pdata->mpm_sdiowakeup_int = -1;
-    /* add node to support power off sdcard when there is no card */
-#ifdef CONFIG_HUAWEI_KERNEL
-    if (of_get_property(np, "huawei,power-off-no-card", NULL))
-    {
-        pdata->caps2 |= MMC_CAP2_POWER_OFF_NO_CARD;
-
-        /*
-        * when need power off sdcard without card, init the is_always_on as false
-        * to balance the value of use_count and reset power.
-        */
-        pdata->vreg_data->vdd_data->is_always_on=false;
-        pdata->vreg_data->vdd_io_data->is_always_on=false;
-
-        pdata->vreg_data->vdd_data->is_power_off_without_card = true;
-        pdata->vreg_data->vdd_io_data->is_power_off_without_card = true;
-    }
-    else
-    {
-        pdata->caps2 &= ~MMC_CAP2_POWER_OFF_NO_CARD;
-    }
-#endif
 
 	return pdata;
 out:
@@ -2123,21 +2099,7 @@ static int sdhci_msm_vreg_enable(struct sdhci_msm_reg_data *vreg)
 		if (ret)
 			return ret;
 	}
-#ifdef CONFIG_HUAWEI_KERNEL
-    if (vreg->is_power_off_without_card)
-    {
-        if(!vreg->is_enabled)
-        {
-	        ret = regulator_enable(vreg->reg);
-        }
-    }
-    else
-    {
-        ret = regulator_enable(vreg->reg);
-    }
-#else
-    ret = regulator_enable(vreg->reg);
-#endif
+	ret = regulator_enable(vreg->reg);
 	if (ret) {
 		pr_err("%s: regulator_enable(%s) failed. ret=%d\n",
 				__func__, vreg->name, ret);
@@ -2209,6 +2171,14 @@ static int sdhci_msm_setup_vreg(struct sdhci_msm_pltfm_data *pdata,
 				goto out;
 		}
 	}
+/* according to spec,vdd need to be below 500mv and keep 1ms at least
+ * so sd will be recognized next time
+ */
+	if(pdata->nonremovable != true && !enable)
+	{
+		pr_info("mmc1:add delay for sd vdd power off\n");
+		msleep(120);
+	}
 out:
 	return ret;
 }
@@ -2221,13 +2191,6 @@ static int sdhci_msm_vreg_reset(struct sdhci_msm_pltfm_data *pdata)
 {
 	int ret;
 
-#ifdef CONFIG_HUAWEI_KERNEL
-    if ((pdata->nonremovable != true) && (pdata->caps2 & MMC_CAP2_POWER_OFF_NO_CARD))
-    {
-        pdata->vreg_data->vdd_data->is_enabled=false;
-        pdata->vreg_data->vdd_io_data->is_enabled=false;
-    }
-#endif
 	ret = sdhci_msm_setup_vreg(pdata, 1, true);
 	if (ret)
 		return ret;
@@ -3372,42 +3335,6 @@ static int sdhci_msm_set_gpio_info(struct sdhci_msm_pltfm_data *pdata)
 	return ret;
 }
 #endif
-/*
- * set_always_on - set the values of is_always_on based on the result of get_cd.
- *
- * if the card is nonremovable, the values of is_always_on will not be changed.
- * when the card is removable, and host detect the card,
- * the is_always_on of vdd and vddop will set as true;
- * when the card is removable, adb there is no card on slot,
- * the is_always_on of vdd and vddop will set as false.
- *
- */
-#ifdef CONFIG_HUAWEI_KERNEL
-void  set_always_on(struct sdhci_host *host, int get_cd_true){
-
-    struct sdhci_msm_reg_data *vreg_table[2];
-    struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
-    struct sdhci_msm_host *msm_host = pltfm_host->priv;
-
-    vreg_table[0] =  msm_host->pdata->vreg_data->vdd_data;
-    vreg_table[1] =  msm_host->pdata->vreg_data->vdd_io_data;
-    if ((msm_host->pdata->nonremovable != true) && (msm_host->pdata->caps2 & MMC_CAP2_POWER_OFF_NO_CARD))
-    {
-        if(get_cd_true)
-        {
-            printk(" in set_always_on, set is_always_on as true.\n ");
-            vreg_table[0]->is_always_on = true;
-            vreg_table[1]->is_always_on = true;
-        }
-        else
-        {
-            printk(" in set_always_on, set is_always_on as false.\n ");
-            vreg_table[0]->is_always_on = false;
-            vreg_table[1]->is_always_on = false;
-        }
-    }
-}
-#endif
 
 static int sdhci_msm_probe(struct platform_device *pdev)
 {
@@ -3702,6 +3629,9 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	msm_host->mmc->pm_caps |= MMC_PM_KEEP_POWER | MMC_PM_WAKE_SDIO_IRQ;
 	msm_host->mmc->caps2 |= MMC_CAP2_CORE_PM;
 
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	msm_host->mmc->slot_detect_change_flag = false;
+#endif
 	if (msm_host->pdata->nonremovable)
 		msm_host->mmc->caps |= MMC_CAP_NONREMOVABLE;
 
@@ -3732,6 +3662,14 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 						__func__, ret);
 				goto vreg_deinit;
 			}
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+			/*
+			* enable wake irq as deferred resume is enabled,
+			* we need detect the hot-plug of SD card when suspend.
+			*/
+			enable_irq_wake(host->irq);
+			enable_irq_wake(msm_host->pdata->status_gpio);
+#endif
 		}
 	}
 #else
@@ -3750,6 +3688,14 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 					__func__, ret);
 			goto vreg_deinit;
 		}
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+		/*
+		* enable wake irq as deferred resume is enabled,
+		* we need detect the hot-plug of SD card when suspend.
+		*/
+		enable_irq_wake(host->irq);
+		enable_irq_wake(msm_host->pdata->status_gpio);
+#endif
 	}
 #endif
 
@@ -4040,12 +3986,20 @@ skip_enable_host_irq:
 static int sdhci_msm_suspend(struct device *dev)
 {
 	struct sdhci_host *host = dev_get_drvdata(dev);
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	/*mask mmc_gpio_free_cd function for deferred resume. */
+#else
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_msm_host *msm_host = pltfm_host->priv;
+#endif
 	int ret = 0;
 
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	/*mask mmc_gpio_free_cd function for deferred resume. */
+#else
 	if (gpio_is_valid(msm_host->pdata->status_gpio))
 		mmc_gpio_free_cd(msm_host->mmc);
+#endif
 
 	if (pm_runtime_suspended(dev)) {
 		pr_debug("%s: %s: already runtime suspended\n",
@@ -4061,10 +4015,17 @@ out:
 static int sdhci_msm_resume(struct device *dev)
 {
 	struct sdhci_host *host = dev_get_drvdata(dev);
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	/*mask mmc_gpio_request_cd function for deferred resume. */
+#else
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_msm_host *msm_host = pltfm_host->priv;
+#endif
 	int ret = 0;
 
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	/*mask mmc_gpio_request_cd function for deferred resume. */
+#else
 	if (gpio_is_valid(msm_host->pdata->status_gpio)) {
 		ret = mmc_gpio_request_cd(msm_host->mmc,
 				msm_host->pdata->status_gpio);
@@ -4073,6 +4034,7 @@ static int sdhci_msm_resume(struct device *dev)
 					mmc_hostname(host->mmc), __func__, ret);
 	}
 
+#endif
 	if (pm_runtime_suspended(dev)) {
 		pr_debug("%s: %s: runtime suspended, defer system resume\n",
 		mmc_hostname(host->mmc), __func__);
