@@ -770,7 +770,7 @@ static void ffs_epfile_io_complete(struct usb_ep *_ep, struct usb_request *req)
 
 #define MAX_BUF_LEN	4096
 #ifdef CONFIG_HUAWEI_USB
-#define WRITE_TIME	120
+#define WRITE_TIME	60
 #endif
 static ssize_t ffs_epfile_io(struct file *file,
 			     char __user *buf, size_t len, int read)

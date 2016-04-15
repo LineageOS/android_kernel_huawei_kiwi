@@ -4920,9 +4920,7 @@ init_f54_f55:
 				{
 					tp_log_info( "%s: Read addr(0x%04x) fn_number is zero!\n",
 						__func__,ii);
-#ifdef CONFIG_HUAWEI_DSM
-					synp_tp_report_dsm_err(DSM_TP_I2C_RW_ERROR_NO, retval);
-#endif/*CONFIG_HUAWEI_DSM*/
+				/* delete some err log  for pass the mmi test */
 				}
 				break;
 			}

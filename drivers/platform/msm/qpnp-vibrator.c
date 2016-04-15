@@ -53,8 +53,7 @@ module_param_named(vibrator_debug, vibrator_debug_mask, int, S_IRUGO | S_IWUSR |
     if (vibrator_debug_mask >=2) \
         printk(KERN_ERR x);\
     } while (0)
-
-	
+bool is_vibrator_on = false;
 enum qpnp_vib_mode {
 	QPNP_VIB_MANUAL,
 	QPNP_VIB_DTEST1,
@@ -207,6 +206,7 @@ static int qpnp_vib_set(struct qpnp_vib *vib, int on)
 					QPNP_VIB_EN_CTL(vib->base));
 			if (rc < 0)
 				return rc;
+			is_vibrator_on = true;
 			vib->reg_en_ctl = val;
 		}
 	} else {
@@ -219,6 +219,7 @@ static int qpnp_vib_set(struct qpnp_vib *vib, int on)
 					QPNP_VIB_EN_CTL(vib->base));
 			if (rc < 0)
 				return rc;
+			is_vibrator_on = false;
 			vib->reg_en_ctl = val;
 		}
 	}

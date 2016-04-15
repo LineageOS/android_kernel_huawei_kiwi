@@ -46,6 +46,7 @@
 			cy,core {
 				cy,name = "cyttsp5_core";
 				cy,product_name = "T2A";
+				cy,chip_name = "CS448";
 
 				cy,irq-gpio = <&msm_gpio 13 0x2008>;
 				cy,reset-gpio = <&msm_gpio 12 0x0>;
@@ -73,12 +74,12 @@
 				cy,btn_keys-tag = <0>;
 				cy,glove_support = <0>;
 				cy,holster_support = <0>;
-
+				cy,mmi_test_support = <1>;
 				cy,mt {
 					cy,name = "cyttsp5_mt";
 
 					cy,inp_dev_name = "cyttsp5_mt";
-					cy,flags = <0x10>;/* CY_MT_FLAG_FLIP | CY_MT_FLAG_INV_X | CY_MT_FLAG_INV_Y */
+					cy,flags = <0x0>;/* CY_MT_FLAG_FLIP | CY_MT_FLAG_INV_X | CY_MT_FLAG_INV_Y */
 					cy,abs =
 						/* ABS_MT_POSITION_X, CY_ABS_MIN_X, CY_ABS_MAX_X, 0, 0 */
 						<0x35 0 880 0 0

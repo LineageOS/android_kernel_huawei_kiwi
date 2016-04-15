@@ -14,6 +14,7 @@
             qcom,spk-ext-pa-enable-gpio = <&msm_gpio 3 0>;
             qcom,spk-ext-pa-switch-vdd-gpio = <&msm_gpio 0 0>;
             qcom,spk-ext-pa-switch-in-gpio = <&msm_gpio 1 0>;
+            qcom,pa-enable-gpio-on-delayms = <100>;
         qcom,msm-micbias1-ext-cap;
     };
 };

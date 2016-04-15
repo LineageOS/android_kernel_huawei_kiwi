@@ -296,6 +296,75 @@ static struct cyttsp5_touch_config cyttsp5_ttconfig_kiwi_gis = {
     .product_name = PHONE_NAME_KIWI,
 };
 
+/* Kiwi eely ttconfiger */
+#include "./ttconfig/kiwi_ttconfig_eely.h"
+static struct touch_settings cyttsp5_sett_param_regs_kiwi_eely = {
+    .data = (uint8_t *)&cyttsp5_param_regs_kiwi_eely[0],
+    .size = ARRAY_SIZE(cyttsp5_param_regs_kiwi_eely),
+    .tag = 0,
+};
+
+static struct touch_settings cyttsp5_sett_param_size_kiwi_eely = {
+    .data = (uint8_t *)&cyttsp5_param_size_kiwi_eely[0],
+    .size = ARRAY_SIZE(cyttsp5_param_size_kiwi_eely),
+    .tag = 0,
+};
+
+static struct cyttsp5_touch_config cyttsp5_ttconfig_kiwi_eely = {
+    .param_regs = &cyttsp5_sett_param_regs_kiwi_eely,
+    .param_size = &cyttsp5_sett_param_size_kiwi_eely,
+    .fw_ver = ttconfig_fw_ver_kiwi_eely,
+    .fw_vsize = ARRAY_SIZE(ttconfig_fw_ver_kiwi_eely),
+    .panel_id = FW_EELY,
+    .product_name = PHONE_NAME_KIWI,
+};
+
+/* Kiwi mutto ttconfiger */
+#include "./ttconfig/kiwi_ttconfig_mutto.h"
+static struct touch_settings cyttsp5_sett_param_regs_kiwi_mutto = {
+    .data = (uint8_t *)&cyttsp5_param_regs_kiwi_mutto[0],
+    .size = ARRAY_SIZE(cyttsp5_param_regs_kiwi_mutto),
+    .tag = 0,
+};
+
+static struct touch_settings cyttsp5_sett_param_size_kiwi_mutto = {
+    .data = (uint8_t *)&cyttsp5_param_size_kiwi_mutto[0],
+    .size = ARRAY_SIZE(cyttsp5_param_size_kiwi_mutto),
+    .tag = 0,
+};
+
+static struct cyttsp5_touch_config cyttsp5_ttconfig_kiwi_mutto = {
+    .param_regs = &cyttsp5_sett_param_regs_kiwi_mutto,
+    .param_size = &cyttsp5_sett_param_size_kiwi_mutto,
+    .fw_ver = ttconfig_fw_ver_kiwi_mutto,
+    .fw_vsize = ARRAY_SIZE(ttconfig_fw_ver_kiwi_mutto),
+    .panel_id = FW_MUTTO,
+    .product_name = PHONE_NAME_KIWI,
+};
+
+/* Kiwi truly ttconfiger */
+#include "./ttconfig/kiwi_ttconfig_truly.h"
+static struct touch_settings cyttsp5_sett_param_regs_kiwi_truly = {
+    .data = (uint8_t *)&cyttsp5_param_regs_kiwi_truly[0],
+    .size = ARRAY_SIZE(cyttsp5_param_regs_kiwi_truly),
+    .tag = 0,
+};
+
+static struct touch_settings cyttsp5_sett_param_size_kiwi_truly = {
+    .data = (uint8_t *)&cyttsp5_param_size_kiwi_truly[0],
+    .size = ARRAY_SIZE(cyttsp5_param_size_kiwi_truly),
+    .tag = 0,
+};
+
+static struct cyttsp5_touch_config cyttsp5_ttconfig_kiwi_truly = {
+    .param_regs = &cyttsp5_sett_param_regs_kiwi_truly,
+    .param_size = &cyttsp5_sett_param_size_kiwi_truly,
+    .fw_ver = ttconfig_fw_ver_kiwi_truly,
+    .fw_vsize = ARRAY_SIZE(ttconfig_fw_ver_kiwi_truly),
+    .panel_id = FW_TRULY,
+    .product_name = PHONE_NAME_KIWI,
+};
+
 /* alice ofilm ttconfiger */
 #include "./ttconfig/alice_ttconfig_ofilm.h"
 static struct touch_settings cyttsp5_sett_param_regs_alice_ofilm = {
@@ -414,6 +483,9 @@ static struct cyttsp5_touch_config *cyttsp5_ttconfigs[] = {
 	&cyttsp5_ttconfig_y538_ofilm,
 	&cyttsp5_ttconfig_kiwi_ofilm,
 	&cyttsp5_ttconfig_kiwi_gis,
+	&cyttsp5_ttconfig_kiwi_eely,
+	&cyttsp5_ttconfig_kiwi_mutto,
+	&cyttsp5_ttconfig_kiwi_truly,
 	&cyttsp5_ttconfig_alice_ofilm,
 	&cyttsp5_ttconfig_alice_truly,
 	&cyttsp5_ttconfig_alice_junda,

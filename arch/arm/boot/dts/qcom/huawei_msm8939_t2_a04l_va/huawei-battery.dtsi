@@ -2,9 +2,9 @@
         qrd_batterydata: qcom,battery-data {
                 qcom,rpull-up-kohm = <68>;
                 qcom,vref-batt-therm = <1800000>;
-                #include "HB3080G1EBC_SANSUMG_SWD-4v35-4650mah.dtsi"
-                #include "HB3080G1EBW_SONY_SWD-4v35-4650mah.dtsi"
-		#include "HB3080G1EBC_GY_SWD-4v35-4650mah.dtsi"
+                #include "HB26A510EBC_GY_SWD-4v35-6500mah.dtsi"
+                #include "HB26A510EBC_SCUD_SWD-4v35-6500mah.dtsi"
+                #include "HB26A510EBC_SUNWODA_SWD-4v35-6500mah.dtsi"
         };
 };
 
@@ -99,9 +99,9 @@
         bq24296_otg_supply: bq24296m_charger@6b {
         compatible = "huawei,bq24296m_charger";
         reg = <0x6B>;
-        ti,max_charger_currentmA = <2000>;
+        ti,max_charger_currentmA = <2048>;
         ti,max_charger_voltagemV = <4350>;
-        ti,max_cin_limit_currentmA = <2000>;
+        ti,max_cin_limit_currentmA = <1500>;
         ti,no_ibus_detect;
         gpio_cd = <&msm_gpio 108 0x00>;
         gpio_int = <&msm_gpio 62 0x00>;

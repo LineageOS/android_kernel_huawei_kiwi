@@ -109,7 +109,7 @@ static bool tfa9895_flag = false;
 
 static char pa_i2c[PA_i2C_BUFF_SIZE] = "none";
 
-static char speaker_box_id[SPEAKER_BOX_BUFF_SIZE] = "none";
+static char speaker_box_id[SPEAKER_BOX_BUFF_SIZE] = "";
 static int speaker_box = -1;
 
 static char aud_param_ver[AUD_PARAM_VER_BUFF_SIZE] = "default";

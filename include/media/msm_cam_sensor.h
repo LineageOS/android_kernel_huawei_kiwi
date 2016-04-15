@@ -685,6 +685,7 @@ struct msm_camera_led_cfg_t {
 	uint32_t CurrentIndex;
 	dual_flash_torch_type_t DfTorchIndex;
 	uint8_t camera_id;
+	uint32_t flip_id;
 };
 
 struct msm_flash_init_info_t {

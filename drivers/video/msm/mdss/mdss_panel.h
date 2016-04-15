@@ -403,6 +403,10 @@ struct mdss_panel_info {
 	u32 delaytime_before_bl;
 	u32 mipi_rest_delay;
 	u8 lens_type;
+	/*BIT0:  lcd_comform_mode flag, 1: support, 0: no support */
+	u32 support_mode;
+	/*0:OFF 1:Moving Mode 2:Still Mode */
+	u32 cabc_mode;
 #endif
 	uint32_t panel_dead;
 	u32 panel_orientation;
@@ -451,6 +455,7 @@ struct mdss_panel_data {
 	int (*check_panel_status)(struct mdss_panel_data *pdata);
 	/*Add display color inversion function*/
 	int (*lcd_set_display_inversion)(struct mdss_panel_data *pdata,unsigned int inversion_mode);
+	int (*lcd_set_cabc_mode)(struct mdss_panel_data *pdata,unsigned int cabc_mode);
 	int (*check_panel_mipi_crc)(struct mdss_panel_data *pdata);
 	int (*panel_frame_checksum)(struct mdss_panel_data *pdata);
 #endif

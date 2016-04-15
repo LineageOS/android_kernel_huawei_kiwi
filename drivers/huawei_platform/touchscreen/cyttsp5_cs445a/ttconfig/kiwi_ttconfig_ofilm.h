@@ -1,8 +1,8 @@
 //*****************************************************************************
 //*****************************************************************************
 //  FILENAME: Driver.h
-//  TrueTouch Host Emulator Version Information: 3.3, b795
-//  TrueTouch Firmware Version Information: 1.0.843825
+//  TrueTouch Host Emulator Version Information: 3.3, b861
+//  TrueTouch Firmware Version Information: 1.0.851840
 //
 //  DESCRIPTION: This file contains configuration values.
 //-----------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 //-----------------------------------------------------------------------------
 /* Touchscreen Version Information */
 static u8 ttconfig_fw_ver_kiwi_ofilm[] = {
-	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0xE0, 0x31, 0x0B, 0x00, 0x11, 0x9B, 0x00, 0x0A
+	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0xFF, 0x80, 0x0B, 0x00, 0x11, 0x9B, 0x00, 0x0C
 };
 #if 0
 /* Touchscreen Parameters Endianess (Endianess: 0:Little; 1:Big)*/
@@ -340,7 +340,7 @@ static const uint8_t cyttsp5_param_regs_kiwi_ofilm[] = {
 	0x06,  /* AFH_LISTENING_SCAN_COUNT */
 	0xA0, 0x0F,  /* CA_INJTCH_MAGNITUDE */
 	0xE8, 0x03,  /* CA_INJTCH_FINGER_THOLD */
-	0xE8, 0x03, 0x00, 0x00,  /* CA_DEFAULT_REVERT_TIME */
+	0xB8, 0x0B, 0x00, 0x00,  /* CA_DEFAULT_REVERT_TIME */
 	0x2C, 0x01, 0x00, 0x00,  /* CA_L1_DIFF_ABS_DELTA_SUM_THRESHOLD */
 	0xE8, 0x03, 0x00, 0x00,  /* CA_L2_DIFF_ABS_DELTA_SUM_THRESHOLD */
 	0xE8, 0x03, 0x00, 0x00,  /* CA_L3_DIFF_ABS_DELTA_SUM_THRESHOLD */
@@ -363,11 +363,11 @@ static const uint8_t cyttsp5_param_regs_kiwi_ofilm[] = {
 	0x64, 0x00,  /* LP_INTRVL0 */
 	0xE8, 0x03,  /* TCH_TMOUT0 */
 	0xA0, 0x00,  /* FINGER_THRESH_SELF */
+	0xA0, 0x00,  /* SINGLE_FINGER_THRESH_SELF */
 	0x00, 0x00,  /* GLOVE_THRSH_SELF */
 	0x00,  /* LOW_POWER_ENABLE */
 	0x1E,  /* WATER_ON_EDGE_RX_SELF_DROP_DELTA */
 	0xBC, 0x02,  /* WATER_ON_EDGE_RX_SELF_DROP_THRESHOLD */
-	0x00, 0x00,  /* Reserved742 */
 	0x0D,  /* ACT_DIST0 */
 	0x00,  /* ACT_DIST2 */
 	0x00,  /* ACT_DIST_FAST */
@@ -727,7 +727,7 @@ static const uint8_t cyttsp5_param_regs_kiwi_ofilm[] = {
 	0x00, 0x00,  /* Reserved1286 */
 	0x00,  /* EXT_SYNC */
 	0x01,  /* PWR_CFG */
-	0x0A, 0x00,  /* CONFIG_VER */
+	0x0C, 0x00,  /* CONFIG_VER */
 	0x01,  /* SEND_REPORT_AFTER_ACTIVE_INTERVAL_CFG */
 	0x00,  /* PIP_REPORTING_DISABLE */
 	0x00, 0x00,  /* INTERRUPT_PIN_OVERRIDE */
@@ -742,7 +742,7 @@ static const uint8_t cyttsp5_param_regs_kiwi_ofilm[] = {
 	0x00,  /* SYNC_REPORT_ENABLE */
 	0x00,  /* SYNC_REPORT_BYPASS_TRIGGER_LEVEL */
 	0x00, 0x00,  /* Reserved1306 */
-	0x9F, 0x13,  /* CONFIG_CRC */
+	0x6B, 0x32,  /* CONFIG_CRC */
 };
 
 /* Touchscreen Parameters Field Sizes (Writable: 0:Readonly; 1:Writable) */
@@ -1008,11 +1008,11 @@ static const uint16_t cyttsp5_param_size_kiwi_ofilm[] = {
 	2, /* LP_INTRVL0 */
 	2, /* TCH_TMOUT0 */
 	2, /* FINGER_THRESH_SELF */
+	2, /* SINGLE_FINGER_THRESH_SELF */
 	2, /* GLOVE_THRSH_SELF */
 	1, /* LOW_POWER_ENABLE */
 	1, /* WATER_ON_EDGE_RX_SELF_DROP_DELTA */
 	2, /* WATER_ON_EDGE_RX_SELF_DROP_THRESHOLD */
-	2, /* Reserved742 */
 	1, /* ACT_DIST0 */
 	1, /* ACT_DIST2 */
 	1, /* ACT_DIST_FAST */

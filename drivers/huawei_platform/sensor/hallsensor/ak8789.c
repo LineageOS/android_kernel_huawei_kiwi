@@ -412,11 +412,28 @@ static ssize_t ak8789_show_get_camera_status(struct device *dev, struct device_a
 	return snprintf(buf, PAGE_SIZE, "%d\n", value);
 }
 static DEVICE_ATTR(get_camera_status, S_IWUSR|S_IRUSR|S_IRUGO, ak8789_show_get_camera_status, NULL);
+static ssize_t ak8789_show_mmi_camera_hall_status(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int i,tmp;
+	int value = 0;
+	gpio_data_t *gpio_ptr = hw_hall_dev.gpio_data;
+	for ( i = 0; i < hw_hall_dev.gpio_nums; i++){
+		value = value << 1;
+		tmp = gpio_get_value(gpio_ptr->gpio);
+		AK8789_INFOMSG("%s:gpio_ptr->gpio = %d,gpio value = %d\n",__func__,gpio_ptr->gpio,tmp);
+		value |= tmp;
+		gpio_ptr++;
+	}
+	return snprintf(buf, PAGE_SIZE, "%d", value);
+}
+static DEVICE_ATTR(mmi_camera_hall_status, S_IWUSR|S_IRUSR|S_IRUGO, ak8789_show_mmi_camera_hall_status, NULL);
+
 static struct attribute *ak8789_attributes[] = {
 	&dev_attr_enable_hall_sensor.attr,
 	&dev_attr_camera_overturn_num.attr,
 	&dev_attr_get_hall_status.attr, /*debug, purpose*/
 	&dev_attr_get_camera_status.attr, /*debug, purpose*/
+	&dev_attr_mmi_camera_hall_status.attr,
 	&dev_attr_support_camera_hall_status.attr, /*Check the camera hall whether there is*/
 	&dev_attr_irq_count.attr,/*debug purpose*/
 	NULL

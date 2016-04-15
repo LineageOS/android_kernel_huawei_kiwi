@@ -1754,6 +1754,9 @@ static void msm_otg_notify_host_mode(struct msm_otg *motg, bool host_mode)
 		}
 	} else {
 		motg->host_mode = host_mode;
+        if(atomic_read(&motg->in_lpm)) {
+            pm_runtime_resume(motg->phy.dev);
+        }
         ulpi_init(motg);
 		power_supply_changed(psy);
 	}
@@ -2759,6 +2762,7 @@ static const char *chg_to_string(enum usb_chg_type chg_type)
 #else
 #define MSM_CHG_DCD_TIMEOUT		(750 * HZ/1000) /* 750 msec */
 #endif
+
 #define MSM_CHG_DCD_POLL_TIME		(50 * HZ/1000) /* 50 msec */
 #define MSM_CHG_PRIMARY_DET_TIME	(50 * HZ/1000) /* TVDPSRC_ON */
 #define MSM_CHG_SECONDARY_DET_TIME	(50 * HZ/1000) /* TVDMSRC_ON */

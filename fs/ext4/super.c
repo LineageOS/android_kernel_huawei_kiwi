@@ -60,7 +60,7 @@ extern unsigned int get_datamount_flag(void);
 #endif
 #endif
 /*in this project, mmcblk0p24 is userdata partition*/
-#define USERDATA "mmcblk0p24"
+#define USERDATA "mmcblk0p26"
 #define CREATE_TRACE_POINTS
 #include <trace/events/ext4.h>
 

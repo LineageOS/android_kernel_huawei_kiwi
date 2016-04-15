@@ -19,6 +19,7 @@
 #define FW_OFILM_STR "000"
 #define FW_EELY_STR "001"
 #define FW_TRULY_STR "002"
+#define FW_MUTTO_STR "003"
 #define FW_JUNDA_STR "005"
 #define FW_LENSONE_STR "006"
 
@@ -31,6 +32,7 @@ enum f54_product_module_name {
 	FW_OFILM = 0,
 	FW_EELY = 1,
 	FW_TRULY = 2,
+	FW_MUTTO = 3,
 	/*Modify G760L tp_cap threshold get from V3*/
 	FW_GIS = 4,
 

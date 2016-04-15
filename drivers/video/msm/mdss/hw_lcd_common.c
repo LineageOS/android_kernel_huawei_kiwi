@@ -82,8 +82,23 @@ struct dsm_client *lcd_dclient = NULL;
 static int g_tp_gesture_enable_status = false;
 static struct mdss_dsi_ctrl_pdata *g_lcd_dbg_dsi_ctrl_pdata = NULL;    // global mdss_dsi_ctrl_pdata
 
+/*
+*merge qcom patch from 02098626: 08_20_patches.zip
+*add delay time before vddio-incell enable. if vddio-incell pull down time is smaller then 80ms.
+*/
+static unsigned long vddio_incell_poweroff_time = 0;
+
 /* FPC unlock can't light lcd backlight */
 static int lcd_power_delay_time = false;
+
+unsigned long get_tp_vddio_poweroff_time(void)
+{
+	return vddio_incell_poweroff_time;
+}
+void set_tp_vddio_poweroff_time(unsigned long jz)
+{
+	vddio_incell_poweroff_time = jz;
+}
 
 /* get tp_gesture_enable or not */
 int get_tp_gesture_enable_status(void)

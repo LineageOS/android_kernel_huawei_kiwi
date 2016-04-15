@@ -82,6 +82,9 @@ static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 		goto out;
 
 	if (status ^ ctx->status) {
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+		host->slot_detect_change_flag = true;
+#endif
 		pr_info("%s: slot status change detected (%d -> %d), GPIO_ACTIVE_%s\n",
 				mmc_hostname(host), ctx->status, status,
 				(host->caps2 & MMC_CAP2_CD_ACTIVE_HIGH) ?

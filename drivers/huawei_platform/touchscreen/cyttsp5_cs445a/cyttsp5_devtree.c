@@ -831,7 +831,7 @@ static struct cyttsp5_core_platform_data *create_and_get_core_pdata(
 
 	pdata->glove_support = get_of_u32_val(core_node, "cy,glove_support", 0);
 	pdata->holster_support = get_of_u32_val(core_node, "cy,holster_support", 0);
-
+	pdata->mmi_test_support = get_of_u32_val(core_node, "cy,mmi_test_support", 0);
 	pdata->wakeup_keys = create_and_get_wakeup_keys(core_node);
 
 	pdata->fw_upgrade_start_ver = get_of_u32_val(core_node, "cy,fw_upgrade_start_ver", 0);
@@ -846,6 +846,15 @@ static struct cyttsp5_core_platform_data *create_and_get_core_pdata(
 	if (rc){
 		tp_log_err("%s %d:Read name product_name fail, rc = %d\n", __func__, __LINE__, rc);			
 		pdata->product_name = "Unknow";
+	}
+
+	/* parse product name */
+	rc = of_property_read_string(core_node, "cy,chip_name", &pdata->chip_name);
+	if (rc){
+		tp_log_info("%s %d:Read name chip_name fail rc = %d\n", __func__, __LINE__, rc);
+        pdata->chip_name = NULL;
+	} else {
+        tp_log_info("%s :chip_name = %s\n", __func__, pdata->chip_name);
 	}
 
 	pdata->power_config = create_and_get_power_config(core_node);

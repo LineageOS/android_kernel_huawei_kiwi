@@ -6,6 +6,7 @@
 
 
 #include "hw-panel-auo-otm1901a-5p5-1080pxa-video.dtsi"
+#include "hw-panel-boe-otm1901a-5p5-1080pxa-video.dtsi"
 #include "hw-panel-cmi-nt35532-5p5-1080pxa-video-old.dtsi"
 #include "hw-panel-cmi-nt35532-5p5-1080pxa-video.dtsi"
 #include "hw-panel-tianma-nt35596-5p5-1080pxa-video.dtsi"

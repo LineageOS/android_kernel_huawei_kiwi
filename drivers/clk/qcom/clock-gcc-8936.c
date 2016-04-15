@@ -3476,10 +3476,12 @@ static int msm_gcc_probe(struct platform_device *pdev)
 		ret = of_msm_clock_register(pdev->dev.of_node,
 				msm_clocks_lookup_v1,
 				ARRAY_SIZE(msm_clocks_lookup_v1));
+
 		/* Disable GMEM HW Dynamic */
 		regval = 0x1;
 		writel_relaxed(regval, GCC_REG_BASE(GCC_SPARE3_REG));
 	}
+
 	if (ret)
 		return ret;
 

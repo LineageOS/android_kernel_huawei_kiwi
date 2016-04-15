@@ -42,25 +42,43 @@
 		qcom,mdss-dsi-underflow-color = <0xff>;
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
-		qcom,mdss-dsi-on-command = [15 01 00 00 00 00 02 01 00
-	15 01 00 00 00 00 02 11 00
+		qcom,mdss-dsi-on-command = [15 01 00 00 1E 00 02 01 00
 	15 01 00 00 00 00 02 83 00
 	15 01 00 00 00 00 02 84 00
+	15 01 00 00 00 00 02 9f 00
 	15 01 00 00 00 00 02 97 00
-	15 01 00 00 00 00 02 83 AA
-	15 01 00 00 00 00 02 84 11
-	15 01 00 00 00 00 02 A9 4B
 	15 01 00 00 00 00 02 83 BB
 	15 01 00 00 00 00 02 84 22
 	15 01 00 00 00 00 02 96 00
-	15 01 00 00 00 00 02 90 00
-	15 01 00 00 00 00 02 94 18
-	15 01 00 00 00 00 02 95 20
-	15 01 00 00 00 00 02 83 00
-	15 01 00 00 00 00 02 84 00
-	05 01 00 00 78 00 02 11 00
-	05 01 00 00 14 00 02 29 00];
-		qcom,mdss-dsi-off-command = [];
+	15 01 00 00 00 00 02 90 C0
+	15 01 00 00 00 00 02 91 A0
+	15 01 00 00 00 00 02 9A 10
+	15 01 00 00 00 00 02 94 58
+	15 01 00 00 00 00 02 95 B0
+	15 01 00 00 00 00 02 A1 FF
+	15 01 00 00 00 00 02 A2 FA
+	15 01 00 00 00 00 02 A3 F3
+	15 01 00 00 00 00 02 A4 ED
+	15 01 00 00 00 00 02 A5 E7
+	15 01 00 00 00 00 02 A6 E2
+	15 01 00 00 00 00 02 A7 DC
+	15 01 00 00 00 00 02 A8 D7
+	15 01 00 00 00 00 02 A9 D1
+	15 01 00 00 00 00 02 AA CC
+	15 01 00 00 00 00 02 A8 D7
+	15 01 00 00 00 00 02 A9 D1
+	15 01 00 00 00 00 02 AA CC
+	15 01 00 00 00 00 02 B4 1C
+	15 01 00 00 00 00 02 B5 38
+	15 01 00 00 00 00 02 B6 30
+	15 01 00 00 00 00 02 83 AA
+	15 01 00 00 00 00 02 84 11
+	15 01 00 00 00 00 02 A9 4B
+	15 01 00 00 00 00 02 85 04
+	15 01 00 00 00 00 02 86 08
+	15 01 00 00 00 00 02 9C 10
+	05 01 00 00 00 00 02 11 00];
+		qcom,mdss-dsi-off-command = [15 01 00 00 64 00 02 10 00];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-h-sync-pulse = <1>;
@@ -83,21 +101,31 @@
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 		qcom,panel-inverse-off-cmds = [05 01 00 00 14 00 02 28 00];
 		qcom,panel-inverse-on-cmds = [05 01 00 00 14 00 02 29 00];
+		qcom,panel-cabc-off-cmds = [15 01 00 00 00 00 02 83 BB
+	15 01 00 00 00 00 02 84 22
+	15 01 00 00 00 00 02 90 C0];
+		qcom,panel-cabc-moving-cmds = [15 01 00 00 00 00 02 83 BB
+	15 01 00 00 00 00 02 84 22
+	15 01 00 00 00 00 02 90 00];
+		qcom,panel-cabc-still-cmds = [15 01 00 00 00 00 02 83 BB
+	15 01 00 00 00 00 02 84 22
+	15 01 00 00 00 00 02 90 40];
+		qcom,cabc-off-cmds-dsi-state = "dsi_hs_mode";
+		qcom,cabc-moving-cmds-dsi-state = "dsi_hs_mode";
+		qcom,cabc-still-cmds-dsi-state = "dsi_hs_mode";
 		qcom,inverse-on-cmds-dsi-state = "dsi_hs_mode";
 		qcom,inverse-off-cmds-dsi-state = "dsi_hs_mode";
-		qcom,panel-cabc-ui-cmds = [29 01 00 00 00 00 06 F0 55 AA 52 08 00
-29 01 00 00 00 00 0B E3 F3 F3 EC EC EC E7 E7 E7 DF DF
-15 01 00 00 00 00 02 53 2C];
-		qcom,panel-cabc-video-cmds = [29 01 00 00 00 00 06 F0 55 AA 52 08 00
-29 01 00 00 00 00 0B E3 F0 D2 C3 B4 A5 96 87 87 87 81
-15 01 00 00 00 00 02 53 2C];
+		qcom,panel-cabc-ui-cmds = [];
+		qcom,panel-cabc-video-cmds = [];
 		qcom,cabc-ui-cmds-dsi-state = "dsi_hs_mode";
 		qcom,cabc-video-cmds-dsi-state = "dsi_hs_mode";
 		qcom,mdss-dsi-lp11-init;
+		qcom,mdss-pan-physical-width-dimension = <135>;
+		qcom,mdss-pan-physical-height-dimension = <217>;
 		qcom,mdss-dsi-mipi-rst-delay = <80>;
 		huawei,skip-reg-read-flag = <1>;
 		huawei,product-pad-flag = <1>;
-			qcom,mdss-dsi-reset-sequence = <1 1>, <0 20>, <1 120>;
+			qcom,mdss-dsi-reset-sequence = <1 1>, <0 20>, <1 30>;
 
 	};
 };

@@ -94,7 +94,7 @@
 
 &tlmm_pinmux {
 	bq27510_int_pin {
-		qcom,pins = <&gp 106>;
+		qcom,pins = <&gp 1>;
 		qcom,pin-func = <0>;
 		qcom,num-grp-pins = <1>;
 		label = "bq27510_int_pin";
@@ -131,7 +131,7 @@
 			reg = <0x55>;
 			product-name = "kiw";
 			ti,r-sensor = <10>;
-			qcom,batt-low-gpio = <&msm_gpio 106 0>;
+			qcom,batt-low-gpio = <&msm_gpio 1 0>;
 			pinctrl-names = "bq27510_active", "bq27510_sleep";
 			pinctrl-0 = <&bq27510_active>;
 			pinctrl-1 = <&bq27510_sleep>;

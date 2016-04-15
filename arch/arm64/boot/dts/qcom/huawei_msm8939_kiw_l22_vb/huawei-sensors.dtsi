@@ -117,6 +117,7 @@
 		avago,ga_f_value = <43>;
 		avago,i2c-scl-gpio = <&msm_gpio 7 0x0>;
 		avago,i2c-sda-gpio = <&msm_gpio 6 0x0>;
+		avago,mix-light;
 	};
 	rpr521@38 {
 		compatible = "rohm,rpr521";

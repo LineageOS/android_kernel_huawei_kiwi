@@ -869,6 +869,7 @@ struct hw_sensor_fct sensor_fct_list[] ={
     {"ov5648_ofilm_ohw5f03_kiw",0x4869,MSM_CAMERA_I2C_BYTE_DATA},
     {"ov13850_ofilm_ohw8a04",0x4851,MSM_CAMERA_I2C_BYTE_DATA},
     {"ov13850_liteon_193",0x4851,MSM_CAMERA_I2C_BYTE_DATA},
+    {"s5k3m2_sunny_kiw",0x0005,MSM_CAMERA_I2C_BYTE_DATA}
 };
 
 static int hw_sensor_read_framecount(struct msm_sensor_ctrl_t *s_ctrl)

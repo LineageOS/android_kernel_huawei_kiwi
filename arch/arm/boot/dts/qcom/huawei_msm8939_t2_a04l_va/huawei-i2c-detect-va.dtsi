@@ -8,7 +8,7 @@
 		i2c,camera_main = <1>;
 		i2c,camera_slave = <0>;
 		i2c,keypad = <0>;
-		i2c,aps = <1>;
+                i2c,aps = <0>;
 		i2c,gyroscope = <0>;
 		i2c,nfc = <0>;
 		i2c,dc_dc = <0>;

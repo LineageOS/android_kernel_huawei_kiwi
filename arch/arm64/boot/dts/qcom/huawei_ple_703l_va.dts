@@ -1,0 +1,55 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+/dts-v1/;
+#include "msm8939.dtsi"
+#include "msm8939-qrd-skuk.dtsi"
+#include "huawei_msm8939_ple_703l_va/huawei.dtsi"
+/ {
+	model = "Qualcomm MSM 8939 HUAWEI PLE-703L";
+	compatible = "qcom,msm8939-qrd-skuk", "qcom,msm8939", "qcom,qrd";
+	qcom,board-id = <8096 0> , <8096 4>;
+	huawei,modem_id = <0xFF84009D 0x0>;
+};
+&soc {
+	mdss_dsi0: qcom,mdss_dsi@1a98000 {
+	qcom,platform-vsn-gpio102 = <&msm_gpio 102 0>;
+	qcom,platform-vsp-gpio100 = <&msm_gpio 100 0>;
+	qcom,platform-reset-gpio32 = <&msm_gpio 32 0>;
+	qcom,platform-vled-gpio97 = <&msm_gpio 97 0>;
+	qcom,platform-bl-gpio109 = <&msm_gpio 109 0>;
+	};
+};
+
+&tlmm_pinmux {
+	tps65132-en-pin {
+		status = "disabled";
+	};
+};
+
+&i2c_0 {
+	tps65132@3e {
+		status = "disabled";
+	};
+};
+
+&mdss_dsi0 {
+	vsp-supply;
+	vsn-supply;
+	qcom,panel-supply-entries {
+		qcom,panel-supply-entry@3 {
+			qcom,supply-name;
+		};
+		qcom,panel-supply-entry@4 {
+			qcom,supply-name;
+		};
+	};
+};

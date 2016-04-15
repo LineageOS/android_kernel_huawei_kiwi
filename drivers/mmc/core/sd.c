@@ -863,7 +863,15 @@ int mmc_sd_get_cid(struct mmc_host *host, u32 ocr, u32 *cid, u32 *rocr)
 {
 	int err;
 	u32 max_current;
-	int retries = 10;
+    /*
+     * change retry time from 10 to 5,to avoid suspend or resume 12s
+     * timeout panic,especially bad card
+     */
+	int retries = 5;
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	int cmd11_retries = 3;
+#endif
 
 try_again:
 	if (!retries) {
@@ -933,6 +941,14 @@ try_again:
 			goto try_again;
 		} else if (err) {
 			retries = 0;
+#ifdef CONFIG_HUAWEI_KERNEL
+			cmd11_retries--;
+			if(cmd11_retries == 0)
+			{
+				EMMCSD_LOG_ERR("%s:mmc_set_signal_voltage fail after retry\n",mmc_hostname(host));
+				return err;
+			}
+#endif
 			goto try_again;
 		}
 	}
@@ -1382,7 +1398,11 @@ static int mmc_sd_resume(struct mmc_host *host)
 
 	mmc_claim_host(host);
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
-	retries = 5;
+    /*
+     * change retry time from 5 to 4,to avoid suspend or resume 12s
+     * timeout panic,especially bad card
+     */
+	retries = 4;
 	while (retries) {
 		err = mmc_sd_init_card(host, host->ocr, host->card);
 

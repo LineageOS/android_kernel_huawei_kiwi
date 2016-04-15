@@ -1788,6 +1788,7 @@ int compare(const void *a, const void *b)
     else return 1; // 1: a > b
 }
 /* -------------------------------------------------------------------- */
+/* Modified the value according to the Figure of Finger detection sub-area distribution coming form the chip spec*/
 int fpc1020_check_deadpixels_in_detect_zone(fpc1020_data_t *fpc1020, int index)
 {
     int error = 0;
@@ -1802,12 +1803,17 @@ int fpc1020_check_deadpixels_in_detect_zone(fpc1020_data_t *fpc1020, int index)
     int xp_1140[] = { 40, 24, 8 };
     int* xp;
     int* yp;
+    int xSubareaNum = 0;
+    int ySubareaNum = 0;
+
     switch (fpc1020->chip.type) {
         case FPC1020_CHIP_1020A:
             ypos = index / 192;
             xpos = index % 192;
             xp = xp_1020;
             yp = yp_1020;
+            xSubareaNum = 4;
+            ySubareaNum = 3;
             break;
         case FPC1020_CHIP_1021A:
         case FPC1020_CHIP_1021B:
@@ -1816,12 +1822,16 @@ int fpc1020_check_deadpixels_in_detect_zone(fpc1020_data_t *fpc1020, int index)
             xpos = index % 160;
             xp = xp_1021;
             yp = yp_1021;
+            xSubareaNum = 4;
+            ySubareaNum = 3;
             break;
         case FPC1020_CHIP_1150A:
             ypos = index / 208;
             xpos = index % 208;
             xp = xp_1150;
             yp = yp_1150;
+            xSubareaNum = 4;
+            ySubareaNum = 3;
             break;
         case FPC1020_CHIP_1140B:
         case FPC1020_CHIP_1140C:
@@ -1829,14 +1839,17 @@ int fpc1020_check_deadpixels_in_detect_zone(fpc1020_data_t *fpc1020, int index)
             xpos = index % 56;
             xp = xp_1140;
             yp = yp_1140;
+            xSubareaNum = 3;
+            ySubareaNum = 4;
             break;
         default:
             error = FPC_1020_DEADPIXEL_DETECT_ZONE_HW_ID_ERROR;
             goto out;
     }
+    fpc_log_info("fpc1020 index= %d - xpos= %d - ypos= %d \n", index, xpos, ypos);
 
-    for (x = 0; x < 4; x++) {
-        for (y = 0; y < 3; y++) {
+    for (x = 0; x < xSubareaNum; x++) {
+        for (y = 0; y < ySubareaNum; y++) {
             if (xpos >= xp[x] && xpos < (xp[x] + 8) && ypos >= yp[y] && ypos < (yp[y] + 8)) {
                 error = FPC_1020_DEADPIXEL_DETECT_ZONE_ERROR;
                 goto out;
@@ -2018,14 +2031,14 @@ static int fpc1020_check_for_deadPixels(fpc1020_data_t *fpc1020, u8* ripPixels, 
 
             if (dev1 > config_max_deviation) {
                 if (deadpixels < config_max_dead_pixels_to_list) {
-                    fpc_log_info("Dead pixel found @ ImgXY[%d, %d] value[%d]\n", (x + ((odd) ? 1 : 0)), y, buff[i1]);
+                    fpc_log_info("Dead pixel found @ ImgXY[%d, %d] value[%d] - i1= [%d] \n", (x + ((odd) ? 1 : 0)), y, buff[i1], i1);
                 }
                 deadpixels++;
                 ripPixels[i1] = 1;
             }
             if (dev2 > config_max_deviation) {
                 if (deadpixels < config_max_dead_pixels_to_list) {
-                    fpc_log_info("Dead pixel found @ imgXY[%d, %d] value[%d]\n", (x + ((odd) ? 0 : 1)), y, buff[i2]);
+                    fpc_log_info("Dead pixel found @ imgXY[%d, %d] value[%d] - i2= [%d] \n", (x + ((odd) ? 0 : 1)), y, buff[i2], i2);
                 }
                 deadpixels++;
                 ripPixels[i2] = 1;

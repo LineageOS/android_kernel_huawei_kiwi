@@ -27,6 +27,29 @@
 		};
 	};
 
+    cam_sensor_mclk0 {
+		cam_sensor_mclk0_default: default {
+			drive-strength = <8>; /* 8 mA */
+		};
+	};
+
+	cam_sensor_mclk0_sleep {
+		cam_sensor_mclk0_sleep: sleep {
+			drive-strength = <8>; /* 8 mA */
+		};
+	};
+
+	cam_sensor_mclk1 {
+		cam_sensor_mclk1_default: default {
+			drive-strength = <8>; /* 8 mA */
+		};
+	};
+
+	cam_sensor_mclk1_sleep {
+		cam_sensor_mclk1_sleep: sleep {
+			drive-strength = <8>; /* 8 mA */
+		};
+	};
 };
 
 &i2c_0 { /* BLSP1 QUP2 */

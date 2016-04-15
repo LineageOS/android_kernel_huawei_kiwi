@@ -64,7 +64,7 @@
 		pinctrl-1 = <&akm_sleep>;
 		vdd-supply = <&pm8916_l17>;
 		vio-supply = <&pm8916_l6>;
-		akm,layout = <0x4>;
+                akm,layout = <0x1>;
 		akm,gpio_rstn = <&msm_gpio 36 0x0>;
 		akm,auto-report;
 		akm,use-hrtimer;
@@ -102,6 +102,31 @@
 		avago,i2c-scl-gpio = <&msm_gpio 7 0x0>;
 		avago,i2c-sda-gpio = <&msm_gpio 6 0x0>;
 	};
+	avago@52 {
+		compatible = "avago,apds9251";
+		reg = <0x52>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		apds9251,tp_moudle_count = <3>;
+		/*[module_id] [CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		apds9251,cal_data0 = "0","10467","1782","844","984","1199","9666","9378","8362","25","15","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"7094","1557","963","1062","1162","915","887","835","29","21","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"8704","1537","786","966","1298","34198","23089","15486","87","62","30";
+		/*[module_id] [CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		apds9251,cal_data1 = "1","10999","1567","915","982","1111","9252","9329","8332","23","15","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"6914","1735","913","1010","1076","746","714","641","27","18","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"6563","1747","793","1000","1445","8145","4739","2555","115","90","50";
+		/*[module_id] [CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		apds9251,cal_data2 = "3","9976","1490","948","1048","1150","2470","2475","2261","25","15","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"6491","1636","946","1054","1159","1043","1004","940","30","19","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"14588","1008","939","1211","1256","13043","11270","9600","58","25","10";
+	};
 	rohm@38 {
         compatible = "rohm,bh1745";
         reg = <0x38>;
@@ -109,9 +134,9 @@
         vio-supply = <&pm8916_l6>;
         bh1745,tp_moudle_count = <1>;
         /*[module_id] [golden judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
-        bh1745,cal_data0 = "2","328","980","257","6636","6801","0","0",
+        bh1745,cal_data0 = "1","328","980","257","6636","6801","0","0",
         /*[white judge] r[0] r[1] g[0]  g[1] b[0] b[1]*/
-        "211","205","102","855","808","0","0",
+        "246","423","234","2399","2227","0","0",
         /*[blue judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
         "646","4100","1248","14018","10972","0","0";
     };
@@ -168,7 +193,7 @@
 		huawei,hall_gpio_camare_south = <&msm_gpio 69 0x2>;
 		huawei,hall_gpio_camare_north = <&msm_gpio 52 0x2>;
 		hall_poles = <5>;
-		status = "ok";
+		status = "disabled";
 	};
 };
 /{

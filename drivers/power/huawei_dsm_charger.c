@@ -864,10 +864,10 @@ static void check_charging_batt_status_work(struct work_struct *work)
                 dsm_dump_log(charger_dclient, DSM_ABNORMAL_CHARGE_STATUS);
             }
 
-            if(POWER_SUPPLY_STATUS_FULL == cur_status)
+            /*if(POWER_SUPPLY_STATUS_FULL == cur_status)
             {
                 dsm_dump_log(charger_dclient, DSM_FULL_WHEN_CHARGER_ABSENT);
-            }
+            }*/
         }
 
         /* usb present and not otg mode*/

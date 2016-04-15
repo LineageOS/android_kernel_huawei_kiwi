@@ -105,7 +105,7 @@
 #define SENSITIVITY_4G		2	/**	mg/LSB	*/
 #define SENSITIVITY_8G		4	/**	mg/LSB	*/
 #define SENSITIVITY_16G		12	/**	mg/LSB	*/
-
+extern bool is_vibrator_on;
 #ifdef CONFIG_HUAWEI_KERNEL
 int lis3dh_debug_mask = 1;
 module_param_named(lis3dh_debug, lis3dh_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
@@ -1815,7 +1815,68 @@ static int remove_sysfs_interfaces(struct device *dev)
 		device_remove_file(dev, attributes + i);
 	return 0;
 }
+/*
+*	this function get how many times we need to filter after motor stoped.
+*/
+static int lis3dh_get_filteration_times(struct lis3dh_acc_data *acc)
+{
+	switch(acc->odr_value){
+		case ODR_1000MS:
+			acc->filtration_times = FILTERATION_1TIMES;
+			break;
+		case ODR_100MS:
+			acc->filtration_times = FILTERATION_1TIMES;
+			break;
+		case ODR_40MS:
+			acc->filtration_times = FILTERATION_3TIMES;
+			break;
+		case ODR_20MS:
+			acc->filtration_times = FILTERATION_5TIMES;
+			break;
+		case ODR_10MS:
+			acc->filtration_times = FILTERATION_10TIMES;
+			break;
+		case ODR_5MS:
+			acc->filtration_times = FILTERATION_20TIMES;
+			break;
+		case ODR_3MS:
+			acc->filtration_times = FILTERATION_34TIMES;
+			break;
+		case ODR_1MS:
+			acc->filtration_times = FILTERATION_100TIMES;
+			break;
+		default:
+			acc->filtration_times = FILTERATION_5TIMES;
+			break;
+	}
+	return 0;
+}
+/*
+*	this function get the current odr value
+*/
+static int lis3dh_get_odr_value(struct lis3dh_acc_data *acc)
+{
+	unsigned int i;
 
+	for (i = ARRAY_SIZE(lis3dh_acc_odr_table) - 1; i > 0; i--) {
+		if (lis3dh_acc_odr_table[i].cutoff_ms <= acc->delay_ms)
+			return lis3dh_acc_odr_table[i].cutoff_ms;
+	}
+
+	return -EINVAL;
+}
+/*
+*	this function achieve the main filter algorithm
+*	NewRepData = OldRepData + (NewSample-OldRepData)/K
+*/
+static int lis3dh_filteration_for_report_value(struct lis3dh_acc_data *acc,int *xyz)
+{
+	xyz[0] = acc->last_raw_data[0]+(xyz[0]-acc->last_raw_data[0])/FILTER_PARAMETER;
+	xyz[1] = acc->last_raw_data[1]+(xyz[1]-acc->last_raw_data[1])/FILTER_PARAMETER;
+	xyz[2] = acc->last_raw_data[2]+(xyz[2]-acc->last_raw_data[2])/FILTER_PARAMETER;
+	LIS3DH_DEBUG("%s acc->last_raw_data[0]=%d acc->last_raw_data[1]=%d acc->last_raw_data[2]=%d\n",__func__,acc->last_raw_data[0],acc->last_raw_data[1],acc->last_raw_data[2]);
+	return 0;
+}
 static int lis3dh_acc_flush(struct sensors_classdev *sensors_cdev)
 {
 	struct lis3dh_acc_data *acc = container_of(sensors_cdev,
@@ -1991,7 +2052,24 @@ static void lis3dh_acc_input_work_func(struct work_struct *work)
 	if (err < 0)
 		LIS3DH_ERR("get_acceleration_data failed\n");
 	else
+	{
+		if (acc->pdata->gsensor_need_filter){
+			if (is_vibrator_on == true){
+				lis3dh_filteration_for_report_value(acc,xyz);
+				acc->odr_value = lis3dh_get_odr_value(acc);
+				LIS3DH_DEBUG("%s acc->odr_value=%d\n",__func__,acc->odr_value);
+				lis3dh_get_filteration_times(acc);
+				LIS3DH_DEBUG("%s acc->filtration_times before=%d\n",__func__,acc->filtration_times);
+			}
+			if ((acc->filtration_times>0) && (is_vibrator_on == false)){
+				lis3dh_filteration_for_report_value(acc,xyz);
+				acc->filtration_times--;
+				LIS3DH_DEBUG("%s acc->filtration_times after=%d\n",__func__,acc->filtration_times);
+			}
+		}
+		memcpy(acc->last_raw_data, xyz, sizeof(acc->last_raw_data));
 		lis3dh_acc_report_values(acc, xyz);
+	}
 	LIS3DH_DEBUG("%s:use_hrtimer =%d",__func__, acc->pdata->use_hrtimer);
 	/*if acc->pdata->use_hrtimer = false,then schedule_delayed_work*/
 	if( !acc->pdata->use_hrtimer)
@@ -2210,10 +2288,10 @@ static int lis3dh_parse_dt(struct device *dev,
 			pdata->negate_z 	= 1;
 			break;
 		case GS_MAP_DIRECTION_NOREVERSAL:
-			pdata->axis_map_x = 1;
-			pdata->axis_map_y = 0;
+			pdata->axis_map_x = 0;
+			pdata->axis_map_y = 1;
 			pdata->axis_map_z = 2;
-			pdata->negate_x = 1;
+			pdata->negate_x = 0;
 			pdata->negate_y = 0;
 			pdata->negate_z = 0;
 			break;
@@ -2258,7 +2336,8 @@ static int lis3dh_parse_dt(struct device *dev,
 				"st,gpio-int2", 0, NULL);
 	LIS3DH_ERR("defined gpio_int2 = %d\n", pdata->gpio_int2);
 	pdata->use_hrtimer = of_property_read_bool(np, "lis3dh,use-hrtimer");
-	LIS3DH_INFO( "lis3dh whether hrtimer mode , pdata->use_hrtimer = %d\n", pdata->use_hrtimer);
+	pdata->gsensor_need_filter = of_property_read_bool(np, "lis3dh,gsensor-need-filter");
+	LIS3DH_INFO( "lis3dh whether hrtimer mode , pdata->use_hrtimer = %d,pdata->gsensor_need_filter=%d\n", pdata->use_hrtimer,pdata->gsensor_need_filter);
 	pdata->i2c_scl_gpio = of_get_named_gpio_flags(np, "st,i2c-scl-gpio", 0, NULL);
 	if (!gpio_is_valid(pdata->i2c_scl_gpio)) {
 		LIS3DH_ERR("gpio i2c-scl pin %d is invalid\n", pdata->i2c_scl_gpio);
@@ -2355,7 +2434,8 @@ static int lis3dh_parse_dt(struct device *dev,
 	LIS3DH_ERR("undefined enable_int = %d\n", pdata->enable_int);
 
 	pdata->use_hrtimer = of_property_read_bool(np, "lis3dh,use-hrtimer");
-	LIS3DH_INFO( "lis3dh whether hrtimer mode , pdata->use_hrtimer = %d\n", pdata->use_hrtimer);
+	pdata->gsensor_need_filter = of_property_read_bool(np, "lis3dh,gsensor-need-filter");
+	LIS3DH_INFO( "lis3dh whether hrtimer mode , pdata->use_hrtimer = %d,pdata->gsensor_need_filter=%d\n", pdata->use_hrtimer,pdata->gsensor_need_filter);
 	pdata->gpio_int1 = of_get_named_gpio_flags(dev->of_node,
 				"st,gpio-int1", 0, NULL);
 	LIS3DH_ERR("undefined gpio_int1 = %d\n", pdata->gpio_int1);
@@ -2404,7 +2484,6 @@ static int lis3dh_acc_probe(struct i2c_client *client,
 	acc->device_exist = false;
 #endif
 	i2c_set_clientdata(client, acc);
-
 	acc->pdata = kmalloc(sizeof(*acc->pdata), GFP_KERNEL);
 	if (acc->pdata == NULL) {
 		err = -ENOMEM;
@@ -2412,7 +2491,9 @@ static int lis3dh_acc_probe(struct i2c_client *client,
 		goto err_mutexunlock;
 	}
 	memset(acc->pdata, 0 , sizeof(*acc->pdata));
-
+	acc->odr_value = 0;
+	acc->filtration_times = 0;
+	acc->pdata->gsensor_need_filter = false;
 	if (client->dev.of_node) {
 		err = lis3dh_parse_dt(&client->dev, acc->pdata);
 		if (err) {

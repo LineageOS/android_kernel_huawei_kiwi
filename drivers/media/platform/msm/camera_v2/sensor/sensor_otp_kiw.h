@@ -63,3 +63,10 @@
 		IMX214_OFILM_BG_RATIO_TYPICAL,
 		false,
 	},
+	{
+		"s5k3m2_sunny_kiw",
+		s5k3m2_otp_func,
+		S5K3M2_SUNNY_RG_RATIO_TYPICAL,
+		S5K3M2_SUNNY_BG_RATIO_TYPICAL,
+		false,
+	},

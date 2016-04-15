@@ -29,6 +29,7 @@ extern int imx328_sunny_p13n10a_otp_func(struct msm_sensor_ctrl_t *s_ctrl, int i
 extern int ar1335_sunny_f13m01f_otp_func(struct msm_sensor_ctrl_t * s_ctrl, int index);
 extern int imx214_otp_func(struct msm_sensor_ctrl_t * s_ctrl, int index);
 extern int imx219_otp_func(struct msm_sensor_ctrl_t * s_ctrl, int index);
+extern int s5k3m2_otp_func(struct msm_sensor_ctrl_t * s_ctrl, int index);
 
 extern struct otp_function_t otp_function_lists [];
 

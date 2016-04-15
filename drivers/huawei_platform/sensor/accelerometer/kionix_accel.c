@@ -677,11 +677,11 @@ static void kionix_accel_update_direction(struct kionix_accel_driver *acceld)
 	/*this is for top paster*/
 	else if(direction == GS_MAP_DIRECTION_NOREVERSAL)
 	{
-		acceld->axis_map_x = 1;
-		acceld->axis_map_y = 0;
+		acceld->axis_map_x = 0;
+		acceld->axis_map_y = 1;
 		acceld->axis_map_z = 2;
 		acceld->negate_z = 0;
-		acceld->negate_x = 1;
+		acceld->negate_x = 0;
 		acceld->negate_y = 0;
 	}
 	else

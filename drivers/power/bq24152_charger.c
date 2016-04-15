@@ -199,6 +199,7 @@ extern int set_running_test_flag(int value);
 extern int is_usb_chg_exist(void);
 extern int qpnp_lbc_is_in_vin_min_loop(void);
 static int bq2415x_enable_charge(int val);
+static int bq2415x_factory_diag(int val);
 
 static int poor_input_enable = 0;
 
@@ -1776,7 +1777,7 @@ static int bq2415x_power_supply_set_property(struct power_supply *psy,
         bq2415x_set_in_thermal(val->intval);
         break;
     case POWER_SUPPLY_PROP_FACTORY_DIAG:
-        bq2415x_enable_charge(val->intval);
+        bq2415x_factory_diag(val->intval);
         break;
     case POWER_SUPPLY_PROP_CURRENT_MAX:
 	case POWER_SUPPLY_PROP_STATUS:
@@ -2603,6 +2604,22 @@ static int bq2415x_set_runningtest(int val)
 }
 
 static int bq2415x_enable_charge(int val)
+{
+    int rc = 0;
+    if(!g_bq){
+        pmu_log_info("cd_debug bq_device is null, do nothing\n");
+        return -1;
+    }
+    g_bq->charging_disabled = !(val);
+    pmu_log_info("set hw_power charging_enabled value is %d\n",val);
+    if(!g_bq->charging_disabled)
+	    rc = bq2415x_exec_command(g_bq, BQ2415X_HIGH_IMPEDANCE_DISABLE);
+    else
+        rc = bq2415x_exec_command(g_bq, BQ2415X_HIGH_IMPEDANCE_ENABLE);
+    user_ctl_status = val;
+    return 0;
+}
+static int bq2415x_factory_diag(int val)
 {
     union power_supply_propval val_factory_diag = {0,};
     if(!g_bq){

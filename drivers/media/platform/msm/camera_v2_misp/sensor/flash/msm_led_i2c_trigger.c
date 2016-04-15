@@ -78,6 +78,7 @@ int32_t msm_led_i2c_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 			return 0;
 		}
 	}
+	fctrl->flip_id = cfg->flip_id;
 
 	switch (cfg->cfgtype) {
 

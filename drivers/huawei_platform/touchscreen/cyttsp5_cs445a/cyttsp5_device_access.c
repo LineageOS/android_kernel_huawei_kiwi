@@ -31,52 +31,12 @@
 #define STATUS_FAIL	-1
 #define PIP_CMD_MAX_LENGTH ((1 << 16) - 1)
 
-#ifdef TTHE_TUNER_SUPPORT
-struct heatmap_param {
-	bool scan_start;
-	enum scan_data_type_list data_type; /* raw, base, diff */
-	int num_element;
-};
-#endif
-
-#define CY_MAX_CONFIG_BYTES    256
-#define CYTTSP5_TTHE_TUNER_GET_PANEL_DATA_FILE_NAME "get_panel_data"
-#define TTHE_TUNER_MAX_BUF	(CY_MAX_PRBUF_SIZE * 3)
-
-struct cyttsp5_device_access_data {
-	struct device *dev;
-	struct cyttsp5_sysinfo *si;
-	struct mutex sysfs_lock;
-	u8 status;
-	u16 response_length;
-	bool sysfs_nodes_created;
-	struct kobject mfg_test;
-	u8 panel_scan_data_id;
-	u8 get_idac_data_id;
-	u8 calibrate_sensing_mode;
-	u8 calibrate_initialize_baselines;
-	u8 baseline_sensing_mode;
-#ifdef TTHE_TUNER_SUPPORT
-	struct heatmap_param heatmap;
-	struct dentry *tthe_get_panel_data_debugfs;
-	struct mutex debugfs_lock;
-	u8 tthe_get_panel_data_buf[TTHE_TUNER_MAX_BUF];
-	u8 tthe_get_panel_data_is_open;
-#endif
-	u8 ic_buf[CY_MAX_PRBUF_SIZE];
-	u8 response_buf[CY_MAX_PRBUF_SIZE];
-};
 extern int cyttsp5_hid_output_write_mfg_val0(struct cyttsp5_core_data *cd,u8 val);
 extern int cyttsp5_read_mfg_val0_(struct cyttsp5_core_data *cd);
 static struct cyttsp5_core_commands *cmd;
 static struct kobject *touch_screen_kobject_ts=NULL;
 static struct kobject *cyttsp5_kobject =NULL;
 static struct device *cyttsp5_dev_ptr = NULL;
-static inline struct cyttsp5_device_access_data *cyttsp5_get_device_access_data(
-		struct device *dev)
-{
-	return cyttsp5_get_dynamic_data(dev, CY_MODULE_DEVICE_ACCESS);
-}
 
 struct cyttsp5_attribute {
 	struct attribute attr;
@@ -192,14 +152,29 @@ static ssize_t hw_cyttsp5_tp_color_info_show(struct kobject *dev,
 		struct kobj_attribute *attr, char *buf)
 {
 	u8 tp_color_info = 0;
+	enum cyttsp5_sleep_state uSleep = SS_SLEEP_OFF;
+
+	struct device *cdev = cyttsp5_dev_ptr;
+	struct cyttsp5_core_data *cd;
+
 	int ret;
 	tp_log_warning("%s: begin \n", __func__);
 	if(0 == tp_color_data){
-		ret = cyttsp5_tp_check_device_info();
-		if(ret < 0){
-			tp_log_err("%s: driver check device info fail\n", __func__);
+		/*if tp have color value 0, we will first check if tp is power on, then read mfg_val0*/
+		cd = dev_get_drvdata(cdev);
+		mutex_lock(&cd->system_lock);
+		uSleep = cd->sleep_state;
+		mutex_unlock(&cd->system_lock);
+		if(uSleep == SS_SLEEP_OFF) {
+			/*if color is 0,when every wakeup, ALS sensor will first wake to read color from tp.
+			but tp has not power on yet, so the command will timeout. will delay 200ms during wakeup*/
+			ret = cyttsp5_tp_check_device_info();
+			if(ret < 0){
+				tp_log_err("%s: driver check device info fail\n", __func__);
+			}
 		}
 	}
+
 	tp_color_info = tp_color_data;
 	if(0 == tp_color_info){
 		tp_log_warning("%s: tp color info is invalid \n", __func__);
@@ -345,7 +320,7 @@ static struct kobj_attribute hw_response = {
  * Gets user input from sysfs and parse it
  * return size of parsed output buffer
  */
-static int cyttsp5_ic_parse_input(struct device *dev, const char *buf,
+int cyttsp5_ic_parse_input(struct device *dev, const char *buf,
 		size_t buf_size, u8 *ic_buf, size_t ic_buf_size)
 {
 	const char *pbuf = buf;

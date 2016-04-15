@@ -76,6 +76,7 @@ struct msm_led_flash_ctrl_t {
 	dual_flash_torch_type_t df_torch_type;
 	uint8_t flash_temperature_flag[2];
 	uint8_t camera_id;
+	uint32_t flip_id;
 };
 
 int msm_flash_i2c_probe(struct i2c_client *client,

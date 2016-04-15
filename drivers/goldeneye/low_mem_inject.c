@@ -23,19 +23,19 @@ static int index_buffer = 0;
 
 static int low_mem_inject_open(struct inode * inode, struct file * file)
 {
-    pr_info("[HW]: %s: init the GlodenEye driver open... \n", __func__);
+    pr_info("[HW]: %s: init the GoldenEye driver open... \n", __func__);
     return 0;
 }
 
 static int low_mem_inject_release(struct inode * inode, struct file * file)
 {
-    pr_info("[HW]: %s: init the GlodenEye driver release... \n", __func__);
+    pr_info("[HW]: %s: init the GoldenEye driver release... \n", __func__);
     return 0;
 }
 
 static ssize_t low_mem_inject_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 {
-    pr_info("[HW]: %s: init the GlodenEye driver read... \n", __func__);
+    pr_info("[HW]: %s: init the GoldenEye driver read... \n", __func__);
     return 0;
 }
 
@@ -49,7 +49,7 @@ static ssize_t low_mem_inject_write(struct file *file, const char __user *ubuf, 
     char *alloc_buffer;
     char buffer_defined[128] = {0};
 
-    pr_info("[HW]: %s: init the GlodenEye driver write... \n", __func__);
+    pr_info("[HW]: %s: init the GoldenEye driver write... \n", __func__);
 
     cmd_buffer = kmalloc(sizeof(char)*cnt, GFP_KERNEL);
     if (cmd_buffer == NULL) {
@@ -89,7 +89,8 @@ static ssize_t low_mem_inject_write(struct file *file, const char __user *ubuf, 
 
 static unsigned int low_mem_inject_poll(struct file *file, poll_table *wait)
 {
-    pr_info("[HW]: %s: init the GlodenEye driver poll... \n", __func__);
+    pr_info("[HW]: %s: init the GoldenEye driver poll... \n", __func__);
+
     return 0;
 }
 
@@ -98,7 +99,9 @@ static long low_mem_inject_unlocked_ioctl(struct file * file, unsigned int cmd, 
     char *buffer;
     unsigned int i;
     unsigned long int j;
-    pr_info("[HW]: %s: init the GlodenEye driver ioctrl... \n", __func__);
+
+    pr_info("[HW]: %s: init the GoldenEye driver ioctrl... \n", __func__);
+
     pr_info("[HW]: %s: cmd = %d, arg = %ld \n", __func__, cmd, arg);
 
     if(_IOC_TYPE(cmd) != TEST_MAGIC){
@@ -171,7 +174,7 @@ static const struct file_operations proc_low_mem_inject_operations = {
 
 static int __init proc_low_mem_inject_init(void)
 {
-    pr_info("[HW]: %s GlodenEye driver built on %s @ %s\n", __func__, __DATE__, __TIME__);
+    pr_info("[HW]: %s GoldenEye driver built on %s @ %s\n", __func__, __DATE__, __TIME__);
 
     if(!proc_mkdir("goldeneye", NULL)){
         pr_info("[HW]: %s: error to create proc folder goldeneye \n", __func__);

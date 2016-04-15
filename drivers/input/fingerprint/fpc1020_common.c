@@ -1223,9 +1223,9 @@ static int fpc1020_write_sensor_1140_setup(fpc1020_data_t *fpc1020)
 
     temp_u32 = 0x0001; /* fngrUpSteps */
     temp_u32 <<= 8;
-    temp_u32 |= fpc1020->setup.finger_detect_threshold; /* fngrLstThr */
+    temp_u32 |= fpc1020->fp_thredhold; /* fngrLstThr */
     temp_u32 <<= 8;
-    temp_u32 |= fpc1020->setup.finger_detect_threshold; /* fngrDetThr */
+    temp_u32 |= fpc1020->fp_thredhold; /* fngrDetThr */
     FPC1020_MK_REG_WRITE(reg, FPC1150_REG_FNGR_DET_THRES, &temp_u32);
     error = fpc1020_reg_access(fpc1020, &reg);
     if (error)

@@ -37,7 +37,7 @@ Modification : Created function
 #define OV8858_MAX_OTP_LENS_NUM 110
 
 //the value used for vcm effect, maybe modified by others 
-#define OV8858_OTP_VCM_OFFSET_VALUE            60
+#define OV8858_OTP_VCM_OFFSET_VALUE            (200)
 
 //OV8858 has three groups: [1,2,3]
 typedef enum ov8858_groups_count{

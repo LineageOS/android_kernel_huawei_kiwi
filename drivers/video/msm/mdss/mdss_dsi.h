@@ -340,16 +340,22 @@ struct mdss_dsi_ctrl_pdata {
 	int disp_te_gpio;
 	int rst_gpio;
 	int disp_en_gpio;
+	int which_product_pad;
+	int disp_vsn_gpio102;
+	int disp_vsp_gpio100;
+	int disp_reset_gpio32;
+	int disp_vled_gpio97;
+	int disp_bl_gpio109;
+
 	/*T2 10 LCD on*/
+	/*Rename GPIO*/
 	int hw_product_pad;
-	int disp_en_gpio_vsp;
-	int disp_en_gpio_vsn;
-	int disp_en_pvcc;
-	int disp_en_qvcc;
-	int tp_vcc_ctrl_by_lcd;
-	int disp_tp_en_vcc;
+	int disp_en_gpio_vled;
+	int disp_power_backlight;
+	int disp_power_panel;
 	/* Modify JDI tp/lcd power on/off to reduce power consumption */
 	int tp_vci_gpio;
+	int hw_led_en_flag;
 	int bklt_en_gpio;
 	int mode_gpio;
 	int bklt_ctrl;	/* backlight ctrl */
@@ -439,6 +445,12 @@ struct mdss_dsi_ctrl_pdata {
 	u32 inversion_state;
 	struct dsi_panel_cmds dsi_panel_inverse_on_cmds;
 	struct dsi_panel_cmds dsi_panel_inverse_off_cmds;
+
+	/*<add cabc node>*/
+	struct dsi_panel_cmds dsi_panel_cabc_off_cmds;
+	struct dsi_panel_cmds dsi_panel_cabc_moving_cmds;
+	struct dsi_panel_cmds dsi_panel_cabc_still_cmds;
+
 	bool frame_checksum_support;
 	u32 panel_checksum_cmd_len;
 	struct dsi_panel_cmds dsi_frame_crc_enable_cmds;

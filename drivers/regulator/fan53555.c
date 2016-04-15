@@ -105,6 +105,8 @@ struct fan53555_device_info {
 	struct dentry *debug_root;
 
 	bool disable_suspend;
+	unsigned int monitor_reg_work_flag;
+	struct delayed_work modfiy_reg_work;
 };
 
 static int delay_array[] = {10, 20, 30, 40, 50};
@@ -539,6 +541,40 @@ static int set_reg(void *data, u64 val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(poke_poke_debug_ops, get_reg, set_reg, "0x%02llx\n");
 
+#define MODIFY_REG_TIME_INTER          60000
+#define FAN53555_REG01_DEFAULT_VAL     0xAC
+#define MONITOR_REG_FUNCTION_ON        1
+#define MONITOR_REG_FUNCTION_OFF       0
+
+static void fan53555_modify_reg_work(struct work_struct *work)
+{	
+    unsigned int reg_val = FAN53555_REG01_DEFAULT_VAL;
+	int ret = 0;
+	
+	struct fan53555_device_info *di_chip =
+		container_of(work, struct fan53555_device_info, modfiy_reg_work.work);
+
+	ret = fan53555_read(di_chip, FAN53555_VSEL1, &reg_val);
+	if (ret < 0) 
+	{
+	    dev_err(di_chip->dev, "Failed to read 0x01 reg!\n");
+	}
+	
+    if(FAN53555_REG01_DEFAULT_VAL != reg_val)
+    {
+        dev_info(di_chip->dev,"fan53555_modify_reg_work 0x%2x!\n",reg_val);
+        ret = fan53555_write(di_chip, FAN53555_VSEL1, FAN53555_REG01_DEFAULT_VAL);
+	    if (ret < 0)
+	    {
+		    dev_err(di_chip->dev, "write 0x01 reg value %x failed!\n",reg_val);
+	    }
+    }
+	
+	schedule_delayed_work(&di_chip->modfiy_reg_work, msecs_to_jiffies(MODIFY_REG_TIME_INTER));
+
+	return ;
+}
+
 static int fan53555_regulator_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
@@ -607,6 +643,18 @@ static int fan53555_regulator_probe(struct i2c_client *client,
 	config.regmap = di->regmap;
 	config.driver_data = di;
 	config.of_node = client->dev.of_node;
+	ret = of_property_read_u32(client->dev.of_node, "monitor_reg_work_flag",&di->monitor_reg_work_flag);
+    	if(ret)
+    	{
+        	pr_err("get monitor_reg_work_flag failed\n");
+		di->monitor_reg_work_flag = MONITOR_REG_FUNCTION_OFF;
+    	}
+
+	if(MONITOR_REG_FUNCTION_ON == di->monitor_reg_work_flag)
+	{
+        	INIT_DELAYED_WORK(&di->modfiy_reg_work, fan53555_modify_reg_work);
+		schedule_delayed_work(&di->modfiy_reg_work, msecs_to_jiffies(0));
+	}
 
 	ret = fan53555_regulator_register(di, &config);
 	if (ret < 0)
@@ -645,7 +693,10 @@ static int fan53555_regulator_remove(struct i2c_client *client)
 	regulator_unregister(di->rdev);
 
 	debugfs_remove_recursive(di->debug_root);
-
+	if(MONITOR_REG_FUNCTION_ON == di->monitor_reg_work_flag)
+	{
+        	cancel_delayed_work_sync(&di->modfiy_reg_work);
+	}
 	return 0;
 }
 

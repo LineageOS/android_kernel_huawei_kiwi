@@ -1,9 +1,10 @@
 /* Update fw from V000B to V000D >*/
+/* Update fw from V000F to V0011 >*/
 //*****************************************************************************
 //*****************************************************************************
 //  FILENAME: Driver.h
 //  TrueTouch Host Emulator Version Information: 3.3, b429
-//  TrueTouch Firmware Version Information: 1.0.837935
+//  TrueTouch Firmware Version Information: 1.0.844155
 //
 //  DESCRIPTION: This file contains configuration values.
 //-----------------------------------------------------------------------------
@@ -13,7 +14,7 @@
 //-----------------------------------------------------------------------------
 /* Touchscreen Version Information */
 static u8 ttconfig_fw_ver_rio_junda[] = {
-	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0xC9, 0x2F, 0x0B, 0x00, 0x11, 0x9B, 0x00, 0x0D
+	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0xEF, 0x42, 0x0B, 0x00, 0x11, 0x9B, 0x00, 0x11
 };
 #ifndef CONFIG_HUAWEI_KERNEL
 /* Touchscreen Parameters Endianess (Endianess: 0:Little; 1:Big)*/
@@ -109,10 +110,10 @@ static const uint8_t cyttsp5_param_regs_rio_junda[] = {
 	0x12, 0x00,  /* TX_PULSES_NUM_MUTUAL */
 	0x3A, 0x01,  /* CA_TX_PERIOD_MUTUAL */
 	0x24, 0x00,  /* CA_BASE_TX_PULSES_NUM_MUTUAL */
-	0xC8, 0x00,  /* CA_HOP0_TX_PERIOD_MUTUAL */
-	0x37, 0x00,  /* CA_HOP0_TX_PULSES_NUM_MUTUAL */
-	0xEB, 0x00,  /* CA_HOP1_TX_PERIOD_MUTUAL */
-	0x32, 0x00,  /* CA_HOP1_TX_PULSES_NUM_MUTUAL */
+	0x1D, 0x01,  /* CA_HOP0_TX_PERIOD_MUTUAL */
+	0x2D, 0x00,  /* CA_HOP0_TX_PULSES_NUM_MUTUAL */
+	0x27, 0x01,  /* CA_HOP1_TX_PERIOD_MUTUAL */
+	0x2B, 0x00,  /* CA_HOP1_TX_PULSES_NUM_MUTUAL */
 	0x09, 0x01,  /* CA_HOP2_TX_PERIOD_MUTUAL */
 	0x2A, 0x00,  /* CA_HOP2_TX_PULSES_NUM_MUTUAL */
 	0x2C, 0x01,  /* CA_HOP3_TX_PERIOD_MUTUAL */
@@ -267,7 +268,7 @@ static const uint8_t cyttsp5_param_regs_rio_junda[] = {
 	0x01,  /* DYNAMIC_CMF_ENABLE */
 	0x02,  /* DYNAMIC_CMF_TOUCHNUM_SELF */
 	0xE8, 0x03,  /* DYNAMIC_CMF_UP_LIMIT_MUTUAL */
-	0xDC, 0x05,  /* DYNAMIC_CMF_UP_LIMIT_SELF */
+	0x88, 0x13,  /* DYNAMIC_CMF_UP_LIMIT_SELF */
 	0x32, 0x00,  /* DYNAMIC_CMF_MARGIN */
 	0x00, 0x00,  /* NC_NEG_RATIO_NUMER_MUTUAL */
 	0x0D, 0x00,  /* NC_NEG_RATIO_DENOM_MUTUAL */
@@ -340,13 +341,13 @@ static const uint8_t cyttsp5_param_regs_rio_junda[] = {
 	0xA0, 0x0F,  /* CA_INJTCH_MAGNITUDE */
 	0x84, 0x03,  /* CA_INJTCH_FINGER_THOLD */
 	0xE8, 0x03, 0x00, 0x00,  /* CA_DEFAULT_REVERT_TIME */
-	0xE8, 0x03, 0x00, 0x00,  /* CA_DIFF_ABS_DELTA_SUM_THRESHOLD */
-	0xD0, 0x07, 0x00, 0x00,  /* CA_STUCKTOUCH_REVERT_TIME */
+	0xC8, 0x00, 0x00, 0x00,  /* CA_DIFF_ABS_DELTA_SUM_THRESHOLD */
+	0xF4, 0x01, 0x00, 0x00,  /* CA_STUCKTOUCH_REVERT_TIME */
 	0x06, 0x00,  /* DETECT_CHARGER_THRESHOLD */
-	0x0F, 0x00,  /* NM_INJ_TCH_THRESHOLD */
+	0x08, 0x00,  /* NM_INJ_TCH_THRESHOLD */
 	0x01,  /* CA_WB_CMF_ENABLE */
-	0x0A,  /* CA_WB_REVERT_THOLD */
-	0x00,  /* TRIGGER_CA */
+	0x06,  /* CA_WB_REVERT_THOLD */
+	0x02,  /* TRIGGER_CA */
 	0x4B,  /* CA_DYN_CAL_NUM_SENSOR_THLD_PERCENT */
 	0x1A, 0x00,  /* CA_DYN_CAL_SAFE_RAW_RANGE */
 	0xC8, 0x00,  /* CA_DYN_FINGER_THRESH */
@@ -364,7 +365,7 @@ static const uint8_t cyttsp5_param_regs_rio_junda[] = {
 	0x00,  /* LOW_POWER_ENABLE */
 	0x14,  /* WATER_ON_EDGE_RX_SELF_DROP_DELTA */
 	0xE8, 0x03,  /* WATER_ON_EDGE_RX_SELF_DROP_THRESHOLD */
-	0x00, 0x00,  /* Reserved730 */
+	0x88, 0x13,  /* CA_REVERT_JITTER_TIMEOUT_MS */
 	0x08,  /* ACT_DIST0 */
 	0x00,  /* ACT_DIST2 */
 	0x00,  /* ACT_DIST_TOUCHDOWN */
@@ -396,7 +397,7 @@ static const uint8_t cyttsp5_param_regs_rio_junda[] = {
 	0x00,  /* LIFTOFF_DEBOUNCE_HOVER */
 	0x05,  /* GLOVE_LIFTOFF_DEBOUNCE */
 	0x00,  /* Reserved779 */
-	0x32, 0x00,  /* TOUCHMODE_GLOVE_SWITCH_DEBOUNCE */
+	0x14, 0x00,  /* TOUCHMODE_GLOVE_SWITCH_DEBOUNCE */
 	0x00, 0x00,  /* TOUCHMODE_FINGER_SWITCH_DEBOUNCE */
 	0x14, 0x00,  /* TOUCHMODE_GLOVE_FINGER_SWITCH_DEBOUNCE */
 	0x88, 0x13,  /* TOUCHMODE_GLOVE_EXIT_DELAY */
@@ -593,7 +594,8 @@ static const uint8_t cyttsp5_param_regs_rio_junda[] = {
 	0x00,  /* XY_FILT_TOUCH_SIZE_HYST */
 	0x00,  /* XY_FILT_TOUCH_ORIENTATION_IIR_COEFF */
 	0x00,  /* XY_FILT_TOUCH_ORIENTATION_HYST */
-	0x00, 0x00, 0x00,  /* Reserved1085 */
+	0x1E,  /* CA_REVERT_JITTER_THRESHOLD */
+	0x00, 0x00,  /* Reserved1086 */
 	0x00,  /* SIZE_ORIENTATION_ENABLE */
 	0x00, 0x00, 0x00,  /* Reserved1089 */
 	0x32, 0x00,  /* EASYWAKE_IDLE_INTERVAL */
@@ -709,7 +711,7 @@ static const uint8_t cyttsp5_param_regs_rio_junda[] = {
 	0x00, 0x00,  /* Reserved1242 */
 	0x00,  /* EXT_SYNC */
 	0x01,  /* PWR_CFG */
-	0x0D, 0x00,  /* CONFIG_VER */
+	0x11, 0x00,  /* CONFIG_VER */
 	0x01,  /* SEND_REPORT_AFTER_ACTIVE_INTERVAL_CFG */
 	0x00,  /* PIP_REPORTING_DISABLE */
 	0x00, 0x00,  /* INTERRUPT_PIN_OVERRIDE */
@@ -724,7 +726,7 @@ static const uint8_t cyttsp5_param_regs_rio_junda[] = {
 	0x00,  /* SYNC_REPORT_ENABLE */
 	0x00,  /* SYNC_REPORT_BYPASS_TRIGGER_LEVEL */
 	0x00, 0x00,  /* Reserved1262 */
-	0xA9, 0x12,  /* CONFIG_CRC */
+	0x50, 0xC8,  /* CONFIG_CRC */
 };
 
 /* Touchscreen Parameters Field Sizes (Writable: 0:Readonly; 1:Writable) */
@@ -990,7 +992,7 @@ static const uint16_t cyttsp5_param_size_rio_junda[] = {
 	1, /* LOW_POWER_ENABLE */
 	1, /* WATER_ON_EDGE_RX_SELF_DROP_DELTA */
 	2, /* WATER_ON_EDGE_RX_SELF_DROP_THRESHOLD */
-	2, /* Reserved730 */
+	2, /* CA_REVERT_JITTER_TIMEOUT_MS */
 	1, /* ACT_DIST0 */
 	1, /* ACT_DIST2 */
 	1, /* ACT_DIST_TOUCHDOWN */
@@ -1219,7 +1221,8 @@ static const uint16_t cyttsp5_param_size_rio_junda[] = {
 	1, /* XY_FILT_TOUCH_SIZE_HYST */
 	1, /* XY_FILT_TOUCH_ORIENTATION_IIR_COEFF */
 	1, /* XY_FILT_TOUCH_ORIENTATION_HYST */
-	3, /* Reserved1085 */
+	1, /* CA_REVERT_JITTER_THRESHOLD */
+	2, /* Reserved1086 */
 	1, /* SIZE_ORIENTATION_ENABLE */
 	3, /* Reserved1089 */
 	2, /* EASYWAKE_IDLE_INTERVAL */
@@ -1616,7 +1619,7 @@ static const uint8_t cyttsp5_param_addr_pid00[] = {
 	0xF2, 0xD6, /* LOW_POWER_ENABLE */
 	0xF2, 0xD7, /* WATER_ON_EDGE_RX_SELF_DROP_DELTA */
 	0xF2, 0xD8, /* WATER_ON_EDGE_RX_SELF_DROP_THRESHOLD */
-	0xF2, 0xDA, /* Reserved730 */
+	0xF2, 0xDA, /* CA_REVERT_JITTER_TIMEOUT_MS */
 	0xF2, 0xDC, /* ACT_DIST0 */
 	0xF2, 0xDD, /* ACT_DIST2 */
 	0xF2, 0xDE, /* ACT_DIST_TOUCHDOWN */
@@ -1845,7 +1848,8 @@ static const uint8_t cyttsp5_param_addr_pid00[] = {
 	0xF4, 0x3A, /* XY_FILT_TOUCH_SIZE_HYST */
 	0xF4, 0x3B, /* XY_FILT_TOUCH_ORIENTATION_IIR_COEFF */
 	0xF4, 0x3C, /* XY_FILT_TOUCH_ORIENTATION_HYST */
-	0xF4, 0x3D, /* Reserved1085 */
+	0xF4, 0x3D, /* CA_REVERT_JITTER_THRESHOLD */
+	0xF4, 0x3E, /* Reserved1086 */
 	0xF4, 0x40, /* SIZE_ORIENTATION_ENABLE */
 	0xF4, 0x41, /* Reserved1089 */
 	0xF4, 0x44, /* EASYWAKE_IDLE_INTERVAL */

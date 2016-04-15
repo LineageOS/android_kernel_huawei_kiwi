@@ -30,6 +30,7 @@
 		onnn,vsel-gpio = <&msm_gpio 111 1>;
 		onnn,discharge-enable;
 		onnn,restore-reg;
+		monitor_reg_work_flag=<1>;
 	};
 
 	ncp6335d_a18: ncp6335d-a1x@18 {
@@ -49,8 +50,29 @@
 		onnn,vsel-gpio = <&msm_gpio 111 1>;
 		onnn,discharge-enable;
 		onnn,restore-reg;
+		monitor_reg_work_flag=<1>;
 	};
 
+	ncp6335d_a10: ncp6335d-a1x@10 {
+		compatible = "onnn,ncp6335d-a10";
+		reg = <0x10>;
+		onnn,vsel = <0>;
+		onnn,slew-ns = <3333>;
+		onnn,step-size = <6250>;
+		onnn,min-slew-ns = <416>;
+		onnn,max-slew-ns = <3333>;
+		onnn,en-delay-ms = <0>;
+		regulator-min-microvolt = <1050000>;
+		regulator-max-microvolt = <1350000>;
+		onnn,min-setpoint = <600000>;
+		pintrl-names = "default";
+		pinctrl-0 = <&ext_buck_vsel_default>;
+		onnn,vsel-gpio = <&msm_gpio 111 1>;
+		onnn,discharge-enable;
+		onnn,restore-reg;
+		monitor_reg_work_flag=<1>;
+	};	
+	
 	/*just can support 3 devices, delete this one*/
 
 	fan53555: fan53555-regulator@60 {
@@ -65,6 +87,7 @@
 		fairchild,vsel-gpio = <&msm_gpio 111 1>;
 		fairchild,restore-reg;
 		fairchild,disable-suspend;
+		monitor_reg_work_flag=<1>;
 	};
 };
 

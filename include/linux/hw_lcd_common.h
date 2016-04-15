@@ -44,6 +44,12 @@ enum
 };
 int get_tp_gesture_enable_status(void);
 void set_tp_gesture_enable_status(int type);
+/*
+*merge qcom patch from 02098626: 08_20_patches.zip
+*add delay time before vddio-incell enable for ATH JDINT35695. if vddio-incell pull down time is smaller than 80ms.
+*/
+void set_tp_vddio_poweroff_time(unsigned long jz);
+unsigned long get_tp_vddio_poweroff_time(void);
 extern int lcd_debug_mask ;
 /*add power status error judge,avoid red screen*/
 struct lcd_pwr_status_t

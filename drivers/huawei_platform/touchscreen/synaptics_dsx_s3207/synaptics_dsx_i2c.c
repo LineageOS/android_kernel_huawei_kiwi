@@ -6584,14 +6584,27 @@ static int i2c_communicate_check(struct synaptics_rmi4_data *rmi4_data)
 	}
 	return retval;
 }
+static void synaptics_gpio_reset(struct synaptics_rmi4_data *rmi4_data)
+{
+	int rst_gpio = rmi4_data->board->reset_gpio;
+	tp_log_debug( "%s:synaptics_gpio_reset,rst_gpio:%d\n", __func__,rst_gpio);
+	gpio_direction_output(rst_gpio, 0);
+	msleep(20);
+	gpio_direction_output(rst_gpio, 1);
+	msleep(40);
+}
 /* Modify JDI tp/lcd power on/off to reduce power consumption */
 /* Modify JDI tp reset gpio pinctrl for power consumption */
+/*
+*add delay time before vddio-incell enable for ATH JDINT35695. if vddio-incell pull down time is smaller than 80ms.
+*/
 static int synaptics_incell_power(bool enable,struct synaptics_rmi4_data *rmi4_data)
 {
 	int rc;
 	struct synaptics_dsx_platform_data *platform_data =
 			rmi4_data->board;
 	int vci_gpio = platform_data->vci_gpio;
+	unsigned long timeout = 0;
 	//delete some line
 
 	tp_log_warning("%s: in ,enable=%d\n", __func__,enable);
@@ -6652,6 +6665,11 @@ static int synaptics_incell_power(bool enable,struct synaptics_rmi4_data *rmi4_d
 			tp_log_err( "%s: vbus_synaptics regulator disable fail, rc=%d\n", __func__, rc);
 			return -EINVAL;
 		}
+
+		timeout = jiffies;
+		set_tp_vddio_poweroff_time(timeout);
+		pr_info("%s: LCD_INFO set_tp_vddio_poweroff_time\n",__func__);
+
 		/*for pt test*/
 		if(pt_test_enable_tp)
 		{
@@ -7894,7 +7912,9 @@ static void synaptics_close_easy_wakeup(struct synaptics_rmi4_data *rmi4_data)
 			synaptics_rmi4_irq_enable(rmi4_data, false);
 		}
 	} 
-
+       if (SYNAPTICS_S3320 == ic_type) {
+		synaptics_gpio_reset(rmi4_data);
+	}
 	tp_log_debug( "%s out:sleep_gesture_flag=%d\n", 
 		__func__,rmi4_data->sleep_gesture_flag);
 

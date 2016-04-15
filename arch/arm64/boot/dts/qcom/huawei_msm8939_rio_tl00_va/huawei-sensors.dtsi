@@ -131,7 +131,31 @@
 		txc,ps_defalt_crosstalk = <50>;
 
 	};
-
+	avago@52 {
+		compatible = "avago,apds9251";
+		reg = <0x52>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		apds9251,tp_moudle_count = <3>;
+		/*[module_id] [CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		apds9251,cal_data0 = "0","10467","1782","844","984","1199","9666","9378","8362","25","15","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"7094","1557","963","1062","1162","915","887","835","29","21","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"8704","1537","786","966","1298","34198","23089","15486","87","62","30";
+		/*[module_id] [CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		apds9251,cal_data1 = "1","10999","1567","915","982","1111","9252","9329","8332","23","15","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"6914","1735","913","1010","1076","746","714","641","27","18","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"6563","1747","793","1000","1445","8145","4739","2555","115","90","50";
+		/*[module_id] [CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		apds9251,cal_data2 = "3","8796","1738","882","993","1092","5047","4989","4511","21","14","5",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"6491","1636","946","1054","1159","1043","1004","940","30","19","10",
+		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
+		"11215","1620","798","1100","1100","7853","9975","8486","47","25","10";
+	};
 	rohm@38 {
 		compatible = "rohm,bh1745";
 		reg = <0x38>;
@@ -151,11 +175,11 @@
 		/*[black judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
 		"1040","1911","310","11509","9976","0","0";
 		/*[module_id] [golden judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
-		bh1745,cal_data2 = "3","280","1191","625","9035","8881","0","0",
+		bh1745,cal_data2 = "3","201","840","242","4165","4254","0","0",
 		/*[white judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
 		"194","216","113","886","821","0","0",
 		/*[black judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
-		"396","2301","547","13243","12687","0","0";
+		"260","1361","179","7695","7598","0","0";
 	};
 
 	st@19 {
@@ -168,6 +192,7 @@
 		st,min-interval = <5>;
 		st,init-interval = <200>;
 		lis3dh,use-hrtimer;
+		lis3dh,gsensor-need-filter;
 		st,axis-map-x = <0>;
 		st,axis-map-y = <1>;
 		st,axis-map-z = <2>;

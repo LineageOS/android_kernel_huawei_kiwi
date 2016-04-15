@@ -165,6 +165,9 @@ struct msm8916_asoc_mach_data {
 	int spk_ext_pa_switch_vdd_gpio;
 	int spk_ext_pa_enable_gpio;
 	int spk_ext_pa_boost_gpio;
+	unsigned int spk_pa_enable_delaytime;
+	struct delayed_work spk_pa_enable_dwork; /* delayed task for speaker pa enable pin pull up */
+	struct snd_soc_codec *codec;
 	int lb_mode;
 	atomic_t mclk_rsc_ref;
 	atomic_t mclk_enabled;
@@ -266,5 +269,6 @@ extern void msm8x16_wcd_spk_pa_enable_set_cb(int (*codec_spk_ext_pa)(struct snd_
 extern void msm8x16_wcd_spk_pa_switch_vdd_set_cb(int (*codec_spk_ext_pa)(struct snd_soc_codec *codec,int enable),struct snd_soc_codec *codec);
 extern void msm8x16_wcd_spk_pa_switch_in_set_cb(int (*codec_spk_ext_pa)(struct snd_soc_codec *codec,int enable),struct snd_soc_codec *codec);
 
+extern void spk_pa_enable_set_fn(struct work_struct *work);
 #endif
 
