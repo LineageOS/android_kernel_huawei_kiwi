@@ -1188,6 +1188,7 @@ static void apds993x_ps_report_event(struct i2c_client *client, int apds_status)
 
 		/* FAR-to-NEAR detection */
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, APDS993X_CLOSE_FLAG);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_ps);
 
 #ifdef CONFIG_HUAWEI_DSM
@@ -1217,6 +1218,7 @@ static void apds993x_ps_report_event(struct i2c_client *client, int apds_status)
 
 		/* NEAR-to-FAR detection */
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, APDS993X_FAR_FLAG);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_ps);
 #ifdef CONFIG_HUAWEI_DSM
 		apds_dsm_change_ps_enable_status(data);
@@ -1259,6 +1261,7 @@ exit:
 	if(data->ps_detection == APDS993X_CLOSE_FLAG)
 	{
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, APDS993X_FAR_FLAG);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_ps);
 		data->ps_detection= APDS993X_FAR_FLAG;
 		APDS993X_ERR("%s:i2c error happens, report far event, data->ps_data:%d\n", __func__,data->ps_data);
@@ -1353,6 +1356,7 @@ static void apds993x_als_polling_work_handler(struct work_struct *work)
 	if (lux_is_valid) {
 		/* report the lux level */
 		input_report_abs(data->input_dev_als, ABS_MISC, luxValue);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_als);
 		APDS993X_FLOW("%s,line %d:apds9930 lux=%d\n",__func__,__LINE__,luxValue);
 		if (sensorDT_mode)
@@ -1415,12 +1419,14 @@ static void apds993x_work_handler(struct work_struct *work)
 			if(APDS993X_CLOSE_FLAG == data->ps_detection)
 			{
 				input_report_abs(data->input_dev_ps, ABS_DISTANCE, APDS993X_FAR_FLAG);
+				input_report_boottime(data->input_dev_ps);
 				input_sync(data->input_dev_ps);
 				APDS993X_ERR("%s,%d:i2c error happens, report far event\n", __func__,__LINE__);
 			}
 			else if(APDS993X_FAR_FLAG == data->ps_detection)
 			{
 				input_report_abs(data->input_dev_ps, ABS_DISTANCE, APDS993X_CLOSE_FLAG);
+				input_report_boottime(data->input_dev_ps);
 				input_sync(data->input_dev_ps);
 				APDS993X_ERR("%s,%d:i2c error happens, report near event\n", __func__,__LINE__);
 			}
@@ -1760,6 +1766,7 @@ static int apds993x_open_ps_sensor(struct apds993x_data *data, struct i2c_client
 		APDS993X_INFO("%s: line:%d,enable pls sensor.data->enable = 0x%x\n", __func__, __LINE__,data->enable);
 		/* 0 is close, 1 is far */
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, APDS993X_FAR_FLAG);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_ps);
 		APDS993X_INFO("%s,line %d:input_report_abs report ABS_DISTANCE, far event, data->ps_data:%d\n", __func__,__LINE__,data->ps_data);
 
@@ -2778,6 +2785,7 @@ static void apds993x_powerkey_screen_handler(struct work_struct *work)
 		}
 #endif
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, APDS993X_FAR_FLAG);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_ps);
 	}
 	if(1 == data ->enable_ps_sensor)

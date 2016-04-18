@@ -320,6 +320,7 @@ static ssize_t ak8789_store_enable_hall_sensor(struct device *dev,
 		atomic_set(&hall_enable_status, 1);
 		value = query_hall_event();
 		input_event(hw_hall_dev.hw_input_hall, EV_MSC, MSC_SCAN, value);
+		input_report_boottime(hw_hall_dev.hw_input_hall);
 		input_sync(hw_hall_dev.hw_input_hall);
 		gpio_ptr = hw_hall_dev.gpio_data;
 		for (i = 0;  i < hw_hall_dev.gpio_nums;  i++)
@@ -480,9 +481,11 @@ void hall_work_func(struct work_struct *work)
 		{
 			/*report key event down for camera Rotation*/
 			input_report_key(hw_hall_dev.hw_input_camera_hall, BTN_TRIGGER_HAPPY, 1);
+			input_report_boottime(hw_hall_dev.hw_input_camera_hall);
 			input_sync(hw_hall_dev.hw_input_camera_hall);
 			/*report key event up for camera Rotation*/
 			input_report_key(hw_hall_dev.hw_input_camera_hall, BTN_TRIGGER_HAPPY, 0);
+			input_report_boottime(hw_hall_dev.hw_input_camera_hall);
 			input_sync(hw_hall_dev.hw_input_camera_hall);
 			AK8789_WARNMSG("report camera hall key event, camera_hall_need_report(%d);", 
 				atomic_read(&camera_hall_need_report));
@@ -493,6 +496,7 @@ void hall_work_func(struct work_struct *work)
 	if((camera_hall_support_is_true == true) && ((value == 0x10) || (value == 0x20)))
 		report_overturn_num += 1; 
 	input_report_switch(hw_hall_dev.hw_input_hall, SW_LID, value);
+	input_report_boottime(hw_hall_dev.hw_input_hall);
 	input_sync(hw_hall_dev.hw_input_hall);
 	atomic_dec(&irq_no_at);
 	AK8789_WARNMSG("input hall event:0x%x",value);

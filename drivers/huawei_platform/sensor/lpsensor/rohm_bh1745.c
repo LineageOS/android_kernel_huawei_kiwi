@@ -626,6 +626,7 @@ static void rgb_bh1745_als_polling_work_handler(struct work_struct *work)
 	if (lux_is_valid) {
 		/* report the lux level */
 		input_report_abs(data->input_dev_als, ABS_MISC, luxValue);
+		input_report_boottime(data->input_dev_als);
 		input_sync(data->input_dev_als);
 		BH1745_FLOW("%s,line %d:rgb bh1745 lux=%d\n",__func__,__LINE__,luxValue);
 	}

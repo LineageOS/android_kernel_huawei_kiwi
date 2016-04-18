@@ -474,6 +474,7 @@ static void kionix_accel_report_accel_data(struct kionix_accel_driver *acceld)
 				input_report_abs(acceld->input_dev, ABS_X, acceld->accel_data[acceld->axis_map_x]);
 				input_report_abs(acceld->input_dev, ABS_Y, acceld->accel_data[acceld->axis_map_y]);
 				input_report_abs(acceld->input_dev, ABS_Z, acceld->accel_data[acceld->axis_map_z]);
+				input_report_boottime(acceld->input_dev);
 				input_sync(acceld->input_dev);
 				if(acceld->print_xyz_flag)
 				{

@@ -1262,6 +1262,7 @@ static void lis3dh_acc_report_values(struct lis3dh_acc_data *acc,
 	input_report_abs(acc->input_dev, ABS_X, xyz[0]);
 	input_report_abs(acc->input_dev, ABS_Y, xyz[1]);
 	input_report_abs(acc->input_dev, ABS_Z, xyz[2]);
+	input_report_boottime(acc->input_dev);
 	input_sync(acc->input_dev);
 	#ifdef CONFIG_HUAWEI_KERNEL
 	//print xyz value one time only when enable
@@ -1917,6 +1918,7 @@ static int lis3dh_acc_flush(struct sensors_classdev *sensors_cdev)
 	}
 
 	input_event(acc->input_dev, EV_SYN, SYN_CONFIG, acc->flush_count++);
+	input_report_boottime(acc->input_dev);
 	input_sync(acc->input_dev);
 
 	return 0;

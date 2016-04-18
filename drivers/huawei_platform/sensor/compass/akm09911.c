@@ -801,6 +801,7 @@ static void AKECS_SetYPR(
 		input_report_abs(akm->input, ABS_VOLUME, rbuf[15]);
 	}
 
+	input_report_boottime(akm->input);
 	input_sync(akm->input);
 }
 
@@ -2492,6 +2493,7 @@ static int akm_report_data(struct akm_compass_data *akm)
 	akm->last_y = mag_y;
 	akm->last_z = mag_z;
 
+	input_report_boottime(akm->input);
 	input_sync(akm->input);
 
 #ifdef CONFIG_HUAWEI_DSM

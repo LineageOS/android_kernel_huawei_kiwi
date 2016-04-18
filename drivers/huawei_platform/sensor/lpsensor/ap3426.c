@@ -814,7 +814,6 @@ static int ap3426_als_update_setting(struct ap3426_data *di,
 static int ap3426_process_data(struct ap3426_data *di, int als_ps)
 {
 	unsigned int gain;
-	ktime_t timestamp;
 	int rc = 0;
 
 	unsigned int tmp;
@@ -824,8 +823,6 @@ static int ap3426_process_data(struct ap3426_data *di, int als_ps)
 	u8 ps_data[4];
 	int i;
 	int distance;
-
-	timestamp = ktime_get();
 
 	if (als_ps) { /* process als value */
 		/* Read data */
@@ -851,11 +848,8 @@ static int ap3426_process_data(struct ap3426_data *di, int als_ps)
 		if (lux != di->last_als && ((tmp != ALS_DATA_MASK) ||
 					((tmp == ALS_DATA_MASK) &&
 					 (di->als_gain == 0)))) {
-			input_report_abs(di->input_light, ABS_MISC, lux);
-			input_event(di->input_light, EV_SYN, SYN_TIME_SEC,
-					ktime_to_timespec(timestamp).tv_sec);
-			input_event(di->input_light, EV_SYN, SYN_TIME_NSEC,
-					ktime_to_timespec(timestamp).tv_nsec);
+			input_report_abs_boottime(di->input_light, ABS_MISC, lux);
+			input_report_boottime(di->input_light);
 			input_sync(di->input_light);
 		}
 
@@ -891,12 +885,9 @@ static int ap3426_process_data(struct ap3426_data *di, int als_ps)
 
 		/* Report ps data */
 		if (distance != di->last_ps) {
-			input_report_abs(di->input_proximity, ABS_DISTANCE,
+			input_report_abs_boottime(di->input_proximity, ABS_DISTANCE,
 					distance);
-			input_event(di->input_proximity, EV_SYN, SYN_TIME_SEC,
-					ktime_to_timespec(timestamp).tv_sec);
-			input_event(di->input_proximity, EV_SYN, SYN_TIME_NSEC,
-					ktime_to_timespec(timestamp).tv_nsec);
+			input_report_boottime(di->input_proximity);
 			input_sync(di->input_proximity);
 		}
 
@@ -1404,6 +1395,7 @@ static int ap3426_cdev_ps_flush(struct sensors_classdev *sensors_cdev)
 
 	input_event(di->input_proximity, EV_SYN, SYN_CONFIG,
 			di->flush_count++);
+	input_report_boottime(di->input_proximity);
 	input_sync(di->input_proximity);
 
 	return 0;
@@ -1415,6 +1407,7 @@ static int ap3426_cdev_als_flush(struct sensors_classdev *sensors_cdev)
 			struct ap3426_data, als_cdev);
 
 	input_event(di->input_light, EV_SYN, SYN_CONFIG, di->flush_count++);
+	input_report_boottime(di->input_light);
 	input_sync(di->input_light);
 
 	return 0;

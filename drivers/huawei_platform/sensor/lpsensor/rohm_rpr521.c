@@ -1013,6 +1013,7 @@ static void rpr521_ps_report_event(struct i2c_client *client, int irq_status)
 
 		/* FAR-to-NEAR detection */
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, RPR521_CLOSE_FLAG);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_ps);
 
 #ifdef CONFIG_HUAWEI_DSM
@@ -1041,6 +1042,7 @@ static void rpr521_ps_report_event(struct i2c_client *client, int irq_status)
 
 		/* NEAR-to-FAR detection */
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, RPR521_FAR_FLAG);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_ps);
 #ifdef CONFIG_HUAWEI_DSM
 		rpr_dsm_change_ps_enable_status(data);
@@ -1082,6 +1084,7 @@ exit:
 	if(data->ps_detection == RPR521_CLOSE_FLAG)
 	{
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, RPR521_FAR_FLAG);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_ps);
 		data->ps_detection= RPR521_FAR_FLAG;
 		RPR521_ERR("%s:i2c error happens, report far event, data->ps_data:%d\n", __func__,data->ps_data);
@@ -1374,6 +1377,7 @@ static void rpr521_als_polling_work_handler(struct work_struct *work)
 	if (lux_is_valid) {
 		/* report the lux level */
 		input_report_abs(data->input_dev_als, ABS_MISC, luxValue);
+		input_report_boottime(data->input_dev_als);
 		input_sync(data->input_dev_als);
 		RPR521_FLOW("%s,line %d:rpr521 lux=%d\n",__func__,__LINE__,luxValue);
 	}
@@ -1659,6 +1663,7 @@ static int rpr521_open_ps_sensor(struct rpr521_data *data, struct i2c_client *cl
 		RPR521_INFO("%s: line:%d,enable pls sensor.data->enable = 0x%x\n", __func__, __LINE__,data->enable);
 		/* 0 is close, 1 is far */
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, RPR521_FAR_FLAG);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_ps);
 		data->ps_detection = RPR521_FAR_FLAG;
 		RPR521_INFO("%s,line %d:input_report_abs report ABS_DISTANCE, far event, data->ps_data:%d\n", __func__,__LINE__,data->ps_data);
@@ -2770,6 +2775,7 @@ static void rpr521_powerkey_screen_handler(struct work_struct *work)
 		check_hardware_software_flag(data);
 #endif
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, RPR521_FAR_FLAG);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_ps);
 	}
 	if(1== data ->enable_ps_sensor)
