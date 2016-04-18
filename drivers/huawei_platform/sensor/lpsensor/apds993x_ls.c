@@ -1764,11 +1764,7 @@ static int apds993x_open_ps_sensor(struct apds993x_data *data, struct i2c_client
 		data->enable = ((data->enable) |0x25 |0x3 | APDS993X_SUNLIGHT_AIEN);
 		apds993x_set_enable(client, data->enable);
 		APDS993X_INFO("%s: line:%d,enable pls sensor.data->enable = 0x%x\n", __func__, __LINE__,data->enable);
-		/* 0 is close, 1 is far */
-		input_report_abs(data->input_dev_ps, ABS_DISTANCE, APDS993X_FAR_FLAG);
-		input_report_boottime(data->input_dev_ps);
-		input_sync(data->input_dev_ps);
-		APDS993X_INFO("%s,line %d:input_report_abs report ABS_DISTANCE, far event, data->ps_data:%d\n", __func__,__LINE__,data->ps_data);
+		apds993x_ps_report_event(client, APDS993X_PINT);
 
 	/* move this codes befor apds993x_set_enable*/
 	}
