@@ -165,7 +165,6 @@ struct apds993x_data {
 	struct mutex single_lock;
 	struct work_struct	dwork;		/* for PS interrupt */
 	struct work_struct	als_dwork;	/* for ALS polling */
-	struct delayed_work    powerkey_work;
 	struct input_dev *input_dev_als;
 	struct input_dev *input_dev_ps;
 
@@ -610,23 +609,6 @@ static void apds_dsm_threhold_size_check(struct apds993x_data *data)
 
 }
 
-static void check_hardware_software_flag(struct apds993x_data *data )
-{
-	int ret = 0;
-	ret = apds993x_i2c_read(data->client, APDS993X_ENABLE_REG,APDS993X_I2C_BYTE);
-	if(ret < 0)
-	{
-		APDS993X_ERR("%s:read reg fail\n",__func__);
-		return;
-	}
-	//Check ps enable bit
-	if(1 == data ->enable_ps_sensor && (ret & ( 1 << 2)) != 4)
-	{
-		APDS993X_ERR("%s:Software enable and hardware enable mismatch\n",__func__);
-		apds_dsm_report_err(DSM_LPS_ENABLED_ERROR,data);
-
-	}
-}
 static int apds_dsm_report_err(int errno,struct apds993x_data *data)
 {
 	int size = 0;
@@ -1764,11 +1746,7 @@ static int apds993x_open_ps_sensor(struct apds993x_data *data, struct i2c_client
 		data->enable = ((data->enable) |0x25 |0x3 | APDS993X_SUNLIGHT_AIEN);
 		apds993x_set_enable(client, data->enable);
 		APDS993X_INFO("%s: line:%d,enable pls sensor.data->enable = 0x%x\n", __func__, __LINE__,data->enable);
-		/* 0 is close, 1 is far */
-		input_report_abs(data->input_dev_ps, ABS_DISTANCE, APDS993X_FAR_FLAG);
-		input_report_boottime(data->input_dev_ps);
-		input_sync(data->input_dev_ps);
-		APDS993X_INFO("%s,line %d:input_report_abs report ABS_DISTANCE, far event, data->ps_data:%d\n", __func__,__LINE__,data->ps_data);
+		apds993x_ps_report_event(client, APDS993X_PINT);
 
 	/* move this codes befor apds993x_set_enable*/
 	}
@@ -1801,7 +1779,6 @@ static int apds993x_enable_ps_sensor(struct i2c_client *client,unsigned int val)
 #endif
 
 		power_key_ps = false;
-		schedule_delayed_work(&data->powerkey_work, msecs_to_jiffies(100));
 	} else {
 		/*
 		 * turn off p sensor - kk 25 Apr 2011
@@ -1827,7 +1804,6 @@ static int apds993x_enable_ps_sensor(struct i2c_client *client,unsigned int val)
 			apds_dsm_change_ps_enable_status(data);
 #endif
 			cancel_work_sync(&data->dwork);
-			cancel_delayed_work(&data->powerkey_work);
 			if (data->irq)
 			{
 				/*when close the pls,make the wakeup property diabled*/
@@ -2770,28 +2746,6 @@ static int debug_log_get(void *data, u64 *val)
 
 DEFINE_SIMPLE_ATTRIBUTE(debug_mask_fops, debug_log_get, debug_log_set, "%llu\n");
 
-static void apds993x_powerkey_screen_handler(struct work_struct *work)
-{
-	struct apds993x_data *data = container_of((struct delayed_work *)work, struct apds993x_data, powerkey_work);
-	if(power_key_ps  &&  (1 == data ->enable_ps_sensor))
-	{
-		APDS993X_INFO("%s : power_key_ps (%d) press\n",__func__, power_key_ps);
-		apds933x_regs_debug_print(data, 1);
-		power_key_ps=false;
-#ifdef  CONFIG_HUAWEI_DSM
-		if(check_ps_enable)
-		{
-			check_hardware_software_flag(data);
-		}
-#endif
-		input_report_abs(data->input_dev_ps, ABS_DISTANCE, APDS993X_FAR_FLAG);
-		input_report_boottime(data->input_dev_ps);
-		input_sync(data->input_dev_ps);
-	}
-	if(1 == data ->enable_ps_sensor)
-		schedule_delayed_work(&data->powerkey_work, msecs_to_jiffies(500));
-}
-
 /*
  * I2C init/probing/exit functions
  */
@@ -2881,7 +2835,6 @@ static int apds993x_probe(struct i2c_client *client,
 	INIT_WORK(&data->dwork, apds993x_work_handler);
 
 	INIT_WORK(&data->als_dwork, apds993x_als_polling_work_handler);
-	INIT_DELAYED_WORK(&data->powerkey_work, apds993x_powerkey_screen_handler);
 	/* Initialize the APDS993X chip and judge who am i*/
 	err = apds993x_read_device_id(client);
 	if (err) {
