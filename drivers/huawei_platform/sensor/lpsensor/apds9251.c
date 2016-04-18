@@ -449,6 +449,7 @@ static void apds9251_change_als_threshold(struct i2c_client *client)
 		apds_als_polling_count++;
 	}
 	input_report_abs(data->input_dev_als, ABS_MISC, data->rgb_data.lx);
+	input_report_boottime(data->input_dev_als);
 	input_sync(data->input_dev_als);
 	//we does not use cct
 	//input_report_abs(data->input_dev_als, ABS_CCT, data->cct);

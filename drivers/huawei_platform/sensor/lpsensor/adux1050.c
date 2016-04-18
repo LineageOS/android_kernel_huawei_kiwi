@@ -3219,6 +3219,7 @@ static inline void conv_complete_cdc_fetch(struct adux1050_chip *adux1050)
 								 stg_cnt);
 				input_event(adux1050->input, EV_MSC,
 					    MSC_RAW, event_value);
+				input_report_boottime(adux1050->input);
 				input_sync(adux1050->input);
 			}
 		}
@@ -3239,6 +3240,7 @@ static inline void indicate_active_state(struct adux1050_chip *adux1050,
 	ADUX1050_DEBUG("%s\n", __func__);
 	event_value = PACK_FOR_ACTIVE_STATE(stg_num, threshold_type);
 	input_event(adux1050->input, EV_MSC, MSC_RAW, 0x81);
+	input_report_boottime(adux1050->input);
 	input_sync(adux1050->input);
 
 }
@@ -3257,6 +3259,7 @@ static inline void indicate_idle_state(struct adux1050_chip *adux1050,
 	ADUX1050_DEBUG("%s\n", __func__);
 	event_value = PACK_FOR_IDLE_STATE(stg_num, threshold_type);
 	input_event(adux1050->input, EV_MSC, MSC_RAW, 0x01);
+	input_report_boottime(adux1050->input);
 	input_sync(adux1050->input);
 }
 

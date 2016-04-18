@@ -533,6 +533,7 @@ static void txc_pa2240_ps_report_event(struct i2c_client *client)
 		if(data->ps_detection == TXC_PA2240_CLOSE_FLAG)
 		{
 			input_report_abs(data->input_dev_ps, ABS_DISTANCE, TXC_PA2240_FAR_FLAG);
+			input_report_boottime(data->input_dev_ps);
 			input_sync(data->input_dev_ps);
 			data->ps_detection= TXC_PA2240_FAR_FLAG;
 			TXC_PA2240_ERR("%s: sunlight report far event, data->ps_data:%d\n", __func__,data->ps_data);
@@ -572,6 +573,7 @@ static void txc_pa2240_ps_report_event(struct i2c_client *client)
 		if (data->ps_detection == TXC_PA2240_CLOSE_FLAG){
 			data->ps_detection = TXC_PA2240_FAR_FLAG;
 			input_report_abs(data->input_dev_ps, ABS_DISTANCE, TXC_PA2240_FAR_FLAG);
+			input_report_boottime(data->input_dev_ps);
 			input_sync(data->input_dev_ps);
 			TXC_PA2240_INFO("%s,line %d:PROXIMITY far event\n", __func__,__LINE__);
 		}
@@ -592,6 +594,7 @@ static void txc_pa2240_ps_report_event(struct i2c_client *client)
 		if (data->ps_detection == TXC_PA2240_FAR_FLAG){
 			data->ps_detection = TXC_PA2240_CLOSE_FLAG;
 			input_report_abs(data->input_dev_ps, ABS_DISTANCE, TXC_PA2240_CLOSE_FLAG);
+			input_report_boottime(data->input_dev_ps);
 			input_sync(data->input_dev_ps);
 			TXC_PA2240_INFO("%s,line %d:PROXIMITY close event\n", __func__,__LINE__);
 		}
@@ -629,6 +632,7 @@ exit:
 	/*if i2c error happens,we report far event*/
 	if(data->ps_detection == TXC_PA2240_CLOSE_FLAG){
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, TXC_PA2240_FAR_FLAG);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_ps);
 		data->ps_detection= TXC_PA2240_FAR_FLAG;
 		TXC_PA2240_ERR("%s:i2c error happens, report far event, data->ps_data:%d\n", __func__,data->ps_data);
@@ -1020,6 +1024,7 @@ static int txc_pa2240_open_ps_sensor(struct txc_pa2240_data *data, struct i2c_cl
 		data->ps_detection = TXC_PA2240_FAR_FLAG;
 		/*first report event  0 is close, 1 is far */
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, TXC_PA2240_FAR_FLAG);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_ps);
 		TXC_PA2240_INFO("%s,line %d: enable ps, report ABS_DISTANCE, far event\n", __func__,__LINE__);
 
@@ -1790,6 +1795,7 @@ static void txc_pa2240_powerkey_screen_handler(struct work_struct *work)
 		TXC_PA2240_INFO("%s : power_key_ps (%d) press\n",__func__, power_key_ps);
 		power_key_ps=false;
 		input_report_abs(data->input_dev_ps, ABS_DISTANCE, TXC_PA2240_FAR_FLAG);
+		input_report_boottime(data->input_dev_ps);
 		input_sync(data->input_dev_ps);
 	}
 	schedule_delayed_work(&data->powerkey_work, msecs_to_jiffies(500));
