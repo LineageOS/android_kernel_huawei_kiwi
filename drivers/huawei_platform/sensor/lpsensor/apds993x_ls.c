@@ -293,10 +293,11 @@ static ssize_t apds993x_print_reg_buf(struct device *dev,
 			struct device_attribute *attr, char *buf);
 static ssize_t apds993x_write_reg(struct device *dev, struct device_attribute *attr,
 						const char *buf, size_t count);
+
+#ifdef CONFIG_HUAWEI_DSM
 static struct device_attribute apds_show_regs =
 		__ATTR(dump_reg, 0440, apds993x_print_reg_buf, apds993x_write_reg);
 
-#ifdef CONFIG_HUAWEI_DSM
 static bool check_ps_enable = true;
 static struct dsm_client *apds993x_lps_dclient = NULL;
 #define CLIENT_NAME_LPS_APDS		"dsm_lps_apds"

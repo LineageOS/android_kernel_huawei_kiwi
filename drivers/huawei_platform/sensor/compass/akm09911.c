@@ -859,7 +859,9 @@ static int AKECS_GetData_Poll(
 	/* Check ST bit */
 	if (!(AKM_DRDY_IS_HIGH(buffer[0])))
 	{
+#ifdef CONFIG_HUAWEI_DSM
 		akm09911_excep->data_ready = false;
+#endif
 		/*if compass is in self test mode, poll again; in other mode, get data to report*/
 		if(is_self_test)
 		{
@@ -868,7 +870,9 @@ static int AKECS_GetData_Poll(
 	}
 	else
 	{
+#ifdef CONFIG_HUAWEI_DSM
 		akm09911_excep->data_ready = true;
+#endif
 	}
 
 	/* Data is over run is */
