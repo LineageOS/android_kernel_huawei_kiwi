@@ -158,6 +158,7 @@ static void init_once(void *obj)
 {
 	struct sdcardfs_inode_info *i = obj;
 
+	i->under_android = false;
 	inode_init_once(&i->vfs_inode);
 }
 

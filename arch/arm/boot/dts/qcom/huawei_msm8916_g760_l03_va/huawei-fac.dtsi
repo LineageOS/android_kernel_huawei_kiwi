@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI G7-L03";
+                  fac,hardware_ver = "HL1G760SM";
+                  fac,software_ver = "MSM8916_G760-L03_VA";
+                  status = "ok";
+        };
+};

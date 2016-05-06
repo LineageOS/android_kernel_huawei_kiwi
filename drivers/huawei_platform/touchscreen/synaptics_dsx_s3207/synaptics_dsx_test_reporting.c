@@ -33,7 +33,7 @@
 
 #include "synaptics_dsx_esd.h"
 #ifdef CONFIG_HUAWEI_DSM
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif/*CONFIG_HUAWEI_DSM*/
 /*move mmi limit to here*/
 #ifdef MMITEST
@@ -4306,6 +4306,9 @@ int get_product_module_name(unsigned char *product_id)
 	/*Modify G760L tp_cap threshold get from V3*/
 	else if (!strcmp(product_id, FW_LENSONE_STR))
 		product_module_name = FW_LENSONE;
+	else if (!strcmp(product_id, FW_GIS_STR)) {
+		product_module_name = FW_GIS;
+	}
 	else
 		product_module_name = UNKNOW_PRODUCT_MODULE;
 

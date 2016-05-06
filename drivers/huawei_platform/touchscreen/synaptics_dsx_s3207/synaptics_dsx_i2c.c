@@ -26,6 +26,7 @@
 #include <linux/delay.h>
 #include <linux/input.h>
 #include <linux/gpio.h>
+#include <linux/log_jank.h>
 #include <linux/hw_lcd_common.h>
 #include <linux/regulator/consumer.h>
 #include "synaptics_dsx.h"
@@ -47,7 +48,7 @@
 #include <linux/pm_runtime.h>
 
 #ifdef CONFIG_HUAWEI_DSM
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif/*CONFIG_HUAWEI_DSM*/
 #include "synaptics_dsx_esd.h"
 /*delete synaptics_dsx_debug_mask to use common debug mask*/
@@ -242,7 +243,7 @@ static struct kobject *board_properties_kobj;
 
 #define DRIVER_NAME "synaptics_dsx_i2c"
 #define INPUT_PHYS_NAME "synaptics_dsx_i2c/input0"
-
+#define INPUT_DEVICE_NAME "huawei,touchscreen"
 #ifdef KERNEL_ABOVE_2_6_38
 #define TYPE_B_PROTOCOL
 #endif
@@ -1156,6 +1157,9 @@ static ssize_t synaptics_easy_wakeup_gesture_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	const struct synaptics_dsx_platform_data *platform_data =
+			rmi4_data->board;
+	unsigned int ic_type = platform_data->ic_type;
 	unsigned long value = 0;
 	unsigned long gesture_flag = 0;
 	unsigned long palm_flag = 0;
@@ -1186,17 +1190,32 @@ static ssize_t synaptics_easy_wakeup_gesture_store(struct device *dev,
 	mutex_lock(&rmi4_data->rmi4_sysfs_mutex);
 	gesture_flag = value & APP_ENABLE_WAKEUP_GESTURE;
 	tp_log_debug("%s: gesture_flag=%ld \n", __func__, gesture_flag);
-	if (0 != gesture_flag)
-	{
-		rmi4_data->gesture_enabled = RMI4_EASY_WAKE_UP_GESTURE_ENABLED;
-		incell_gesture_enabled = RMI4_EASY_WAKE_UP_GESTURE_ENABLED;
+	if(SYNAPTICS_S3207 == ic_type){
+		if (0 != gesture_flag)
+		{
+			rmi4_data->gesture_enabled = RMI4_EASY_WAKE_UP_GESTURE_ENABLED;
+			/*s3207 is on-cell tp*/
+		}
+		else
+		{
+			rmi4_data->gesture_enabled = RMI4_EASY_WAKE_UP_GESTURE_DISABLED;
+			/*s3207 is on-cell tp*/
+		}
+		/*s3207 is on-cell tp*/
 	}
-	else
-	{
-		rmi4_data->gesture_enabled = RMI4_EASY_WAKE_UP_GESTURE_DISABLED;
-		incell_gesture_enabled = RMI4_EASY_WAKE_UP_GESTURE_DISABLED;
+	else{
+		if (0 != gesture_flag)
+		{
+			rmi4_data->gesture_enabled = RMI4_EASY_WAKE_UP_GESTURE_ENABLED;
+			incell_gesture_enabled = RMI4_EASY_WAKE_UP_GESTURE_ENABLED;
+		}
+		else
+		{
+			rmi4_data->gesture_enabled = RMI4_EASY_WAKE_UP_GESTURE_DISABLED;
+			incell_gesture_enabled = RMI4_EASY_WAKE_UP_GESTURE_DISABLED;
+		}
+		set_tp_gesture_enable_status(incell_gesture_enabled);
 	}
-	set_tp_gesture_enable_status(incell_gesture_enabled);
 	tp_log_debug("%s: gesture_enabled=%d \n", __func__, rmi4_data->gesture_enabled);
 
 	palm_flag = value & APP_ENABLE_GESTURE(GESTURE_PALM_COVERED);
@@ -1341,13 +1360,21 @@ static ssize_t synaptics_glove_func_show(struct device *dev,
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	unsigned char device_ctrl;
 	ssize_t ret;
+	unsigned int ic_type = rmi4_data->board->ic_type;
+	unsigned short device_addr;
 	if (rmi4_data->staying_awake){
 		tp_log_err("%s: tp fw is updating,return\n", __func__);
 		return -EINVAL;
 	}
+	if (SYNAPTICS_S3320 == ic_type){
+		device_addr = rmi4_data->f12_ctrl_base_addr+rmi4_data->f12_2d_ctrl26_glove;
+	}
+	else{
+		device_addr = rmi4_data->f51_ctrl_base_addr;
+	}
 	pm_runtime_get_sync(&rmi4_data->i2c_client->dev);
 	ret = synaptics_rmi4_i2c_read(rmi4_data,
-			rmi4_data->f12_ctrl_base_addr+rmi4_data->f12_2d_ctrl26_glove,
+			device_addr,
 			&device_ctrl,
 			sizeof(device_ctrl));
 	if (ret < 0) {
@@ -1525,9 +1552,8 @@ static ssize_t synaptics_glove_func_store(struct device *dev,
 		tp_log_err("%s: kstrtoul error,ret=%d", __func__,ret);
 		return ret;
 	}
-
-	tp_log_debug("%s: glove_enabled=%d", __func__, rmi4_data->glove_enabled);
-
+	rmi4_data->glove_enabled = value;
+	tp_log_debug("%s:line%d , rmi4_data->glove_enabled =%d\n", __func__, __LINE__, rmi4_data->glove_enabled);
 	tp_log_debug("%s:line%d , rt_counter=%d\n",__func__,__LINE__, rmi4_data->i2c_client->dev.power.usage_count.counter);
 	pm_runtime_get_sync(&rmi4_data->i2c_client->dev);
 	tp_log_debug("%s:line%d , rt_counter=%d\n",__func__,__LINE__, rmi4_data->i2c_client->dev.power.usage_count.counter);
@@ -2219,7 +2245,7 @@ static ssize_t s3207_set_holster_mode(struct synaptics_rmi4_data *rmi4_data,int 
 		/*Enable glove mode*/
 		/*TP will only response to finger with glove*/
 		tp_log_debug("%s: line=%d\n",__func__,__LINE__);
-		ret = F12_set_glove_mode(rmi4_data,SYSTEM_LOCKED_TO_GLOVE_MODE);
+		ret = F51_set_glove_reg(rmi4_data,SYSTEM_LOCKED_TO_GLOVE_MODE);
 		if (ret < 0) {
 			tp_log_err("%s: Failed to set glove mode!ret=%d\n",
 					__func__,ret);
@@ -2269,11 +2295,11 @@ static ssize_t s3207_set_holster_mode(struct synaptics_rmi4_data *rmi4_data,int 
 		if(rmi4_data->glove_enabled == RMI4_GLOV_FUNC_ENABLED){
 			/*TP will response to finger and glove,with finger default*/
 			tp_log_debug("%s: line=%d\n",__func__,__LINE__);
-			ret = F51_set_glove_mode(rmi4_data,SYSTEM_START_IN_SKIN_MODE);
+			ret = F51_set_glove_reg(rmi4_data,SYSTEM_START_IN_SKIN_MODE);
 		} else {
 			/*TP will only response to finger*/
 			tp_log_debug("%s: line=%d\n",__func__,__LINE__);
-			ret = F51_set_glove_mode(rmi4_data,SYSTEM_LOCKED_TO_SKIN_MODE);
+			ret = F51_set_glove_reg(rmi4_data,SYSTEM_LOCKED_TO_SKIN_MODE);
 		}
 		if (ret < 0) {
 			tp_log_err("%s: Failed to set glove mode!ret=%d\n",
@@ -3256,6 +3282,7 @@ static int synaptics_rmi4_f11_gesture_report(struct synaptics_rmi4_data *rmi4_da
 				&reprot_gesture_key_value,
 				&reprot_gesture_point_num,
 				0);
+				LOG_JANK_D(JLID_WAKEUP_DBCLICK,"JLID_WAKEUP_DBCLICK");
 			break;
 		case LINEAR_SLIDE_DETECTED:
 			if (!(APP_ENABLE_LINEAR & rmi4_data->easy_wakeup_gesture)) {
@@ -3511,6 +3538,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		if(true == rmi4_data->sleep_gesture_flag)//work only when suspended
 		{
 			tp_log_vdebug("%s:wake up gesture mode  in!sleep_gesture_flag = %d \n",__func__, rmi4_data->sleep_gesture_flag);
+			LOG_JANK_D(JLID_TP_GESTURE_KEY,"JLID_TP_GESTURE_KEY");
 			return synaptics_rmi4_f11_gesture_report(rmi4_data,fhandler);
 		}
 		else if(true == rmi4_data->palm_enabled)//work only when resumed
@@ -4980,6 +5008,11 @@ static int synaptics_get_gesture_doze_wakeup_threshold(struct synaptics_rmi4_dat
 		module_threshold = pdata->lensone_dwt;
 		tp_log_info("%s: lensone_dwt = %d\n", __func__,module_threshold);
 	}
+	else if (0 == strcasecmp(product_id, FW_GIS_STR))
+	{
+		module_threshold = pdata->gis_dwt;
+		tp_log_info("%s: gis_dwt = %d\n", __func__,module_threshold);
+	}
 	else
 	{
 		tp_log_err("%s: unknow product_id = %s\n", __func__,product_id);
@@ -5439,8 +5472,7 @@ static int synaptics_rmi4_set_input_dev(struct synaptics_rmi4_data *rmi4_data)
 				__func__);
 		goto err_query_device;
 	}
-
-	rmi4_data->input_dev->name = DRIVER_NAME;
+	rmi4_data->input_dev->name = INPUT_DEVICE_NAME;
 	rmi4_data->input_dev->phys = INPUT_PHYS_NAME;
 	rmi4_data->input_dev->id.product = SYNAPTICS_DSX_DRIVER_PRODUCT;
 	rmi4_data->input_dev->id.version = SYNAPTICS_DSX_DRIVER_VERSION;
@@ -6265,15 +6297,13 @@ static int synaptics_rmi4_parse_dt(struct device *dev, struct synaptics_dsx_plat
 	pdata->lcd_x = get_of_u32_val(np, "synaptics,lcd-x", LCD_X_DEFAULT);
 	pdata->lcd_y = get_of_u32_val(np, "synaptics,lcd-y", LCD_Y_DEFAULT);
 	pdata->lcd_all = get_of_u32_val(np, "synaptics,lcd-all", LCD_ALL_DEFAULT);
-
 #ifdef ENABLE_VIRTUAL_KEYS
-	err = setup_virtual_keys(np, DRIVER_NAME,&pdata->vkeys);
+	err = setup_virtual_keys(np, INPUT_DEVICE_NAME,&pdata->vkeys);
 	if (err) {
 		/*If the virtual keys are not supported the TP should work fine;*/
 		tp_log_err("%s: Cannot setup virtual keys, only TP will work now!err = %d\n",__func__,err);
 	}
 #endif
-
 	err = of_property_read_string(np, "synaptics,product_name",&pdata->product_name);
 	if (err){
 		tp_log_err("Unable to read firmware_name\n");			
@@ -6916,6 +6946,9 @@ static void synaptics_rmi4_read_default_glove_holster_sensitivity(struct synapti
 			break;
 		case FW_EELY:
 			dev_node= of_find_node_by_name(np, "huawei,eely");
+			break;
+		case FW_GIS:
+			dev_node= of_find_node_by_name(np, "huawei,gis");
 			break;
 		case FW_LENSONE:
 			dev_node= of_find_node_by_name(np, "huawei,lensone");

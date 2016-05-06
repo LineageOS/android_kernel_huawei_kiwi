@@ -25,7 +25,7 @@ config DEFAULT_MESSAGE_LOGLEVEL
 	  that are auditing their logs closely may want to set it to a lower
 	  priority.
 
-
+#/* < DTS2014070303497 shenjinming 20140703 begin */
 config DEBUG_HUAWEI_FLOW_LOGLEVEL
 	int "Default message log level (0-1)"
 	depends on PRINTK && HUAWEI_KERNEL
@@ -34,7 +34,7 @@ config DEBUG_HUAWEI_FLOW_LOGLEVEL
 	help
 	 Select this option to allow print some extra 
 	 huawei debug log 
-
+#/* DTS2014070303497 shenjinming 20140703 end > */
 
 config ENABLE_WARN_DEPRECATED
 	bool "Enable __deprecated logic"
@@ -311,7 +311,7 @@ config DETECT_HUNG_TASK
 	  enabled then all held locks will also be reported. This
 	  feature has negligible overhead.
 
- 	  
+# /* < DTS2014122903325 sihongfang 20141229 begin */ 	  
 config HW_DETECT_HUNG_TASK
 	bool "Huawei Enhance DETECT_HUNG_TASK"
 	depends on DETECT_HUNG_TASK
@@ -320,7 +320,7 @@ config HW_DETECT_HUNG_TASK
 	  Say Y here to enable the Huawei enhance hungtask,
 	  Enhanced by add function of Whitelist or Blacklist,
 	  that controls the processes be monitored by hungtask.
-
+# /* DTS2014122903325 sihongfang 20141229 end > */ 
 
 config DEFAULT_HUNG_TASK_TIMEOUT
 	int "Default timeout for hung task detection (in seconds)"

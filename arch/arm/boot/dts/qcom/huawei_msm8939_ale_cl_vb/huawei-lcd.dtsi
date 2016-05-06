@@ -5,3 +5,7 @@
  *---------------------------------------------------------------------------*/
 
 
+#include "hw-panel-boe-nt35521-5-720pxa-video.dtsi"
+#include "hw-panel-boe-nt35521s-5-720pxa-video.dtsi"
+#include "hw-panel-cmi-otm1283a-5-720pxa-video.dtsi"
+#include "hw-panel-tianma-otm1287a-5-720palecl-video.dtsi"

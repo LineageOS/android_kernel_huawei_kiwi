@@ -32,6 +32,8 @@
 #endif
 #include "power.h"
 
+static bool is_first_suspend = false;
+
 const char *const pm_states[PM_SUSPEND_MAX] = {
 	[PM_SUSPEND_FREEZE]	= "freeze",
 	[PM_SUSPEND_STANDBY]	= "standby",
@@ -180,6 +182,7 @@ void __attribute__ ((weak)) arch_suspend_enable_irqs(void)
 static int suspend_enter(suspend_state_t state, bool *wakeup)
 {
 	int error;
+	struct timespec ts;
 
 	if (need_suspend_ops(state) && suspend_ops->prepare) {
 		error = suspend_ops->prepare();
@@ -201,6 +204,20 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 
 	if (suspend_test(TEST_PLATFORM))
 		goto Platform_wake;
+
+	/* FIXME: This is a temporary hack to prevent doze mode immediately
+	 * after boot (for 45 secs), untill the app registrations is successful
+	 * Like alarm registrations et al */
+	if (!is_first_suspend) {
+                get_monotonic_boottime(&ts);
+		if (ts.tv_sec < 120) {
+			pr_info("PM: bootime < 120 secs, block suspend\n");
+			goto Platform_wake;
+		} else {
+			pr_debug("PM: all registrations completed, enable PM suspend feature \n");
+			is_first_suspend = true;
+		}
+	}
 
 	/*
 	 * PM_SUSPEND_FREEZE equals

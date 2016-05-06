@@ -4,6 +4,7 @@
                 qcom,vref-batt-therm = <1800000>;
                 #include "HB4242B4EBW_ATL_SCUD-4v35-3020mah.dtsi"
                 #include "HB4242B4EBW_LG_SWD-4v35-3020mah.dtsi"
+                #include "HB4242B4EBW_GY_GY-4v35-3000mah.dtsi"
         };
 };
 

@@ -1,0 +1,16 @@
+/* < DTS201505289999M zhujie 20150528 begin */
+&soc {
+        huawei,huawei-support-hs200 {
+                compatible = "huawei-support-hs200";
+                huawei,support-hs200;
+        };
+        huawei,huawei-clk-rates {
+                compatible = "huawei,huawei-clk-rates";
+                huawei,clk-rates = <400000 25000000 50000000 100000000 177770000>;
+        };
+        huawei,huawei-bus-speed-mode {
+                compatible = "huawei,huawei-bus-speed-mode";
+                huawei,bus-speed-mode = "HS200_1p8v","DDR_1p8v";
+        };        
+     };
+/* DTS201505289999M zhujie 20150528 end > */

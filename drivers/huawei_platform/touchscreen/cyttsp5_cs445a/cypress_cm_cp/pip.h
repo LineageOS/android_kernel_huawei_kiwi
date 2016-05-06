@@ -127,8 +127,4 @@ extern int  pip_retrieve_panel_scan(uint16_t read_offset, uint16_t read_length,
         uint8_t data_id, uint16_t *actual_read_length,
         uint8_t *data_format, uint8_t *data);
 extern int pip_short_test(void);
-extern int pip_opens_self_test(void);
-extern int pip_get_opens_self_test_results(uint16_t read_offset, uint16_t read_length,
-        uint8_t data_id, uint16_t *actual_read_length,
-        uint8_t *data_format, uint8_t *data);
 #endif /* _PIP_H_ */

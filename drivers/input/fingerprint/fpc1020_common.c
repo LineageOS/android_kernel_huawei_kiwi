@@ -247,6 +247,7 @@ void send_msg_to_dsm(struct dsm_client *dsm_client, int error, int dsm)
 {
     int err_dsm = 0;
     if (!dsm_client_ocuppy(dsm_client)) {
+/*
         if(dsm == DSM_FINGERPRINT_SPISYNC_ERROR_NO){
             dsm_client_record(dsm_client, "spi sync error=%d\n", error);
             switch(error){
@@ -270,7 +271,9 @@ void send_msg_to_dsm(struct dsm_client *dsm_client, int error, int dsm)
                     break;
             }
         }
-        else if(dsm == DSM_FINGERPRINT_TEST_DEADPIXELS_ERROR_NO){
+        else
+*/
+        if(dsm == DSM_FINGERPRINT_TEST_DEADPIXELS_ERROR_NO) {
             dsm_client_record(dsm_client, "test dead pixels error=%d\n", error);
             switch(error){
                 case FPC_1020_MIN_CHECKER_DIFF_ERROR:
@@ -284,8 +287,13 @@ void send_msg_to_dsm(struct dsm_client *dsm_client, int error, int dsm)
                     break;
             }
         }
-    else
-        return;
+        else if(dsm == DSM_FINGERPRINT_PROBE_FAIL_ERROR_NO){
+            dsm_client_record(dsm_client, "fingerprint_probe failed error=%d\n", error);
+            err_dsm = DSM_FINGERPRINT_PROBE_FAIL_ERROR_NO;
+
+        }
+        else
+            return;
         dsm_client_notify(dsm_client, err_dsm);
     }
 
@@ -525,10 +533,10 @@ int fpc1020_reset(fpc1020_data_t *fpc1020)
             fpc1020_gpio_reset(fpc1020);
 
     if (error < 0){
-        if (!dsm_client_ocuppy(fpc1020->dsm_fingerprint_client)) {
+        /*if (!dsm_client_ocuppy(fpc1020->dsm_fingerprint_client)) {
             dsm_client_record(fpc1020->dsm_fingerprint_client, "GPIO Reset error=%d\n", error);
             dsm_client_notify(fpc1020->dsm_fingerprint_client, DSM_FINGERPRINT_RESET_ERROR_NO);
-        }
+        } */
         fpc_log_err("reset failed, error = %d\n", error);
         goto out;
     }
@@ -1401,7 +1409,7 @@ out:
     return error;
 }
 
-/* -------------------------------------------------------------------- */ 
+/* -------------------------------------------------------------------- */
 int fpc1020_write_sensor_checkerboard_setup_1021(fpc1020_data_t *fpc1020, u16 pattern)
 {
     int error = 0;
@@ -1409,7 +1417,7 @@ int fpc1020_write_sensor_checkerboard_setup_1021(fpc1020_data_t *fpc1020, u16 pa
     u16 temp_u16;
     u64 temp_u64;
     fpc1020_reg_access_t reg;
-    
+
     temp_u16 = pattern ; //(invert) ? 0x55aa : 0xaa55;
 
     fpc_log_debug("ENTER! pattern = 0x%x\n", temp_u16);
@@ -1457,12 +1465,12 @@ int fpc1020_write_sensor_checkerboard_setup_1021(fpc1020_data_t *fpc1020, u16 pa
 
     temp_u64 = 0x5540002d24;
     FPC1020_MK_REG_WRITE(reg, FPC102X_REG_ADC_SETUP, &temp_u64);
-    error = fpc1020_reg_access(fpc1020, &reg); 
+    error = fpc1020_reg_access(fpc1020, &reg);
     if (error)
         goto out;
 
-out: 
-    return error; 
+out:
+    return error;
 }
 /* -------------------------------------------------------------------- */
 int fpc1020_wait_for_irq(fpc1020_data_t *fpc1020, int timeout)
@@ -1638,7 +1646,7 @@ int fpc1020_reg_access(fpc1020_data_t *fpc1020,
 
     if (error) {
         fpc_log_err("sync error reached max failed times\n");
-        send_msg_to_dsm(fpc1020->dsm_fingerprint_client, error, DSM_FINGERPRINT_SPISYNC_ERROR_NO);
+        //send_msg_to_dsm(fpc1020->dsm_fingerprint_client, error, DSM_FINGERPRINT_SPISYNC_ERROR_NO);
         error = -ECOMM;
         goto out;
     }
@@ -1724,7 +1732,7 @@ int fpc1020_cmd(fpc1020_data_t *fpc1020,
 
     if (error) {
         fpc_log_err("sync error reached max failed times\n");
-        send_msg_to_dsm(fpc1020->dsm_fingerprint_client, error, DSM_FINGERPRINT_SPISYNC_ERROR_NO);
+        //send_msg_to_dsm(fpc1020->dsm_fingerprint_client, error, DSM_FINGERPRINT_SPISYNC_ERROR_NO);
         error = -ECOMM;
         goto out;
     }
@@ -1735,10 +1743,7 @@ int fpc1020_cmd(fpc1020_data_t *fpc1020,
         if (error >= 0)
             error = fpc1020_read_irq(fpc1020, true);
         else{
-            if (!dsm_client_ocuppy(fpc1020->dsm_fingerprint_client)) {
-                dsm_client_record(fpc1020->dsm_fingerprint_client, "wait for irq after cmd error=%d\n", error);
-                dsm_client_notify(fpc1020->dsm_fingerprint_client, DSM_FINGERPRINT_IRQ_AFTER_CMD_ERROR_NO);
-            }
+            fpc_log_err("fpc1020_wait_for_irq after cmd failed, error = %d", error);
         }
     }
 #if CS_CONTROL
@@ -1909,7 +1914,7 @@ int fpc1020_check_finger_present_raw(fpc1020_data_t *fpc1020)
     int error = 0;
 
     error = fpc1020_read_irq(fpc1020, true);
- 
+
     if (error < 0) {
         fpc_log_err("fpc1020_read_irq failed, error = %d\n", error);
         return error;
@@ -2111,7 +2116,7 @@ int fpc1020_fetch_image(fpc1020_data_t *fpc1020,
 
         if (error) {
             fpc_log_err("sync error reached max failed times\n");
-            send_msg_to_dsm(fpc1020->dsm_fingerprint_client, error, DSM_FINGERPRINT_SPISYNC_ERROR_NO);
+            //send_msg_to_dsm(fpc1020->dsm_fingerprint_client, error, DSM_FINGERPRINT_SPISYNC_ERROR_NO);
             error = -ECOMM;
             goto out;
         }
@@ -2126,7 +2131,13 @@ int fpc1020_fetch_image(fpc1020_data_t *fpc1020,
     error = fpc1020_read_irq(fpc1020, true);
 
     if (error > 0)
+    {
+        if(error & FPC_1020_IRQ_REG_BIT_ERROR)
+        {
+            fpc_log_err("return clear_irq error = %d\n", error);
+        }
         error = (error & FPC_1020_IRQ_REG_BIT_ERROR) ? -EIO : 0;
+    }
 
 out:
     return error;
@@ -2192,4 +2203,4 @@ size_t fpc1020_calc_image_size_selftest(fpc1020_data_t *fpc1020)
     }
     return image_byte_size;
 }
-   /* -------------------------------------------------------------------- */  
+   /* -------------------------------------------------------------------- */

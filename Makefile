@@ -361,6 +361,10 @@ ifeq ($(PRODUCTION_NAME),PRODUCTION_ALE)
 	CFLAGS_KERNEL += -DPRODUCTION_ALE_KERNEL
 endif
 
+ifeq ($(PRODUCTION_NAME),PRODUCTION_G760)
+	CFLAGS_KERNEL += -DPRODUCTION_G760_KERNEL
+endif
+
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE    := \
 		-I$(srctree)/arch/$(hdr-arch)/include/uapi \

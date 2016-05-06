@@ -13,12 +13,14 @@
 &soc {
     sound {
         qcom,msm-micbias1-ext-cap;
+        huawei,cable-enable-mbhc;
     };
 };
 &spmi_bus {
         qcom,pm8916@1 {
                 pm8916_tombak_dig: msm8x16_wcd_codec@f000{
                         qcom,cdc-boost-voltage = <5000>;
+			huawei,cable-enable-msm;
                 };
         };
 };

@@ -10,4 +10,4 @@ obj-$(CONFIG_MSMB_CAMERA) += msm_led_torch.o
 obj-$(CONFIG_MSMB_CAMERA) += msm_flash.o
 obj-$(CONFIG_MSMB_CAMERA) += lm3642.o
 obj-$(CONFIG_MSMB_CAMERA) += mp3331.o
-obj-$(CONFIG_MSMB_CAMERA) += max77819_flash.o
+#obj-$(CONFIG_MSMB_CAMERA) += max77819_flash.o

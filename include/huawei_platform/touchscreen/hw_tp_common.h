@@ -15,14 +15,13 @@
 /* delete 2 lines */
 /*IC type*/
 #define IC_TYPE_3207 3207
-
 #define FW_OFILM_STR "000"
 #define FW_EELY_STR "001"
 #define FW_TRULY_STR "002"
 #define FW_MUTTO_STR "003"
+#define FW_GIS_STR "004"
 #define FW_JUNDA_STR "005"
 #define FW_LENSONE_STR "006"
-
 #define MODULE_STR_LEN 3
 
 /* buffer size for dsm tp client */

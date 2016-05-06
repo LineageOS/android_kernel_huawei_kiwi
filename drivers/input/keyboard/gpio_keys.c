@@ -32,7 +32,7 @@
 #include <linux/pinctrl/consumer.h>
 
 #ifdef CONFIG_HUAWEI_DSM
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 static int vol_up_times = 0;
 #endif
 static int key_keyboard_debug_mask = 1;
@@ -381,7 +381,7 @@ static void gpio_keys_gpio_timer(unsigned long _data)
 
 #ifdef CONFIG_HUAWEI_DSM
 	if((++vol_up_times + 1) % 2 != 0 ){
-		dsm_key_pressed(DSM_VOL_UP_KEY);
+		//dsm_key_pressed(DSM_VOL_UP_KEY);
 		vol_up_times = (vol_up_times >= 99) ? 1 : vol_up_times;
 	}
 #endif

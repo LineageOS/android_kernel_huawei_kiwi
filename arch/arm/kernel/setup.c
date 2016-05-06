@@ -106,6 +106,13 @@ unsigned int cold_boot;
 EXPORT_SYMBOL(cold_boot);
 
 char* (*arch_read_hardware_id)(void);
+#ifdef CONFIG_HUAWEI_KERNEL
+#ifndef HIDE_PRODUCT_INFO_KERNEL
+//Define the valuable which declared in processor.h
+unsigned int hide_info;
+EXPORT_SYMBOL(hide_info);
+#endif
+#endif
 EXPORT_SYMBOL(arch_read_hardware_id);
 
 #ifdef MULTI_CPU
@@ -1061,6 +1068,9 @@ static int c_show(struct seq_file *m, void *v)
 {
 	int i, j;
 	u32 cpuid;
+#ifdef CONFIG_HUAWEI_KERNEL
+	static const char hide_machine_name[] = "unknown";
+#endif
 
 	for_each_present_cpu(i) {
 		/*
@@ -1112,10 +1122,23 @@ static int c_show(struct seq_file *m, void *v)
 		seq_printf(m, "CPU revision\t: %d\n\n", cpuid & 15);
 	}
 
-	if (!arch_read_hardware_id)
-		seq_printf(m, "Hardware\t: %s\n", machine_name);
+#ifdef CONFIG_HUAWEI_KERNEL
+#ifdef HIDE_PRODUCT_INFO_KERNEL
+//Masking the machine name
+	seq_printf(m, "Hardware\t: %sH\n", hide_machine_name);
+#else
+	if(hide_info)
+	{
+		seq_printf(m, "Hardware\t: %sL\n", hide_machine_name);
+	}
 	else
-		seq_printf(m, "Hardware\t: %s\n", arch_read_hardware_id());
+	{
+		seq_printf(m, "Hardware\t: %s\n", machine_name);
+	}
+#endif
+#else
+	seq_printf(m, "Hardware\t: %s\n", machine_name);
+#endif
 	seq_printf(m, "Revision\t: %04x\n", system_rev);
 	seq_printf(m, "Serial\t\t: %08x%08x\n",
 		   system_serial_high, system_serial_low);

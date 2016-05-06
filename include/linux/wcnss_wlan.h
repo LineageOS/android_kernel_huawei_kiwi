@@ -62,7 +62,7 @@ do{                                     \
 
 #endif
 #ifdef CONFIG_HUAWEI_DSM
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 
 #define DSM_WIFI_BUF_SIZE           (1024)   /*Byte*/
 #define DSM_WIFI_MOD_NAME           "dsm_wifi"

@@ -34,7 +34,9 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/regulator/cpr-regulator.h>
 #include <soc/qcom/scm.h>
+#ifdef CONFIG_HUAWEI_KERNEL
 #include <asm/setup.h>
+#endif
 
 /* Register Offsets for RB-CPR and Bit Definitions */
 
@@ -3197,12 +3199,18 @@ static int cpr_init_ceiling_floor_override_voltages(
 		cpr_vreg->ceiling_volt, cpr_vreg->fuse_ceiling_volt);
 	if (rc)
 		return rc;
+#ifdef CONFIG_HUAWEI_KERNEL
 	if(is_runmode_factory()){
 		rc = cpr_fill_override_voltage(cpr_vreg, dev,
 			"qcom,cpr-voltage-floor-override-factory", "floor",
 			cpr_vreg->floor_volt, cpr_vreg->fuse_floor_volt);
-		if (rc)
-			return rc;
+		if (rc) {
+				rc = cpr_fill_override_voltage(cpr_vreg, dev,
+					"qcom,cpr-voltage-floor-override", "floor",
+					cpr_vreg->floor_volt, cpr_vreg->fuse_floor_volt);
+				if (rc)
+					return rc;
+		}
 	}
 	else{
 		rc = cpr_fill_override_voltage(cpr_vreg, dev,
@@ -3211,6 +3219,7 @@ static int cpr_init_ceiling_floor_override_voltages(
 		if (rc)
 			return rc;
 	}
+#endif
 
 	for (i = CPR_CORNER_MIN; i <= cpr_vreg->num_corners; i++) {
 		if (cpr_vreg->floor_volt[i] > cpr_vreg->ceiling_volt[i]) {
@@ -3717,21 +3726,32 @@ static int cpr_voltage_plan_init(struct platform_device *pdev,
 	int rc, i;
 	u32 min_uv = 0;
 
+#ifdef CONFIG_HUAWEI_KERNEL
 	if(is_runmode_factory()){
 		rc = of_property_read_u32_array(of_node, "qcom,cpr-voltage-ceiling-factory",
 			&cpr_vreg->fuse_ceiling_volt[CPR_FUSE_CORNER_MIN],
 			cpr_vreg->num_fuse_corners);
 		if (rc < 0) {
-			cpr_err(cpr_vreg, "cpr-voltage-ceiling-factory missing: rc=%d\n", rc);
-			return rc;
+			rc = of_property_read_u32_array(of_node, "qcom,cpr-voltage-ceiling",
+				&cpr_vreg->fuse_ceiling_volt[CPR_FUSE_CORNER_MIN],
+				cpr_vreg->num_fuse_corners);
+			if (rc < 0) {
+				cpr_err(cpr_vreg, "cpr-voltage-ceiling-factory missing: rc=%d\n", rc);
+				return rc;
+			}
 		}
 
 		rc = of_property_read_u32_array(of_node, "qcom,cpr-voltage-floor-factory",
 			&cpr_vreg->fuse_floor_volt[CPR_FUSE_CORNER_MIN],
 			cpr_vreg->num_fuse_corners);
 		if (rc < 0) {
-			cpr_err(cpr_vreg, "cpr-voltage-floor-factory missing: rc=%d\n", rc);
-			return rc;
+			rc = of_property_read_u32_array(of_node, "qcom,cpr-voltage-floor",
+				&cpr_vreg->fuse_floor_volt[CPR_FUSE_CORNER_MIN],
+				cpr_vreg->num_fuse_corners);
+			if (rc < 0) {
+				cpr_err(cpr_vreg, "cpr-voltage-floor-factory missing: rc=%d\n", rc);
+				return rc;
+			}
 		}
 	}
 	else{
@@ -3751,6 +3771,7 @@ static int cpr_voltage_plan_init(struct platform_device *pdev,
 			return rc;
 		}
 	}
+#endif
 
 	cpr_parse_cond_min_volt_fuse(cpr_vreg, of_node);
 	rc = cpr_voltage_uplift_enable_check(cpr_vreg, of_node);

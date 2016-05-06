@@ -28,11 +28,13 @@ enum {
 	Opt_uid,
 	Opt_gid,
 	Opt_wgid,
+	Opt_mgid,
 	Opt_debug,
 	Opt_split,
 	Opt_derive,
 	Opt_lower_fs,
 	Opt_reserved_mb,
+	Opt_mask,
 	Opt_err,
 };
 
@@ -40,11 +42,13 @@ static const match_table_t sdcardfs_tokens = {
 	{Opt_uid, "uid=%u"},
 	{Opt_gid, "gid=%u"},
 	{Opt_wgid, "wgid=%u"},
+	{Opt_mgid, "mgid=%u"},
 	{Opt_debug, "debug"},
 	{Opt_split, "split"},
 	{Opt_derive, "derive=%s"},
 	{Opt_lower_fs, "lower_fs=%s"},
 	{Opt_reserved_mb, "reserved_mb=%u"},
+	{Opt_mask, "mask=%u"},
 	{Opt_err, NULL}
 };
 
@@ -69,6 +73,7 @@ static int parse_options(struct super_block *sb, char *options, int silent,
 	opts->lower_fs = LOWER_FS_EXT4;
 	/* by default, 0MB is reserved */
 	opts->reserved_mb = 0;
+	opts->m_gid = AID_SDCARD_RW;
 
 	*debug = 0;
 
@@ -100,6 +105,11 @@ static int parse_options(struct super_block *sb, char *options, int silent,
 			if (match_int(&args[0], &option))
 				return 0;
 			opts->write_gid = option;
+			break;
+		case Opt_mgid:
+			if (match_int(&args[0], &option))
+				return 0;
+			opts->m_gid = option;
 			break;
 		case Opt_split:
 			opts->split_perms=1;
@@ -135,6 +145,17 @@ static int parse_options(struct super_block *sb, char *options, int silent,
 				return 0;
 			opts->reserved_mb = option;
 			break;
+		case Opt_mask:
+			if (match_int(&args[0], &option))
+				return 0;
+			if (option == 0)
+				opts->mask = 0006;
+			else if(option == 1)
+				opts->mask = 0027;
+			else
+				opts->mask = 0007;
+			break;
+
 		/* unknown option */
 		default:
 invalid_option:
@@ -288,7 +309,7 @@ static int sdcardfs_read_super(struct super_block *sb, const char *dev_name,
 				 * places user_id at the top directory level, with the actual roots
 				 * just below that. Shared OBB path is also at top level. */
 				setup_derived_state(sb->s_root->d_inode,
-				        PERM_LEGACY_PRE_ROOT, 0, AID_ROOT, AID_SDCARD_R, 00771);
+				        PERM_LEGACY_PRE_ROOT, 0, AID_ROOT, sb_info->options.m_gid, 00771);
 				/* initialize the obbpath string and lookup the path
 				 * sb_info->obb_path will be deactivated by path_put
 				 * on sdcardfs_put_super */
@@ -305,7 +326,7 @@ static int sdcardfs_read_super(struct super_block *sb, const char *dev_name,
 				/* Unified multiuser layout which places secondary user_id under
 				 * /Android/user and shared OBB path under /Android/obb. */
 				setup_derived_state(sb->s_root->d_inode,
-						PERM_ROOT, 0, AID_ROOT, AID_SDCARD_R, 00771);
+						PERM_ROOT, 0, AID_ROOT, sb_info->options.m_gid, 00771);
 
 				sb_info->obbpath_s = kzalloc(PATH_MAX, GFP_KERNEL);
 				snprintf(sb_info->obbpath_s, PATH_MAX, "%s/Android/obb", dev_name);

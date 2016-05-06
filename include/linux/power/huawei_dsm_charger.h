@@ -23,8 +23,7 @@
 
 #ifndef _HW_DSM_CHARGER
 #define _HW_DSM_CHARGER
-
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 
 #define DSM_COUNT		3
 #define CHECKING_TIME	15000
@@ -61,6 +60,7 @@
 #define WARM_VOL_BUFFER	100 //warm_bat_mv need have a 100mV buffer
 #define IIN_RT    100
 #define MSG_MAX_SIZE 1024
+#define ABNORMAL_UVLO_VOL_THR 3700000
 
 #define PMU_ERR_NO_MIN    10100
 #define PMU_ERR_NO_MAX    19999
@@ -90,6 +90,8 @@ enum DSM_BMS_ERR
     DSM_VM_BMS_VOL_SOC_DISMATCH_4,
     DSM_BMS_SOC_CHANGE_PLUG_INOUT,
     DSM_BMS_POWON_SOC_CHANGE_MUCH,
+    DSM_BMS_HIGH_VOLTAGE_UVLO = 10109,
+    DSM_BMS_ERR_NUMBER_MAX,
 };
 
 enum DSM_CHARGER_ERR

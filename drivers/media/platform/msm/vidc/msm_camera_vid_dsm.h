@@ -2,7 +2,7 @@
 #define __MSM_CAMERA_VID_DSM_H__
 
 #ifdef CONFIG_HUAWEI_DSM
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #define MSM_CAMERA_VID_DSM_BUFFER_SIZE 1024
 
 extern struct dsm_client *camera_dsm_client;

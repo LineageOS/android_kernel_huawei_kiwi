@@ -13,7 +13,7 @@
 #include <linux/fs.h>
 #include <linux/device.h>
 #include <linux/miscdevice.h>
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #include <linux/errno.h>
 
 

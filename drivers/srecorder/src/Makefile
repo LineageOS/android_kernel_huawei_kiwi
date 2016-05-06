@@ -17,7 +17,8 @@ obj-$(CONFIG_SRECORDER) += srecorder_main.o \
 	srecorder_crc32.o \
 	srecorder_log.o \
 	srecorder_notifier.o \
-	srecorder_jprobe.o
+	srecorder_jprobe.o \
+	srecorder_sahara.o
 
 ifdef CONFIG_ARM # this is for 32bits
 obj-$(CONFIG_SRECORDER) += srecorder_c_trace.o \

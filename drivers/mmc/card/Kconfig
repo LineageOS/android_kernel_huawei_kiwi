@@ -87,6 +87,12 @@ config MMC_BLOCK_TEST
 	  Currently used to test eMMC 4.5 features (packed commands, sanitize,
 	  BKOPs).
 
+config HW_EMMC_PROTECT_MODULE
+	tristate "EMMC write protect driver by Huawei"
+	depends on HW_SYSTEM_WR_PROTECT && HUAWEI_KERNEL
+	default m
+	help
+	  This is for EMMC to write protect
 config HW_MMC_TEST
 	bool "MMC host test driver by Huawei"
 	depends on  HUAWEI_KERNEL
@@ -122,4 +128,8 @@ config HW_SD_HEALTH_DETECT
 	default y
 	help
 	  This is an option to diag sd health status.
-
+config HW_EMMC_PHYSICS_PROTECT
+      bool " EMMC PHYSICS PROTEC"
+      default y
+      help
+      This is an option to protect emmc physic.

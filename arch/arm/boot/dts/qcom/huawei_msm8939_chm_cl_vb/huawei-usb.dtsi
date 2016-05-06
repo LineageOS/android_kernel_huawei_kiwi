@@ -1,0 +1,23 @@
+&tlmm_pinmux {
+	usb-id-pin {
+		qcom,pins = <&gp 117>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "usb-id-pin";
+		usbid_default: default {
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
+};
+&usb_otg {
+    qcom,hsusb-otg-phy-init-seq = <0x74 0x80 0x6B 0x81 0x24 0x82 0x13 0x83 0xffffffff>;
+	qcom,hsusb-otg-phy-init-seq-host = <0x74 0x80 0x6B 0x81 0x24 0x82 0x13 0x83 0xffffffff>;
+	qcom,hsusb-otg-mode = <3>;
+	qcom,usbotg-chargeic-bq24152 = <1>;
+	qcom,usbid-gpio = <&msm_gpio 117 0>; 
+	pinctrl-names = "default"; 
+	pinctrl-0 = <&usbid_default>;
+	vbus_otg-supply = <&bq24152_otg_supply>;
+	otg_switch_feature=<1>;
+};

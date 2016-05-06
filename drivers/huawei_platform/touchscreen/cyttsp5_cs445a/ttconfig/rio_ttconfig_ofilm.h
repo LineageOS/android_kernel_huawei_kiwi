@@ -1,5 +1,7 @@
 /* Update fw from V000B to V000D >*/
 /* Update fw from V000F to V0011 >*/
+/* Update fw from v0012 to v0013 >*/
+/* Update fw from v0013 to v0014 >*/
 //*****************************************************************************
 //*****************************************************************************
 //  FILENAME: Driver.h
@@ -14,7 +16,7 @@
 //-----------------------------------------------------------------------------
 /* Touchscreen Version Information */
 static u8 ttconfig_fw_ver_rio_ofilm[] = {
-	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0xEF, 0x42, 0x0B, 0x00, 0x11, 0x9B, 0x00, 0x11
+	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0D, 0x08, 0x8B, 0x0B, 0x00, 0x11, 0x9B, 0x00, 0x14
 };
 #ifndef CONFIG_HUAWEI_KERNEL
 /* Touchscreen Parameters Endianess (Endianess: 0:Little; 1:Big)*/
@@ -267,7 +269,7 @@ static const uint8_t cyttsp5_param_regs_rio_ofilm[] = {
 	0x00,  /* Reserved587 */
 	0x01,  /* DYNAMIC_CMF_ENABLE */
 	0x02,  /* DYNAMIC_CMF_TOUCHNUM_SELF */
-	0xE8, 0x03,  /* DYNAMIC_CMF_UP_LIMIT_MUTUAL */
+	0x30, 0x75,  /* DYNAMIC_CMF_UP_LIMIT_MUTUAL */
 	0x88, 0x13,  /* DYNAMIC_CMF_UP_LIMIT_SELF */
 	0x32, 0x00,  /* DYNAMIC_CMF_MARGIN */
 	0x00, 0x00,  /* NC_NEG_RATIO_NUMER_MUTUAL */
@@ -341,10 +343,10 @@ static const uint8_t cyttsp5_param_regs_rio_ofilm[] = {
 	0xA0, 0x0F,  /* CA_INJTCH_MAGNITUDE */
 	0x84, 0x03,  /* CA_INJTCH_FINGER_THOLD */
 	0xE8, 0x03, 0x00, 0x00,  /* CA_DEFAULT_REVERT_TIME */
-	0xC8, 0x00, 0x00, 0x00,  /* CA_DIFF_ABS_DELTA_SUM_THRESHOLD */
+	0x01, 0x00, 0x00, 0x00,  /* CA_DIFF_ABS_DELTA_SUM_THRESHOLD */
 	0xF4, 0x01, 0x00, 0x00,  /* CA_STUCKTOUCH_REVERT_TIME */
 	0x06, 0x00,  /* DETECT_CHARGER_THRESHOLD */
-	0x08, 0x00,  /* NM_INJ_TCH_THRESHOLD */
+	0x0D, 0x00,  /* NM_INJ_TCH_THRESHOLD */
 	0x01,  /* CA_WB_CMF_ENABLE */
 	0x06,  /* CA_WB_REVERT_THOLD */
 	0x02,  /* TRIGGER_CA */
@@ -378,8 +380,8 @@ static const uint8_t cyttsp5_param_regs_rio_ofilm[] = {
 	0x00, 0x00, 0x00,  /* Reserved741 */
 	0x04, 0x17, 0x03, 0x00,  /* FINGER_ID_MAX_FINGER_VELOCITY2 */
 	0x80, 0x38, 0x01, 0x00,  /* FINGER_ID_MAX_FINGER_ACCELERATION2 */
-	0x2E, 0x00,  /* GRIP_XEDG_A */
-	0x2E, 0x00,  /* GRIP_XEDG_B */
+	0x10, 0x00,  /* GRIP_XEDG_A */
+	0x10, 0x00,  /* GRIP_XEDG_B */
 	0x00, 0x00,  /* GRIP_XEXC_A */
 	0x00, 0x00,  /* GRIP_XEXC_B */
 	0x00, 0x00,  /* GRIP_YEDG_A */
@@ -484,9 +486,9 @@ static const uint8_t cyttsp5_param_regs_rio_ofilm[] = {
 	0x58, 0x02,  /* FINGER_THRESH_MUTUAL_OFF */
 	0x58, 0x02,  /* Z_SCALING */
 	0x84, 0x03,  /* CA_FINGER_THRESHOLD_MUTUAL */
-	0x05,  /* MULTI_TOUCH_DEBOUNCE */
+	0x01,  /* MULTI_TOUCH_DEBOUNCE */
 	0x01,  /* Z9_FILTER_SCALE */
-	0x05,  /* CA_MULTI_TOUCH_DEBOUNCE */
+	0x01,  /* CA_MULTI_TOUCH_DEBOUNCE */
 	0x02,  /* CA_Z9_FILTER_SCALE */
 	0x00,  /* MTX_FAST_MOVE_WR_ENABLE */
 	0x00,  /* Reserved941 */
@@ -711,7 +713,7 @@ static const uint8_t cyttsp5_param_regs_rio_ofilm[] = {
 	0x00, 0x00,  /* Reserved1242 */
 	0x00,  /* EXT_SYNC */
 	0x01,  /* PWR_CFG */
-	0x11, 0x00,  /* CONFIG_VER */
+	0x14, 0x00,  /* CONFIG_VER */
 	0x01,  /* SEND_REPORT_AFTER_ACTIVE_INTERVAL_CFG */
 	0x00,  /* PIP_REPORTING_DISABLE */
 	0x00, 0x00,  /* INTERRUPT_PIN_OVERRIDE */
@@ -726,7 +728,7 @@ static const uint8_t cyttsp5_param_regs_rio_ofilm[] = {
 	0x00,  /* SYNC_REPORT_ENABLE */
 	0x00,  /* SYNC_REPORT_BYPASS_TRIGGER_LEVEL */
 	0x00, 0x00,  /* Reserved1262 */
-	0x50, 0xC8,  /* CONFIG_CRC */
+	0xC5, 0x48,  /* CONFIG_CRC */
 };
 
 /* Touchscreen Parameters Field Sizes (Writable: 0:Readonly; 1:Writable) */

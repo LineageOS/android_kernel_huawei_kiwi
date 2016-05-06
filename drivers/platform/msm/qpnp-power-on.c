@@ -29,7 +29,7 @@
 #include <soc/qcom/smsm.h>
 #endif
 #ifdef CONFIG_HUAWEI_KERNEL
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #include <linux/hw_lcd_common.h>
 #endif
 
@@ -232,6 +232,7 @@ struct qpnp_pon {
 
 static struct qpnp_pon *sys_reset_dev;
 bool power_key_ps = false;
+bool uvlo_event_trigger = false;
 
 #ifdef CONFIG_HUAWEI_KERNEL
 static int g_cblpwr_state_irq;
@@ -719,9 +720,9 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 	//remove to  following row
 #ifdef CONFIG_HUAWEI_DSM
 	if(cfg->key_code == DSM_POWER_KEY_VAL && key_status){
-		dsm_key_pressed(DSM_POW_KEY);
+		//dsm_key_pressed(DSM_POW_KEY);
 	}else if(cfg->key_code == DSM_VOL_DOWN_KEY_VAL && key_status){
-		dsm_key_pressed(DSM_VOL_DOWN_KEY);
+		//dsm_key_pressed(DSM_VOL_DOWN_KEY);
 	}
 #endif
 
@@ -1848,6 +1849,7 @@ static void monitor_power_on_off_reason(struct qpnp_pon *pon)
 			dev_info(&pon->spmi->dev,
 				"PMIC@SID%d Power-off reason: %s, reg:0x%x\n",
 				pon->spmi->sid, qpnp_poff_reason[index], poff_sts);
+            uvlo_event_trigger = true;
 			/* if power on reason is UVLO, record this log, and notify to the dsm server*/
 			DSM_PMU_LOG(pmu_dclient, DSM_ABNORMAL_POWEROFF_REASON_2,
 				"PMIC@SID%d Power-off reason: %s, reg:0x%x\n",

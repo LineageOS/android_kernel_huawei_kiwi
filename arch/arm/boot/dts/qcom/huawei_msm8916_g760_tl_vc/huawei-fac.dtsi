@@ -1,0 +1,11 @@
+/* < DTS201505289999M zhujie 20150528 begin */
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI G7-TL00";
+                  fac,hardware_ver = "HL1G760SM";
+                  fac,software_ver = "MSM8916_G760-TL00_VC";
+                  status = "ok";
+        };
+};
+/* DTS201505289999M zhujie 20150528 end >*/

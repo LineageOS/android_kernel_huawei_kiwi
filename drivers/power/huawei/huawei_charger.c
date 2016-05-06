@@ -40,7 +40,7 @@
 #include <linux/log_jank.h>
 #endif
 #ifdef CONFIG_HUAWEI_DSM
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif
 #ifdef CONFIG_HUAWEI_PMU_DSM
 #include <linux/power/huawei_dsm_charger.h>
@@ -1611,10 +1611,6 @@ static irqreturn_t huawei_charger_usbin_valid_irq_handler(int irq, void *data)
     usb_present = huawei_charger_vbus_is_exist(di);
     pmu_log_info("usbin-valid triggered: %d\n", usb_present);
 
-    if(MAX77819_CHARGER == g_charger_core_para->charger_type_info.charger_index)
-    {
-        do_max77819_dcin_valid_irq(usb_present);
-    }
 #ifdef CONFIG_LOG_JANK
     schedule_work(&di->usbin_janklog_work);
 #endif

@@ -24,6 +24,8 @@
 #include <linux/uaccess.h>
 #include <linux/elf.h>
 #include <linux/wait.h>
+#include <linux/dma-mapping.h>
+#include <linux/platform_device.h>
 #include <soc/qcom/ramdump.h>
 
 
@@ -105,11 +107,14 @@ static ssize_t ramdump_read(struct file *filep, char __user *buf, size_t count,
 	struct ramdump_device *rd_dev = container_of(filep->private_data,
 				struct ramdump_device, device);
 	void *device_mem = NULL, *origdevice_mem = NULL, *vaddr = NULL;
+	void *device_mem2=NULL;
 	unsigned long data_left = 0, bytes_before, bytes_after;
 	unsigned long addr = 0;
 	size_t copy_size = 0, alignsize;
 	unsigned char *alignbuf = NULL, *finalbuf = NULL;
 	int ret = 0;
+	struct platform_device *pdevice;
+	struct dma_attrs *attrs;
 	loff_t orig_pos = *pos;
 
 	if ((filep->f_flags & O_NONBLOCK) && !rd_dev->data_ready)
@@ -148,7 +153,14 @@ static ssize_t ramdump_read(struct file *filep, char __user *buf, size_t count,
 
 	copy_size = min(count, (size_t)MAX_IOREMAP_SIZE);
 	copy_size = min((unsigned long)copy_size, data_left);
-	device_mem = vaddr ?: ioremap_nocache(addr, copy_size);
+
+	attrs=kmalloc(sizeof(struct dma_attrs ),GFP_KERNEL);
+	pdevice=kmalloc(sizeof(struct platform_device),GFP_KERNEL);
+	dma_set_attr(DMA_ATTR_SKIP_ZEROING, attrs);
+
+	device_mem2=dma_remap(NULL,NULL,addr,copy_size,attrs);
+
+	device_mem=device_mem2;
 	origdevice_mem = device_mem;
 
 	if (device_mem == NULL) {

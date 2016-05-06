@@ -25,6 +25,7 @@
 #include "vidc_hfi_api.h"
 #include "vidc_hfi.h"
 #include "msm_vidc_resources.h"
+#include "hfi_packetization.h"
 
 #define HFI_MASK_QHDR_TX_TYPE			0xFF000000
 #define HFI_MASK_QHDR_RX_TYPE			0x00FF0000
@@ -79,8 +80,8 @@ struct hfi_mem_map_table {
 };
 
 struct hfi_mem_map {
-	ion_phys_addr_t virtual_addr;
-	phys_addr_t physical_addr;
+	u32 virtual_addr;
+	u32 physical_addr;
 	u32 size;
 	u32 attr;
 };
@@ -202,6 +203,8 @@ struct venus_hfi_device {
 	struct venus_resources resources;
 	struct msm_vidc_platform_resources *res;
 	enum venus_hfi_state state;
+	struct hfi_packetization_ops *pkt_ops;
+	enum hfi_packetization_type packetization_type;
 };
 
 void venus_hfi_delete_device(void *device);

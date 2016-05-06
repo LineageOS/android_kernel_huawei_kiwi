@@ -1,0 +1,8 @@
+/* < DTS201505289999M zhujie 20150528 begin */
+&soc {
+        huawei,huawei-mem-hole {
+                compatible = "huawei,huawei-mem-hole";
+                huawei,memblock-remove-huawei = <0x9FF00000 0x100000>;
+        };
+     };
+/* DTS201505289999M zhujie 20150528 end > */

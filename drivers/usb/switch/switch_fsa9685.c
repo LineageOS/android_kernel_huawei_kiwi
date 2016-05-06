@@ -47,8 +47,7 @@
 #ifdef CONFIG_HUAWEI_HW_DEV_DCT
 #include <linux/hw_dev_dec.h>
 #endif
-#include <linux/usb/switch_usb.h>
-#include <linux/usb/hw_rwswitch.h>
+#include <chipset_common/hwusb/hw_usb_rwswitch.h>
 
 #ifdef CONFIG_HUAWEI_EXTERN_ID_DETECT
 #include <linux/usb/msm_hsusb.h>
@@ -282,7 +281,7 @@ static void fsa9685_intb_work(struct work_struct *work)
             }
             if (reg_dev_type3 & FSA9685_CUSTOMER_ACCESSORY7) {
                 fsa9685_manual_sw(FSA9685_USB1_ID_TO_IDBYPASS);
-                ret = usb_port_switch_request(INDEX_USB_REWORK_SN);
+                hw_usb_port_switch_request(INDEX_USB_REWORK_SN);
                 hwlog_info("%s: FSA9685_CUSTOMER_ACCESSORY7 USB_REWORK_SN ret %d\n", __func__, ret);
             }
             if (reg_dev_type3 & FSA9685_CUSTOMER_ACCESSORY5) {

@@ -52,7 +52,7 @@
 #endif
 
 #ifdef CONFIG_HUAWEI_DSM
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif
 #include <misc/app_info.h>
 
@@ -605,7 +605,7 @@ irqreturn_t hall_event_isr(int irq, void *dev)
 	}
 
 #ifdef CONFIG_HUAWEI_DSM
-	dsm_key_pressed(DSM_HALL_IRQ);
+	//dsm_key_pressed(DSM_HALL_IRQ);
 #endif
 
 	/*interrupts counter increases 1*/

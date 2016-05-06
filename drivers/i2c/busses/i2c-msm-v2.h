@@ -543,11 +543,23 @@ struct i2c_msm_resources {
 	struct pinctrl              *pinctrl;
 	struct pinctrl_state        *gpio_state_active;
 	struct pinctrl_state        *gpio_state_suspend;
+	struct pinctrl_state        *gpio_state_defult;
 };
 
 #define I2C_MSM_PINCTRL_ACTIVE       "i2c_active"
 #define I2C_MSM_PINCTRL_SUSPEND        "i2c_sleep"
-
+#define I2C_MSM_PINCTRL_DEFULT        "i2c_defult"
+#define I2C_MSM_RECOVERY_BUS_TIMES 		10
+enum i2c_msm_pinctl_state{
+	I2C_MSM_DFS_ACTIVE,
+	I2C_MSM_DFS_SUSPEND,
+	I2C_MSM_DFS_DEFULT,
+};
+enum {
+	I2C_MSM_DEFULT_CLK,
+	I2C_MSM_DEFULT_DATA,
+	I2C_MSM_DEFULT_MAX_GPIO,
+};
 /*
  * i2c_msm_xfer_buf: current xfer position and preprocessed tags
  *
@@ -680,6 +692,7 @@ struct i2c_msm_ctrl {
 	u32                        mstr_clk_ctl;
 	struct i2c_msm_v2_platform_data *pdata;
 	enum msm_i2c_power_state   pwr_state;
+	int gpios[I2C_MSM_DEFULT_MAX_GPIO];
 };
 
 #endif  /* _I2C_MSM_V2_H */

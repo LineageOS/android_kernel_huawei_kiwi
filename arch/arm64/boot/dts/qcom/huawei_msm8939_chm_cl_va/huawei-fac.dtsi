@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI CHM-CL00";
+                  fac,hardware_ver = "HL1CHMCLM";
+                  fac,software_ver = "MSM8939_CHM-CL00_VA";
+                  status = "ok";
+        };
+};

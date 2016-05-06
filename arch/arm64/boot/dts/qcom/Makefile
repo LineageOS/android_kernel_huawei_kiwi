@@ -1,5 +1,9 @@
 ifeq ($(CONFIG_OF),y)
+ifeq ($(CONFIG_EFS_ENLARGE_FEATURE),y)
+include $(srctree)/arch/arm64/boot/dts/qcom/Makefile_efs.board
+else
 include $(srctree)/arch/arm64/boot/dts/qcom/Makefile.board
+endif
 dtb-$(CONFIG_ARCH_MSM8974) += msm8974-v1-cdp.dtb \
 	msm8974-v1-fluid.dtb \
 	msm8974-v1-liquid.dtb \

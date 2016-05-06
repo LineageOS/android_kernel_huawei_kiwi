@@ -4,7 +4,7 @@
 #include <linux/init.h>
 #include <linux/printk.h>
 #ifdef CONFIG_HUAWEI_DSM
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif/*CONFIG_HUAWEI_DSM*/
 #include <linux/delay.h>
 #include "synaptics_dsx_i2c.h"
@@ -22,7 +22,7 @@
 /*move hw_tp_common.h to synaptics_dsx_i2c.h*/
 #include <linux/pm_runtime.h>
 #ifdef CONFIG_HUAWEI_DSM
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif/*CONFIG_HUAWEI_DSM*/
 
 #include "synaptics_dsx_esd.h"

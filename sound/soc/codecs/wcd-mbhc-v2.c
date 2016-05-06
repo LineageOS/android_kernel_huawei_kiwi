@@ -1105,6 +1105,13 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 		}
 
 		ad_logn("%s: mic_inserted: %d times,hphr_inserted: %d times,hphl_inserted: %d times,\n", __func__,mic_inserted,hphr_inserted, hphl_inserted);
+		snd_soc_write(codec, MSM8X16_WCD_A_ANALOG_MICB_2_EN,reg1);
+		snd_soc_write (codec, MSM8X16_WCD_A_ANALOG_MICB_1_CTL,reg2);
+		snd_soc_write (codec, MSM8X16_WCD_A_ANALOG_MBHC_FSM_CTL,reg3);
+		snd_soc_write (codec, MSM8X16_WCD_A_ANALOG_MBHC_DET_CTL_1,reg4);
+		snd_soc_write (codec, MSM8X16_WCD_A_ANALOG_MBHC_DET_CTL_2,reg5);
+		snd_soc_write (codec, MSM8X16_WCD_A_ANALOG_RX_HPH_CNP_EN,reg6);
+
 		if((mic_inserted <= 3)&&(hphr_inserted <= 3))
 		{
 			if(hphl_inserted >= 17)
@@ -1124,13 +1131,6 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 			plug_type = MBHC_PLUG_TYPE_HEADSET;
 			wcd_mbhc_find_plug_and_report(mbhc, plug_type);
 		}
-
-		snd_soc_write(codec, MSM8X16_WCD_A_ANALOG_MICB_2_EN,reg1);
-		snd_soc_write (codec, MSM8X16_WCD_A_ANALOG_MICB_1_CTL,reg2);
-		snd_soc_write (codec, MSM8X16_WCD_A_ANALOG_MBHC_FSM_CTL,reg3);
-		snd_soc_write (codec, MSM8X16_WCD_A_ANALOG_MBHC_DET_CTL_1,reg4);
-		snd_soc_write (codec, MSM8X16_WCD_A_ANALOG_MBHC_DET_CTL_2,reg5);
-		snd_soc_write (codec, MSM8X16_WCD_A_ANALOG_RX_HPH_CNP_EN,reg6);
 	}
 
 	/* Enable micbias for detection in correct work*/

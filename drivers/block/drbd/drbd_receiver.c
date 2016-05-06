@@ -103,9 +103,9 @@ static struct page *page_chain_del(struct page **head, int n)
 		page = tmp;
 	}
 
-
+	/* add end of list marker for the returned list */
 	set_page_private(page, 0);
-
+	/* actual return value, and adjustment of head */
 	page = *head;
 	*head = tmp;
 	return page;

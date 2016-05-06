@@ -1,0 +1,106 @@
+/ {
+        qrd_batterydata: qcom,battery-data {
+                qcom,rpull-up-kohm = <68>;
+                qcom,vref-batt-therm = <1800000>;
+	
+                #include "HB3748B8EBC_FMT_ATL-4v35-3000mah.dtsi"
+                #include "HB3748B8EBC_LS_LS-4v35-3000mah.dtsi"
+                #include "HB3748B8EBC_XWD_SDI-4v35-3000mah.dtsi"
+	
+        };
+};
+/* < DTS201505289999M chendeng 20150603 begin */
+&pm8916_bms {
+        status = "ok";
+        qcom,low-voltage-threshold = <3350000>;
+        qcom,battery-data = <&qrd_batterydata>;
+        qcom,use-ext-charger;
+};
+/* DTS201505289999M chendeng 20150603 end >*/
+
+&pm8916_chg {
+        status = "okay";
+        qcom,vddmax-mv = <4350>;
+        qcom,vddsafe-mv = <4380>;
+	
+	qcom,use-other-charger;
+	qcom,bpd-detection = "bpd_id";
+	
+};
+
+&pm8916_mpps {
+	mpp@a300 {
+		qcom,mode = <4>; // QPNP_PIN_MODE_AIN
+		qcom,src-sel = <0>; // QPNP_PIN_SEL_FUNC_CONSTANT
+		qcom,ain-route = <3>; // QPNP_PIN_AIN_AMUX_CH8
+		qcom,master-en = <1>; // Enable features
+	};
+};
+
+&pm8916_vadc {
+	cpu_mpp_number = <19>;
+	pa_mpp_number = <54>;
+
+	chan@13 {
+		label = "mpp4_div1";
+		reg = <0x13>;
+		qcom,decimation = <0>; //512 sampling rate
+		qcom,pre-div-channel-scaling = <0>; //1:1 scaling
+		qcom,calibration-type = "absolute"; //Use 625mV & 1.25V reference voltage
+		qcom,scale-function = <12>; //convert raw adc code to voltage
+		qcom,hw-settle-time = <2>; //200us
+		qcom,fast-avg-setup = <0>; //with only one average measurement
+	};
+
+	chan@36 {
+		qcom,scale-function = <12>;
+	};
+};
+&i2c_4 {
+	bq24152_otg_supply: bq24152@6b {
+	    	compatible = "ti,bq24152";
+	    	reg = <0x6B>;
+	    	ti,current-limit = <1000>;
+	    	ti,weak-battery-voltage = <3200>;
+	    	ti,battery-regulation-voltage = <4340>;
+	    	ti,charge-current = <1250>;
+	    	ti,termination-current = <100>;
+	    	ti,resistor-sense = <68>;
+		regulator-name = "bq24152_otg_vreg";
+       };
+	bq27510: bq27510@55 {
+	    	compatible = "ti,bq27510";
+	    	reg = <0x55>;
+	    	product-name = "g760";
+	    	ti,r-sensor = <10>;
+	    	qcom,batt-low-gpio = <&msm_gpio 109 0>;
+	    	pinctrl-names = "bq27510_active", "bq27510_sleep";
+				pinctrl-0 = <&bq27510_active>;
+				pinctrl-1 = <&bq27510_sleep>;
+		ti,use-ti-coulometer;
+       };
+};
+/* < DTS201505289999M chendeng 20150603 begin */
+/{
+       charger_core: charger_core{
+              compatible = "huawei,charger_core";
+              charger_type = "Ti_bq24152";
+              iin_ac = <1000>;
+              status = "ok";
+       };
+};
+&spmi_bus{
+       qcom,pm8916@0 {
+              huawei_charger: qcom,huawei_charger{
+                     compatible = "huawei,charger";
+                     chgr-base = <0x1000>;
+                     bat-if-base = <0x1200>;
+                     usb-chgpth-base = <0x1300>;
+                     misc-base = <0x1600>;
+                     bms-base = <0x4000>;
+                     batt-temp-bms = "ti-bms";
+                     status = "ok";
+              };
+       };
+};
+/* DTS201505289999M chendeng 20150603 end >*/

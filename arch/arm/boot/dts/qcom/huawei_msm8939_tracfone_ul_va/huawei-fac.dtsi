@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI H715BL";
+                  fac,hardware_ver = "HL1H715BLMAA";
+                  fac,software_ver = "MSM8939_H715BL_VA";
+                  status = "ok";
+        };
+};

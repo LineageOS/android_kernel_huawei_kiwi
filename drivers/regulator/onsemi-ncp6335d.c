@@ -76,7 +76,6 @@ struct ncp6335d_info {
 	unsigned int peek_poke_address;
 
 	struct dentry *debug_root;
-
 #ifdef CONFIG_HUAWEI_KERNEL
 	unsigned int monitor_reg_work_flag;
 	struct delayed_work modfiy_reg_work;
@@ -628,32 +627,29 @@ static int set_reg(void *data, u64 val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(poke_poke_debug_ops, get_reg, set_reg, "0x%02llx\n");
 
-
 #ifdef CONFIG_HUAWEI_KERNEL
 #define MODIFY_REG_TIME_INTER          60000
 #define NCP6335D_REG10_DEFAULT_VAL     0xD8
 #define NCP6335D_REG14_DEFAULT_VAL     0x01
 #define MONITOR_REG_FUNCTION_ON        1
 #define MONITOR_REG_FUNCTION_OFF       0
-
 static void ncp6335d_modify_reg_work(struct work_struct *work)
-{	
+{
 	unsigned int reg_val = NCP6335D_REG10_DEFAULT_VAL;
 	int ret = 0;
-	
 	struct ncp6335d_info *di_chip =
 		container_of(work, struct ncp6335d_info, modfiy_reg_work.work);
 
-	do 
+	do
 	{
 		/*check reg 0x10*/
 		ret = ncp6335x_read(di_chip, REG_NCP6335D_PROGVSEL1, &reg_val);
-		if (ret < 0) 
+		if (ret < 0)
 		{
-		    dev_err(di_chip->dev, "Failed to read 0x10 reg!\n");
-            break;
+			dev_err(di_chip->dev, "Failed to read 0x10 reg!\n");
+			break;
 		}
-		
+
 		if(NCP6335D_REG10_DEFAULT_VAL != reg_val)
 		{
 			dev_info(di_chip->dev,"ncp6335d_modify_reg_work reg 0x10 0x%2x!\n",reg_val);
@@ -667,12 +663,12 @@ static void ncp6335d_modify_reg_work(struct work_struct *work)
 
 		/*check reg 0x14*/
 		ret = ncp6335x_read(di_chip, REG_NCP6335D_COMMAND, &reg_val);
-		if (ret < 0) 
+		if (ret < 0)
 		{
-		    dev_err(di_chip->dev, "Failed to read 0x14 reg!\n");
-            break;
+			dev_err(di_chip->dev, "Failed to read 0x14 reg!\n");
+			break;
 		}
-		
+
 		if(NCP6335D_REG14_DEFAULT_VAL != reg_val)
 		{
 			dev_info(di_chip->dev,"ncp6335d_modify_reg_work reg 0x14 0x%2x!\n",reg_val);
@@ -690,7 +686,6 @@ static void ncp6335d_modify_reg_work(struct work_struct *work)
 	return ;
 }
 #endif/* CONFIG_HUAWEI_KERNEL */
-
 static int ncp6335d_regulator_probe(struct i2c_client *client,
 					const struct i2c_device_id *id)
 {
@@ -772,7 +767,6 @@ static int ncp6335d_regulator_probe(struct i2c_client *client,
 		schedule_delayed_work(&dd->modfiy_reg_work, msecs_to_jiffies(0));
 	}
 #endif/* CONFIG_HUAWEI_KERNEL */
-
 	dd->regulator = regulator_register(&rdesc, &config);
 
 	if (IS_ERR(dd->regulator)) {
@@ -821,7 +815,6 @@ static int ncp6335d_regulator_remove(struct i2c_client *client)
 		cancel_delayed_work_sync(&dd->modfiy_reg_work);
 	}
 #endif/* CONFIG_HUAWEI_KERNEL */
-
 	return 0;
 }
 

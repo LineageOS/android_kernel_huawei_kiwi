@@ -1,0 +1,37 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+/dts-v1/;
+#include "msm8939-v3.0.dtsi"
+#include "msm8939-qrd-skuk.dtsi"
+#include "huawei_msm8939_rio_tl00_va/huawei.dtsi"
+/ {
+	model = "Qualcomm MSM 8939 HUAWEI RIO-TL00";
+	compatible = "qcom,msm8939-qrd-skuk", "qcom,msm8939", "qcom,qrd";
+	qcom,board-id = <8102 0> , <8102 4>;
+	huawei,modem_id = <0xFFB40189 0x0>;
+};
+&soc {
+	qcom,rmtfs_sharedmem@8e580000 {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0x86690000 0x150000>;
+		reg-names = "rmtfs";
+		qcom,client-id = <0x00000001>;
+	};
+};
+&soc {
+	qcom,rmtfs_sharedmem@8e580000 {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0x86690000 0x150000>;
+		reg-names = "rmtfs";
+		qcom,client-id = <0x00000001>;
+	};
+};

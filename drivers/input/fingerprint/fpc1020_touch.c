@@ -1053,7 +1053,11 @@ int fpc1020_input_task(fpc1020_data_t* fpc1020)
         fpc_log_err("%s error = %d\n",
             (error == -EINTR) ? "Interrupted!" : "FAILED!", error);
     }
-    atomic_set(&fpc1020->taskstate, fp_UNINIT);
+    if (fp_CAPTURE != atomic_read(&fpc1020->taskstate))
+    {
+        atomic_set(&fpc1020->taskstate, fp_UNINIT);
+        fpc_log_info("fpc1020_input_task set taskstate=%d\n",atomic_read(&fpc1020->taskstate));
+    }
     fpc1020->nav.enabled = false;
     return error;
 }

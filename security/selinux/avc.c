@@ -34,6 +34,8 @@
 #include "avc_ss.h"
 #include "classmap.h"
 
+#include <dsm/dsm_pub.h>
+
 #define AVC_CACHE_SLOTS			512
 #define AVC_DEF_CACHE_THRESHOLD		512
 #define AVC_CACHE_RECLAIM		16
@@ -727,6 +729,96 @@ static void avc_audit_pre_callback(struct audit_buffer *ab, void *a)
 	audit_log_format(ab, " for ");
 }
 
+#ifdef CONFIG_SELINUX_DMD_REPORT
+static struct dsm_dev dsm_dev_selinux ={
+  .name = "dsm_selinux",
+  .fops = NULL,
+  .buff_size = 102400,
+};
+
+extern void audit_log_data(struct audit_buffer *ab, char **data);
+extern int get_selinux_client(struct dsm_client **dev);
+static struct dsm_client *selinux_dsm_client = NULL;
+static void selinux_dsm_client_notify(const char* content) 
+{
+  int size = 0;
+
+  if (selinux_dsm_client == NULL) {
+    printk("selinux_dsm_client == NULL, get client\n");
+    selinux_dsm_client = dsm_register_client(&dsm_dev_selinux);
+  }
+
+  if (dsm_client_ocuppy(selinux_dsm_client)) {
+     if(content) {
+      size = dsm_client_record(selinux_dsm_client, "%s \n", content);
+      if(!size)
+	printk("%s: dsm dump buff is not enough!\n", __func__);
+    }
+    
+    return;
+  }
+
+
+  if(selinux_dsm_client) {
+    if(content) {
+      size = dsm_client_record(selinux_dsm_client, "%s \n", content);
+      if(!size)
+	printk("%s: dsm dump buff is not enough!\n", __func__);
+    }
+
+    dsm_client_notify(selinux_dsm_client, DSM_SELINUX_ERROR_NO);
+    printk("selinux_dsm_client_notify OK\n ");
+  } else {
+    printk("selinux_dsm_client register fialed.\n");
+  }
+}
+static char * selinux_black_list [] = {
+  "u:r:shell:s0", // scontext=u:r:shell:s0 don't upload dsm
+  "u:r:adbd:s0", // scontext=u:r:adbd:s0 don't upload dsm
+  "u:r:untrusted_app:s0", //scontext=u:r:untrusted_app:s0 don't upload dsm
+  "module_request", // { module_request } * tcontext=u:r:kernel:s0 tclass=system permissive=0
+  "sys_ptrace", // { sys_ptrace } * tclass=capability permissive=0
+};
+
+static int selinux_dsm_black_list(struct common_audit_data *a, char *data)
+{
+  u32 denied = a->selinux_audit_data->denied;
+
+  //int rc = 0;
+  int index = 0;
+
+  // avc granted don't upload dsm
+  if (denied == 0) {
+    return -1;
+  }
+
+  for (index = 0; index < sizeof(selinux_black_list)/sizeof(char *); index++) {
+    if (strstr(data, selinux_black_list[index]) != NULL) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+static void selinux_dsm_upload(struct audit_buffer *ab, struct common_audit_data *a)
+{
+  char *data = NULL;
+
+  audit_log_data(ab, &data);
+
+  if (data == NULL) {
+    return;
+  }
+
+  if (selinux_dsm_black_list(a, data) == -1) {
+    return;
+  }
+
+  selinux_dsm_client_notify(data);
+}
+#endif
+
 /**
  * avc_audit_post_callback - SELinux specific information
  * will be called by generic audit code
@@ -744,6 +836,9 @@ static void avc_audit_post_callback(struct audit_buffer *ab, void *a)
 		audit_log_format(ab, " permissive=%u",
 				 ad->selinux_audit_data->result ? 0 : 1);
 	}
+	#ifdef CONFIG_SELINUX_DMD_REPORT
+	selinux_dsm_upload(ab, ad);
+	#endif
 }
 
 /* This is the slow part of avc audit with big stack footprint */

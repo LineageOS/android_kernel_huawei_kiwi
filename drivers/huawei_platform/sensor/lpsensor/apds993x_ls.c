@@ -44,7 +44,7 @@
 #include <linux/hw_dev_dec.h>
 #endif
 #ifdef CONFIG_HUAWEI_DSM
-#include 	<linux/dsm_pub.h>
+#include 	<dsm/dsm_pub.h>
 #endif
 
 
@@ -118,6 +118,7 @@ module_param_named(d_ga, apds993x_d_ga, int, S_IRUGO | S_IWUSR | S_IWGRP);
 /*KERNEL_HWFLOW is for radar using to control all the log of devices*/
 #define APDS993X_INFO(x...) do {\
     if (apds993x_debug_mask >=0) \
+\
         printk(KERN_ERR x);\
     } while (0)
 #define APDS993X_DEBUG(x...) do {\
@@ -1522,6 +1523,9 @@ static irqreturn_t apds993x_interrupt(int vec, void *info)
 	wake_lock_timeout(&data->ps_report_wk, PS_WAKEUP_TIME);
 	/* and ps data report function to workqueue */
 	queue_work(apds993x_workqueue, &data->dwork);
+	if(apds993x_workqueue != NULL) {
+		queue_work(apds993x_workqueue, &data->dwork);
+	}
 
 	return IRQ_HANDLED;
 }

@@ -22,6 +22,10 @@
 #include "srecorder_notifier.h"
 #include "srecorder_jprobe.h"
 
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+#include "srecorder_sahara.h"
+#endif
+
 static unsigned long params[3] = {0x0, 0x0, 0x0};
 module_param_array(params, ulong, NULL, 0444);
 MODULE_PARM_DESC(params, "SRecorder parameters");
@@ -54,7 +58,9 @@ static int __init srecorder_init(void)
     srecorder_enable_log_category_flags();
 
     srecorder_enable_log_type_flags();
-
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+    srecorder_save_kernel_log_addr();
+#endif
     SRECORDER_PRINTK("Initialization done.\n");
     
     return 0;

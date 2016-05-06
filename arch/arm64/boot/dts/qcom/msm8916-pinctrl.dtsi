@@ -334,6 +334,17 @@
 			};
 		};
 
+		pmx_i2c_gpio_0{
+			/* CLK, DATA */
+			qcom,pins = <&gp 7>, <&gp 6>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <0>;
+			label = "pmx_i2c_gpio_0";
+			i2c_0_defult: i2c_0_defult {
+				drive-strength = <8>; /* 8 MA */
+				bias-pull-up; /* pull up */
+			};
+		};
 		pmx_i2c_5 {
 			/* CLK, DATA */
 			qcom,pins = <&gp 19>, <&gp 18>;

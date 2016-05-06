@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -20,6 +20,8 @@
 
 #define MSM_VDEC_DVC_NAME "msm_vdec_8974"
 #define MIN_NUM_OUTPUT_BUFFERS 4
+#define MIN_NUM_CAPTURE_BUFFERS 6
+#define MIN_NUM_THUMBNAIL_MODE_CAPTURE_BUFFERS 1
 #define MAX_NUM_OUTPUT_BUFFERS VB2_MAX_FRAME
 #define DEFAULT_VIDEO_CONCEAL_COLOR_BLACK 0x8010
 #define MB_SIZE_IN_PIXEL (16 * 16)
@@ -1151,7 +1153,7 @@ int msm_vdec_s_parm(struct msm_vidc_inst *inst, struct v4l2_streamparm *a)
 
 	if ((fps % 15 == 14) || (fps % 24 == 23))
 		fps = fps + 1;
-	else if ((fps % 24 == 1) || (fps % 15 == 1))
+	else if ((fps > 1) && ((fps % 24 == 1) || (fps % 15 == 1)))
 		fps = fps - 1;
 
 	if (inst->prop.fps != fps) {
@@ -1165,15 +1167,196 @@ exit:
 	return rc;
 }
 
+static int set_buffer_size_actual(struct msm_vidc_inst *inst,
+				u32 buffer_size, enum hal_buffer buffer_type)
+{
+	int rc = 0;
+	struct hfi_device *hdev;
+	struct hal_buffer_size_actual buffer_size_actual;
+	enum hal_hfi_version version;
+
+	if (!inst || !inst->core || !inst->core->device) {
+		dprintk(VIDC_ERR, "%s invalid parameters\n", __func__);
+		return -EINVAL;
+	}
+
+	hdev = inst->core->device;
+	version = call_hfi_op(hdev, get_version,
+			hdev->hfi_device_data);
+
+	if (version != HAL_VIDEO_3X) {
+		dprintk(VIDC_DBG,
+			"Skip Set actual buffer size\n");
+		return 0;
+	}
+
+	dprintk(VIDC_DBG,
+		"Set actual buffer size = %d for buffer type %d to fw\n",
+		buffer_size, buffer_type);
+
+	buffer_size_actual.buffer_type = buffer_type;
+	buffer_size_actual.buffer_size = buffer_size;
+	rc = call_hfi_op(hdev, session_set_property,
+		 inst->session, HAL_PARAM_BUFFER_SIZE_ACTUAL,
+		 &buffer_size_actual);
+	if (rc) {
+		dprintk(VIDC_ERR,
+			"%s - failed to set actual buffer size %u on firmware\n",
+			__func__, buffer_size);
+	}
+	return rc;
+}
+
+static int set_display_hold_count_actual(struct msm_vidc_inst *inst,
+				u32 hold_count, enum hal_buffer buffer_type)
+{
+	int rc = 0;
+	struct hfi_device *hdev;
+	struct hal_buffer_display_hold_count_actual display_hold_count;
+	enum hal_hfi_version version;
+
+	if (!inst || !inst->core || !inst->core->device) {
+		dprintk(VIDC_ERR, "%s invalid parameters\n", __func__);
+		return -EINVAL;
+	}
+
+	hdev = inst->core->device;
+	version = call_hfi_op(hdev, get_version,
+			hdev->hfi_device_data);
+
+	if (version != HAL_VIDEO_3X) {
+		dprintk(VIDC_DBG,
+			"Skip Set display hold count actual\n");
+		return 0;
+	}
+
+	dprintk(VIDC_DBG,
+		"Set display hold count = %d for buffer type %d to fw\n",
+		hold_count, buffer_type);
+
+	display_hold_count.buffer_type = buffer_type;
+	display_hold_count.hold_count = hold_count;
+
+	rc = call_hfi_op(hdev, session_set_property,
+		 inst->session, HAL_PARAM_BUFFER_DISPLAY_HOLD_COUNT_ACTUAL,
+		 &display_hold_count);
+	if (rc) {
+		dprintk(VIDC_ERR,
+			"failed to set buffer display hold count actual %u on firmware\n",
+			hold_count);
+	}
+	return rc;
+}
+
+static int update_output_buffer_size(struct msm_vidc_inst *inst,
+		struct v4l2_format *f, struct msm_vidc_format *fmt)
+{
+	int rc = 0, i = 0;
+	struct hal_buffer_requirements *bufreq;
+	struct hfi_device *hdev;
+
+	if (!inst || !f || !fmt)
+		return -EINVAL;
+
+	hdev = inst->core->device;
+
+	/*
+	 * Compare set buffer size and update to firmware if it's bigger
+	 * then firmware returned buffer size.
+	 */
+	for (i = 0; i < fmt->num_planes; ++i) {
+		enum hal_buffer type = msm_comm_get_hal_output_buffer(inst);
+
+		if (EXTRADATA_IDX(fmt->num_planes) &&
+			i == EXTRADATA_IDX(fmt->num_planes)) {
+			type = HAL_BUFFER_EXTRADATA_OUTPUT;
+		}
+
+		bufreq = get_buff_req_buffer(inst, type);
+		if (!bufreq)
+			goto exit;
+		if (f->fmt.pix_mp.plane_fmt[i].sizeimage >
+			bufreq->buffer_size) {
+			rc = set_buffer_size_actual(inst,
+				f->fmt.pix_mp.plane_fmt[i].sizeimage,
+				type);
+			if (rc)
+				goto exit;
+		}
+	}
+
+	/* Query buffer requirements from firmware */
+	rc = msm_comm_try_get_bufreqs(inst);
+	if (rc) {
+		dprintk(VIDC_WARN,
+			"Failed to get buf req, %d\n", rc);
+	}
+
+	/* Read back updated firmware size */
+	for (i = 0; i < fmt->num_planes; ++i) {
+		enum hal_buffer type = msm_comm_get_hal_output_buffer(inst);
+
+		if (EXTRADATA_IDX(fmt->num_planes) &&
+			i == EXTRADATA_IDX(fmt->num_planes)) {
+			type = HAL_BUFFER_EXTRADATA_OUTPUT;
+		}
+
+		bufreq = get_buff_req_buffer(inst, type);
+		f->fmt.pix_mp.plane_fmt[i].sizeimage = bufreq ?
+					bufreq->buffer_size : 0;
+		dprintk(VIDC_DBG,
+				"updated buffer size for plane[%d] = %d\n",
+				i, f->fmt.pix_mp.plane_fmt[i].sizeimage);
+	}
+exit:
+	return rc;
+}
+
+static int set_default_properties(struct msm_vidc_inst *inst)
+{
+	struct hfi_device *hdev;
+	struct v4l2_control ctrl = {0};
+	enum hal_default_properties defaults;
+	int rc = 0;
+
+	if (!inst || !inst->core || !inst->core->device) {
+		dprintk(VIDC_ERR, "%s - invalid params\n", __func__);
+		return -EINVAL;
+	}
+
+	hdev = inst->core->device;
+
+	defaults = call_hfi_op(hdev, get_default_properties,
+					hdev->hfi_device_data);
+
+	if (defaults & HAL_VIDEO_DYNAMIC_BUF_MODE) {
+		dprintk(VIDC_DBG, "Enable dynamic buffer mode\n");
+		ctrl.id = V4L2_CID_MPEG_VIDC_VIDEO_ALLOC_MODE_OUTPUT;
+		ctrl.value = V4L2_MPEG_VIDC_VIDEO_DYNAMIC;
+		rc = v4l2_s_ctrl(NULL, &inst->ctrl_handler, &ctrl);
+		if (rc)
+			dprintk(VIDC_ERR, "set alloc_mode failed\n");
+	}
+
+	if (defaults & HAL_VIDEO_CONTINUE_DATA_TRANSFER) {
+		dprintk(VIDC_DBG, "Enable continue_data_transfer\n");
+		ctrl.id = V4L2_CID_MPEG_VIDC_VIDEO_CONTINUE_DATA_TRANSFER;
+		ctrl.value = true;
+		rc = v4l2_s_ctrl(NULL, &inst->ctrl_handler, &ctrl);
+		if (rc)
+			dprintk(VIDC_ERR, "set cont_data_transfer failed\n");
+	}
+
+	return rc;
+}
+
 int msm_vdec_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 {
 	struct msm_vidc_format *fmt = NULL;
 	struct hal_frame_size frame_sz;
-	int extra_idx = 0;
 	int rc = 0;
 	int ret = 0;
 	int i;
-	struct hal_buffer_requirements *bufreq;
 	int max_input_size = 0;
 
 	if (!inst || !f) {
@@ -1222,17 +1405,12 @@ int msm_vdec_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 					get_frame_size(inst, fmt, f->type, i);
 			}
 		} else {
-			bufreq = get_buff_req_buffer(inst,
-					msm_comm_get_hal_output_buffer(inst));
-			f->fmt.pix_mp.plane_fmt[0].sizeimage =
-				bufreq ? bufreq->buffer_size : 0;
-
-			extra_idx = EXTRADATA_IDX(fmt->num_planes);
-			if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
-				bufreq = get_buff_req_buffer(inst,
-					HAL_BUFFER_EXTRADATA_OUTPUT);
-				f->fmt.pix_mp.plane_fmt[1].sizeimage =
-					bufreq ? bufreq->buffer_size : 0;
+			rc = update_output_buffer_size(inst, f, fmt);
+			if (rc) {
+				dprintk(VIDC_ERR,
+					"%s - failed to update buffer size: %d\n",
+					__func__, rc);
+				goto err_invalid_fmt;
 			}
 		}
 
@@ -1313,6 +1491,8 @@ int msm_vdec_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 			inst->bufq[OUTPUT_PORT].vb2_bufq.plane_sizes[i] =
 				f->fmt.pix_mp.plane_fmt[i].sizeimage;
 		}
+
+		set_default_properties(inst);
 	}
 err_invalid_fmt:
 	return rc;
@@ -1379,6 +1559,9 @@ static int msm_vdec_queue_setup(struct vb2_queue *q,
 	struct hfi_device *hdev;
 	struct hal_buffer_count_actual new_buf_count;
 	enum hal_property property_id;
+	u32 hold_count = 0;
+	int min_buff_count = 0;
+
 	if (!q || !num_buffers || !num_planes
 		|| !sizes || !q->drv_priv) {
 		dprintk(VIDC_ERR, "Invalid input, q = %p, %p, %p\n",
@@ -1440,7 +1623,16 @@ static int msm_vdec_queue_setup(struct vb2_queue *q,
 			rc = -EINVAL;
 			break;
 		}
+
 		*num_buffers = max(*num_buffers, bufreq->buffer_count_min);
+
+		min_buff_count = (!!(inst->flags & VIDC_THUMBNAIL)) ?
+			MIN_NUM_THUMBNAIL_MODE_CAPTURE_BUFFERS :
+			MIN_NUM_CAPTURE_BUFFERS;
+
+		*num_buffers = clamp_val(*num_buffers,
+			min_buff_count, VB2_MAX_FRAME);
+
 		if (*num_buffers != bufreq->buffer_count_actual) {
 			property_id = HAL_PARAM_BUFFER_COUNT_ACTUAL;
 			new_buf_count.buffer_type =
@@ -1448,7 +1640,14 @@ static int msm_vdec_queue_setup(struct vb2_queue *q,
 			new_buf_count.buffer_count_actual = *num_buffers;
 			rc = call_hfi_op(hdev, session_set_property,
 				inst->session, property_id, &new_buf_count);
-		}
+
+			hold_count = *num_buffers - bufreq->buffer_count_actual;
+
+			if (hold_count)
+				set_display_hold_count_actual(inst,
+					hold_count,
+					msm_comm_get_hal_output_buffer(inst));
+			}
 
 		if (*num_buffers != bufreq->buffer_count_actual) {
 			rc = msm_comm_try_get_bufreqs(inst);

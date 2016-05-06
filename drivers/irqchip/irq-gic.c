@@ -427,12 +427,13 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 	raw_spin_lock(&irq_controller_lock);
 	val = readl_relaxed_no_log(reg) & ~mask;
 	writel_relaxed_no_log(val | bit, reg);
-	if (gic_irq(d) == 215)
+	if (215 == gic_irq(d)) {
 		if (readl_relaxed_no_log(reg) != (val | bit)) {
 			writel_relaxed_no_log(val | bit, reg);
 			if (readl_relaxed_no_log(reg) != (val | bit))
 				pr_err("IRQ 215 affinity migration failed\n");
 		}
+	}
 	raw_spin_unlock(&irq_controller_lock);
 
 	return IRQ_SET_MASK_OK;

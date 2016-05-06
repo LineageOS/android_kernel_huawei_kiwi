@@ -84,33 +84,10 @@
 #include "f_ncm.c"
 #include "f_charger.c"
 
-#include <linux/rtc.h>
-#define HW_USB_TIME_SYNC_PC
-#define USB_REQ_SEND_HOST_TIME    0xA2
-#define BEIJING_TIME_ZONE 8
-#define AFTER_BOOT_TO_1970YEAR ((1971-1970)*365*24*60*60)
-
-struct _time {
-    int            time_bias;
-    unsigned short year;
-    unsigned short month;
-    unsigned short day;
-    unsigned short hour;
-    unsigned short minute;
-    unsigned short second;
-    unsigned short millisecond;
-    unsigned short weekday;
-};
-
-struct gFlush_PC_Data {
-    struct timespec tv;
-	struct delayed_work pc_data_work;
-};
-
-struct gFlush_PC_Data flush_pc_data;
-static struct usb_ctrlrequest android_ctrl_request;
-static int android_setup_config(struct usb_configuration *c,
-        const struct usb_ctrlrequest *ctrl);
+#include <chipset_common/hwusb/hw_usb_rwswitch.h>
+#include <chipset_common/hwusb/hw_usb_sync_host_time.h>
+extern void hw_usb_get_device(struct device *dev);
+extern int hw_rwswitch_create_device(struct device *dev,struct class * usb_class);
 
 MODULE_AUTHOR("Mike Lockwood");
 MODULE_DESCRIPTION("Android Composite USB Driver");
@@ -130,10 +107,7 @@ static const char longname[] = "Gadget Android";
 /* string id of sequence number in string descriptor */
 static int serial_str_id = -1;
 
-/* 0: no usb port switch request has been sent
- * 1: one usb port switch request has already been sent at least
- */
-static int switch_request = 0;
+/* delete 5 lines. */
 
 /* to store the usb parameter in cmdline */
 usb_param usb_parameter = {
@@ -352,49 +326,7 @@ static const struct usb_descriptor_header *otg_desc[] = {
 	(struct usb_descriptor_header *) &otg_descriptor,
 	NULL,
 };
-#ifdef CONFIG_HUAWEI_USB
-/*
- * usb_port_switch_request: submit usb switch request by sending uevent 
- * @usb_pid_index: usb pid index to switch
- * Return value: void
- * Side effect : none
- */
-void usb_port_switch_request(int usb_pid_index)
-{
-	struct android_dev *dev;
-	char event_buf[32];
-	char *envp[2] = {event_buf, NULL};
-	int ret;
-
-	if (list_empty(&android_dev_list))
-	{
-	    usb_logs_info("no android_dev probed \n");
-	    return;
-	}
-
-    /* use the last android_dev that was probed.
-     * in fact, just one android_dev is probed so far.
-     */
-	dev = list_entry(android_dev_list.prev, struct android_dev, list_item);
-
-    snprintf(event_buf, sizeof(event_buf),"USB_PORT_SWITCH=%d", usb_pid_index);
-
-	usb_logs_info("send uevent (%s)\n",event_buf);
-	ret= kobject_uevent_env(&dev->dev->kobj, KOBJ_CHANGE, envp);
-	if (ret < 0)
-    {
-        usb_logs_info("uevent sending failed with ret = %d\n", ret);
-    }
-
-    /* framework may lost the requeset uevent when start with usb connection in normal mode
-     * use switch_request as a flag to record a request has been sent already.
-     */
-    switch_request = 1;
-    
-	return;
-}
-EXPORT_SYMBOL(usb_port_switch_request);
-#endif  /* CONFIG_HUAWEI_USB */
+/* delete 45 lines. */
 
 static const char *pm_qos_to_string(enum android_pm_qos_state state)
 {
@@ -3760,28 +3692,8 @@ static ssize_t state_show(struct device *pdev, struct device_attribute *attr,
 out:
 	return snprintf(buf, PAGE_SIZE, "%s\n", state);
 }
+/* delete 23 lines. */
 
-#ifdef CONFIG_HUAWEI_USB
-static ssize_t switch_request_show(struct device *pdev, struct device_attribute *attr,
-			   char *buf)
-{
-    return snprintf(buf, PAGE_SIZE, "%d\n", switch_request);
-}
-
-static ssize_t switch_request_store(struct device *pdev, struct device_attribute *attr,
-			    const char *buff, size_t size)
-{
-    int value = 0;
-    if(kstrtoint(buff, STRING_TO_DECIMAL_INT, &value) <0)
-    {
-	usb_logs_err("Failed to set switch_request\n");
-        return -1;
-    }
-
-    switch_request = value;
-    return size;
-}
-#endif	
 static ssize_t usb_debug_show(struct device *pdev, struct device_attribute *attr,
 			   char *buf)
 {
@@ -3891,12 +3803,7 @@ ANDROID_DEV_ATTR(idle_pc_rpm_no_int_secs, "%u\n");
 static DEVICE_ATTR(state, S_IRUGO, state_show, NULL);
 static DEVICE_ATTR(remote_wakeup, S_IRUGO | S_IWUSR,
 		remote_wakeup_show, remote_wakeup_store);
-#ifdef CONFIG_HUAWEI_USB
-/* read the attribute to indentify if there is a switch request has been sent or not
- * write 0 to clear the request flag
- */
-static DEVICE_ATTR(switch_request, S_IRUGO | S_IWUSR, switch_request_show, switch_request_store);
-#endif	
+/* delete 8 lines. */
 static DEVICE_ATTR(usb_debug, S_IRUGO | S_IWUSR, usb_debug_show, usb_debug_store);
 static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_idVendor,
@@ -3920,76 +3827,12 @@ static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_state,
 	&dev_attr_usb_debug,
 	&dev_attr_remote_wakeup,
-#ifdef CONFIG_HUAWEI_USB
-    &dev_attr_switch_request,
-#endif	
+/* delete 5 lines. */
 	NULL
 };
 
-#ifdef HW_USB_TIME_SYNC_PC
-static void flushPcDataWork(struct work_struct *work)
-{
-    struct gFlush_PC_Data *pc_data = container_of(work,
-    struct gFlush_PC_Data, pc_data_work.work);
-    struct rtc_device *rtc;
-    struct rtc_time new_rtc_tm;
-    //int rv = 0;
-
-	usb_logs_info( "Enter function: flushPcDataWork!\n");
-
-    if(do_settimeofday(&pc_data->tv) < 0)
-    {
-	usb_logs_info("set system time Fail!\n");
-    }
-
-    rtc = rtc_class_open(CONFIG_RTC_HCTOSYS_DEVICE);
-    if (rtc == NULL) {
-	  usb_logs_info("%s: unable to open rtc device (%s)\n",
-                __FILE__, CONFIG_RTC_HCTOSYS_DEVICE);
-        return;
-    }
-
-    rtc_time_to_tm(pc_data->tv.tv_sec, &new_rtc_tm);
-	#if 0
-    rv = rtc_set_time(rtc, &new_rtc_tm);
-    if(rv!=0)
-    {
-		 usb_logs_info("set RTC time Fail!rv is %d\n",rv);
-    }
-	#endif
-	usb_logs_info( "set system time ok!\n");
-}
-
-/*-------------------------------------------------------------------------*/
-/* Composite driver */
-static void android_handle_host_time(struct usb_ep *ep, struct usb_request *req)
-{
-    struct _time *host_time;
-    struct timeval tvNow;
-
-    host_time = (struct _time *)req->buf;
-
-    usb_logs_info("Time Bias:%d minutes\n", host_time->time_bias);
-
-    usb_logs_info("Host Time:[%d:%d:%d %d:%d:%d:%d Weekday:%d]\n", host_time->year,
-            host_time->month, host_time->day, host_time->hour, host_time->minute,
-            host_time->second, host_time->millisecond, host_time->weekday);
-
-    do_gettimeofday(&tvNow);
-    if(AFTER_BOOT_TO_1970YEAR < (tvNow.tv_sec))
-        return;
-
-    flush_pc_data.tv.tv_nsec = NSEC_PER_SEC >> 1;
-    flush_pc_data.tv.tv_sec = (unsigned long) mktime (host_time->year,
-                    host_time->month,
-                    host_time->day,
-                    (host_time->hour+BEIJING_TIME_ZONE),
-                    host_time->minute,
-                    host_time->second);
-    schedule_delayed_work(&(flush_pc_data.pc_data_work), 0);
-
-    return;
-}
+#define USB_REQ_SEND_HOST_TIME    0xA2
+static struct usb_ctrlrequest android_ctrl_request;
 
 static int android_setup_config(struct usb_configuration *c,
         const struct usb_ctrlrequest *ctrl)
@@ -4015,7 +3858,7 @@ static int android_setup_config(struct usb_configuration *c,
             memcpy((void *)&android_ctrl_request, (void *)ctrl,
                     sizeof(struct usb_ctrlrequest));
             req->context = &android_ctrl_request;
-            req->complete = android_handle_host_time;
+            req->complete = hw_usb_handle_host_time;
             cdev->gadget->ep0->driver_data = cdev;
             value = w_length;
             break;
@@ -4045,7 +3888,7 @@ static int android_setup_config(struct usb_configuration *c,
 
     return value;
 }
-#endif
+/* delete 1 line. */
 
 static int android_bind_config(struct usb_configuration *c)
 {
@@ -4339,14 +4182,13 @@ static struct android_configuration *alloc_android_config
 	dev->configs_num++;
 	conf->usb_config.label = dev->name;
 	conf->usb_config.unbind = android_unbind_config;
-    #ifdef HW_USB_TIME_SYNC_PC
-	conf->usb_config.setup = android_setup_config;
-	#endif
 	conf->usb_config.bConfigurationValue = dev->configs_num;
 #ifdef CONFIG_HUAWEI_USB
 	conf->usb_config.bmAttributes = USB_CONFIG_ATT_ONE | USB_CONFIG_ATT_SELFPOWER,
 	conf->usb_config.MaxPower = 0x1F4, /* 500ma */
 #endif
+	conf->usb_config.setup = android_setup_config;
+	usb_logs_info("conf->usb_config.setup = android_setup_config\n");
 
 	INIT_LIST_HEAD(&conf->enabled_functions);
 
@@ -4546,6 +4388,13 @@ static int android_probe(struct platform_device *pdev)
 	}
 	strlcpy(android_dev->pm_qos, "high", sizeof(android_dev->pm_qos));
 
+	hw_usb_get_device(android_dev->dev);
+	ret = hw_rwswitch_create_device(android_dev->dev,android_class);
+	if (ret) {
+		usb_logs_err("%s: failed to create android device %d", __func__, ret);
+		kfree(android_dev);
+	}
+
 	return ret;
 err_probe:
 	android_destroy_device(android_dev);
@@ -4710,20 +4559,21 @@ static int __init init(void)
 	int ret;
 #ifdef CONFIG_HUAWEI_USB
         if(('\0' == usb_parameter.vender_name[0]) || ('\0' == usb_parameter.country_name[0]))
-        {   
+        {
 	    usb_logs_info("usb use default vender info \n");
-            strlcpy(usb_parameter.vender_name, "hw", VENDOR_NAME_LEN);          
+            strlcpy(usb_parameter.vender_name, "hw", VENDOR_NAME_LEN);
             strlcpy(usb_parameter.country_name, "default", COUNTRY_NAME_LEN);
         }
 
         if('\0' == usb_parameter.usb_serial[0])
-        {  
+        {
 	    usb_logs_info("usb use default serial \n");
             strlcpy(usb_parameter.usb_serial, USB_DEFAULT_SN, USB_SERIAL_LEN);
         }
 #endif
 
-
+	hw_usb_sync_host_time_init();
+	usb_logs_info("hw_usb_sync_host_time_init\n");
 	INIT_LIST_HEAD(&android_dev_list);
 	android_dev_count = 0;
 
@@ -4741,11 +4591,7 @@ static int __init init(void)
 	composite_resume_func = android_usb_driver.gadget_driver.resume;
 	android_usb_driver.gadget_driver.resume = android_resume;
 
-    #ifdef HW_USB_TIME_SYNC_PC
-    memset(&flush_pc_data, 0, sizeof(struct gFlush_PC_Data) );
-    INIT_DELAYED_WORK(&(flush_pc_data.pc_data_work), flushPcDataWork);
-    #endif
-
+/* delete 7 lines. */
 	return ret;
 }
 late_initcall(init);

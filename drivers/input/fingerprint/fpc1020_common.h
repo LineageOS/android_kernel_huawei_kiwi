@@ -34,7 +34,7 @@
 #include <linux/fb.h>
 #endif
 #include <linux/platform_device.h>
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #include <linux/amba/pl022.h>
 #include <linux/regulator/consumer.h>
 #define CS_CONTROL  0

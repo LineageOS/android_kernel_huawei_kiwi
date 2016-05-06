@@ -30,7 +30,7 @@
 #include <linux/hw_dev_dec.h>
 #endif
 #ifdef CONFIG_HUAWEI_DSM
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif/*CONFIG_HUAWEI_DSM*/
 
 
@@ -3614,7 +3614,6 @@ static void cyttsp5_watchdog_work(struct work_struct *work)
 			__func__, rc);
 
 		/* Already tried FW upgrade because of watchdog but failed */
-
 		/* if dog fail times > CY_WATCHDOG_RETRY_COUNT, still call start_up */
 		tp_log_info("%s:current startup_retry_count:%d\n", __func__, cd->startup_retry_count);
 
@@ -3624,7 +3623,6 @@ static void cyttsp5_watchdog_work(struct work_struct *work)
 			cyttsp5_queue_startup(cd);
 		return;
 	}
-
 start_wd_timer:
 	cyttsp5_start_wd_timer(cd);
 }

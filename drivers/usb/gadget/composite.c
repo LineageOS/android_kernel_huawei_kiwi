@@ -22,22 +22,14 @@
 #include <asm/unaligned.h>
 
 /*delet the USB monitor point*/
-
+#include <chipset_common/hwusb/hw_usb_rwswitch.h>
 /*
  * The code in this file is utility code, used to build a gadget driver
  * from one or more "function" drivers, one or more "configuration"
  * objects, and a "usb_composite_driver" by gluing them together along
  * with the relevant device-wide data.
  */
-#include <linux/interrupt.h>
-
-#define  USB_REQ_VENDOR_SWITCH_MODE      0xA5
-extern void usb_port_switch_request(int usb_pid_index);
-static void usb_port_switch_wq(struct work_struct *data)
-	{	
-	   usb_port_switch_request(0);
-    }
-DECLARE_WORK(usb_port_switch_work, usb_port_switch_wq);
+/* delete 11 lines. */
 
 static struct usb_gadget_strings **get_containers_gs(
 		struct usb_gadget_string_container *uc)
@@ -1596,16 +1588,8 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 			if ((ctrl->bRequestType != (USB_DIR_IN|USB_TYPE_VENDOR|USB_RECIP_DEVICE))	|| (w_index != 0))
 				goto unknown;			/* Handle vendor customized request */
 			INFO(cdev, "vendor request: %d index: %d value: %d length: %d\n",ctrl->bRequest, w_index, w_value, w_length);
-	
-              	if (in_interrupt())	
-				{
-					schedule_work(&usb_port_switch_work);	
-				}
-				else	
-				{
-				    usb_port_switch_request(0);
-			    }
-	    break;
+			hw_usb_port_switch_request(INDEX_FACTORY_REWORK);
+			break;
 	default:
 unknown:
 		VDBG(cdev,

@@ -1,0 +1,59 @@
+dtb-$(CONFIG_ARCH_MSM8916) += 	huawei_ath_al00_va_efs.dtb \
+	huawei_ath_al00_vb3.0_efs.dtb \
+	huawei_ath_al00_vb_efs.dtb \
+	huawei_ath_al00_vc3.0_efs.dtb \
+	huawei_ath_al00_vc_efs.dtb \
+	huawei_ath_al00_vd3.0_efs.dtb \
+	huawei_ath_al00_vd_efs.dtb \
+	huawei_ath_cl00_va_efs.dtb \
+	huawei_ath_cl00_vb3.0_efs.dtb \
+	huawei_ath_cl00_vb_efs.dtb \
+	huawei_ath_cl00_vd3.0_efs.dtb \
+	huawei_ath_cl00_vd_efs.dtb \
+	huawei_ath_tl00_va_efs.dtb \
+	huawei_ath_tl00_vd3.0_efs.dtb \
+	huawei_ath_tl00_vd_efs.dtb \
+	huawei_ath_ul00_va_efs.dtb \
+	huawei_ath_ul01_va_efs.dtb \
+	huawei_ath_ul01_vb3.0_efs.dtb \
+	huawei_ath_ul01_vb_efs.dtb \
+	huawei_ath_ul01_vc3.0_efs.dtb \
+	huawei_ath_ul01_vc_efs.dtb \
+	huawei_ath_ul06_va_efs.dtb \
+	huawei_ath_ul06_vb3.0_efs.dtb \
+	huawei_ath_ul06_vb_efs.dtb \
+	huawei_ath_ul06_vc3.0_efs.dtb \
+	huawei_ath_ul06_vc_efs.dtb \
+	huawei_rio_al00_vb3.0_efs.dtb \
+	huawei_rio_al00_vb_efs.dtb \
+	huawei_rio_cl00_vb3.0_efs.dtb \
+	huawei_rio_cl00_vb_efs.dtb \
+	huawei_rio_cl00_vc3.0_efs.dtb \
+	huawei_rio_cl00_vc_efs.dtb \
+	huawei_rio_l01_vb3.0_efs.dtb \
+	huawei_rio_l01_vb_efs.dtb \
+	huawei_rio_l02_va3.0_efs.dtb \
+	huawei_rio_l02_va_efs.dtb \
+	huawei_rio_l03_va3.0_efs.dtb \
+	huawei_rio_l03_va_efs.dtb \
+	huawei_rio_tl00_va3.0_efs.dtb \
+	huawei_rio_tl00_va_efs.dtb
+
+
+DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE_NAMES))
+ifneq ($(DTB_NAMES),)
+DTB_LIST := $(addsuffix .dtb,$(DTB_NAMES))
+else
+DTB_LIST := $(dtb-y)
+endif
+
+targets += dtbs
+targets += $(addprefix ../, $(DTB_LIST))
+
+
+$(obj)/../%.dtb: $(src)/%.dts FORCE
+	$(call if_changed_dep,dtc)
+
+dtbs: $(addprefix $(obj)/../,$(DTB_LIST))
+
+clean-files := *.dtb

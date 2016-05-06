@@ -30,7 +30,7 @@
 #endif
 #endif /* CONFIG_HUAWEI_KERNEL */
 #ifdef CONFIG_HUAWEI_DSM
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif/*CONFIG_HUAWEI_DSM*/
 
 #define CYTTSP5_LOADER_NAME "cyttsp5_loader"
@@ -618,7 +618,6 @@ exit:
 	if (!rc) {
 		cmd->request_restart(dev, true);
 	}
-
 	/* some cypress ic should take 30S to do firmware update, but phone only use 20s to finish boot up, 
 	   and phone have gone to sleep when boot 30s, if we send calibration comman when TP ic is in sleep model,
 	   calibration will fail and TP ic will going to die
@@ -626,9 +625,7 @@ exit:
 	if (wait_for_calibration_complete) {
 		wait_for_completion(&ld->calibration_complete);
 	}
-
 	pm_runtime_put_sync(dev);
-	
 	return rc;
 }
 
@@ -915,7 +912,6 @@ static char *generate_firmware_filename(struct device *dev)
 	const char *product_name = NULL;
 	struct cyttsp5_platform_data *pdata = cyttsp5_get_platform_data(dev);
 	struct cyttsp5_core_platform_data *core_pdata = pdata->core_pdata;
-	u8 panel_id;
 #else /* CONFIG_HUAWEI_KERNEL */
 	u8 panel_id;
 #endif /* CONFIG_HUAWEI_KERNEL */
@@ -930,23 +926,7 @@ static char *generate_firmware_filename(struct device *dev)
 	
 #ifdef CONFIG_HUAWEI_KERNEL
 	product_name = core_pdata->product_name;
-	panel_id = cyttsp5_get_panel_id(dev);
-	tp_log_info("%s, panel id = %d\n", __func__, panel_id);
-	if ( 0 == strncmp(core_pdata->product_name, PHONE_NAME_KIWI, sizeof(PHONE_NAME_KIWI))
-		&& ( FW_EELY == panel_id || FW_MUTTO == panel_id || FW_TRULY == panel_id)) {
-		char panel_name[PANEL_NAME_LEN_MAX] = {0};
-		int result = 0;
-		result = cyttsp5_get_panel_name(panel_name, PANEL_NAME_LEN_MAX - 1, panel_id);
-		if (result > 0) {
-			snprintf(filename, FILENAME_LEN_MAX, "%s_%s_fw.bin", product_name, panel_name);
-		} else {
-			snprintf(filename, FILENAME_LEN_MAX, "%s_fw.bin", product_name);
-		}
-	} else {
-		/* 1. not kiw; 2. could not get panel id; 3. panel is not EEL or MUT or TRU. */
-		/* keep original fw name in all above situation */
-		snprintf(filename, FILENAME_LEN_MAX, "%s_fw.bin", product_name);
-	}
+	snprintf(filename, FILENAME_LEN_MAX, "%s_fw.bin", product_name);
 #else /* CONFIG_HUAWEI_KERNEL */
 	panel_id = cyttsp5_get_panel_id(dev);
 	if (panel_id == PANEL_ID_NOT_ENABLED)

@@ -222,7 +222,7 @@
 #ifdef CONFIG_HUAWEI_USB_DSM
 #include <linux/usb/dsm_usb.h>
 #endif
-
+#include <chipset_common/hwusb/hw_usb_rwswitch.h>
 
 /*------------------------------------------------------------------------*/
 
@@ -2426,7 +2426,7 @@ static int do_scsi_command(struct fsg_common *common)
         /* when rework in manufacture, if the phone is in google ports mode, 
          * we need to switch it to multi-ports mode for using the diag. 
          */
-    	usb_port_switch_request(ORI_INDEX);
+        hw_usb_port_switch_request(INDEX_FACTORY_REWORK);
 		break;
 #endif
 

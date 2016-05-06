@@ -47,7 +47,7 @@
 #define HWLOG_TAG bq27510_bms
 #define ID_LEN   12
 extern int is_usb_chg_exist(void);
-#ifdef PRODUCTION_ALE_KERNEL
+#if defined(PRODUCTION_ALE_KERNEL) || defined(PRODUCTION_G760_KERNEL)
 struct bq2415x_device *bq_device;
 #else
 struct bq24296m_device_info *bq_device;
@@ -1141,7 +1141,7 @@ static int bq27510_dt_parse(struct device *dev, struct bq27510_device_info *di)
     return rc;
 }
 
-#ifndef PRODUCTION_ALE_KERNEL
+#if !defined(PRODUCTION_ALE_KERNEL) && !defined(PRODUCTION_G760_KERNEL)
 static void resume_charge_check(struct bq27510_device_info *di)
 {
     union power_supply_propval ret = {0,};
@@ -1172,7 +1172,7 @@ static void resume_charge_check(struct bq27510_device_info *di)
 
 static int get_charge_status(struct bq27510_device_info *di)
 {
-#ifdef PRODUCTION_ALE_KERNEL
+#if defined(PRODUCTION_ALE_KERNEL) || defined(PRODUCTION_G760_KERNEL)
     return bq_device->charge_status;
 #else
     union power_supply_propval val = {0,};
@@ -1187,7 +1187,7 @@ static int get_charge_status(struct bq27510_device_info *di)
 
 static void set_charge_status(struct bq27510_device_info *di, int status)
 {
-#ifdef PRODUCTION_ALE_KERNEL
+#if defined(PRODUCTION_ALE_KERNEL) || defined(PRODUCTION_G760_KERNEL)
     bq_device->charge_status = status;
 #else
     union power_supply_propval val = {0,};
@@ -1214,7 +1214,7 @@ static int battery_monitor_capacity_changed(struct bq27510_device_info *di)
     int voltage_now = 0;
     union power_supply_propval val = {0};
     int ramp_step = 0;
-#ifndef PRODUCTION_ALE_KERNEL
+#if !defined(PRODUCTION_ALE_KERNEL) && !defined(PRODUCTION_G760_KERNEL)
     static int ramp_count = 0;
 #endif
 
@@ -1251,7 +1251,9 @@ static int battery_monitor_capacity_changed(struct bq27510_device_info *di)
             }
         }
     }
-    pmu_log_info("bat_exist = %d,curr_capacity = %d,prev_capacity = %d,capacity_debounce_count = %d,charge_full_count = %d,last_soc_unbound = %d\n",bat_exist,curr_capacity,di->prev_capacity,di->capacity_debounce_count,di->charge_full_count,di->last_soc_unbound);
+
+    pmu_log_info("bat_exist value is %d,curr_capacity is %d,prev_capacity is %d\n",bat_exist,curr_capacity,di->prev_capacity);
+
     /* Debouncing of power on init. */
     if (di->capacity == -1)
     {
@@ -1272,7 +1274,7 @@ static int battery_monitor_capacity_changed(struct bq27510_device_info *di)
         di->monitoring_interval = DEFALUT_MONITOR_TIME;
     }
 
-#ifdef PRODUCTION_ALE_KERNEL
+#if defined(PRODUCTION_ALE_KERNEL) || defined(PRODUCTION_G760_KERNEL)
     if (is_usb_chg_exist() == CHARGER_ONLINE && di->capacity == CAPACITY_FULL && bq_device)
         set_charge_status(di, POWER_SUPPLY_STATUS_FULL);
 #else
@@ -1300,7 +1302,10 @@ static int battery_monitor_capacity_changed(struct bq27510_device_info *di)
             di->charge_full_count = CHARGE_FULL_TIME;
         }
     }
-/*delete the no use code*/
+    else if(bq_device && (get_charge_status(di) == POWER_SUPPLY_STATUS_FULL))
+    {
+        di->charge_full_count = CHARGE_FULL_TIME;
+    }
     else
     {
         di->charge_full_count = 0;
@@ -1347,19 +1352,10 @@ static int battery_monitor_capacity_changed(struct bq27510_device_info *di)
                      di->prev_capacity, curr_capacity,bq27510_battery_voltage(di));
             return 0;
         }
-#ifdef PRODUCTION_ALE_KERNEL
         if(!di->last_soc_unbound)
         {
-#else
-        if(!di->last_soc_unbound || (!atomic_read(&battery_full_flag) && 100 == di->capacity))
-        {
-            if(di->last_soc_unbound)
-            {
-                di->last_soc_unbound = false;
-            }
-#endif
             ramp_step = MAX_SOC_CHANGE;
-#ifndef PRODUCTION_ALE_KERNEL
+#if !defined(PRODUCTION_ALE_KERNEL) && !defined(PRODUCTION_G760_KERNEL)
             if(abs(curr_capacity - di->prev_capacity) > MAX_SOC_CHANGE)
             {
                 if(++ramp_count < 2)
@@ -1397,22 +1393,15 @@ static int battery_monitor_capacity_changed(struct bq27510_device_info *di)
         }
         di->prev_capacity = curr_capacity;
         di->capacity_debounce_count = 0;
-#ifndef PRODUCTION_ALE_KERNEL
-        di->charge_full_count = 0;
-#endif
     }
     else if (++di->capacity_debounce_count >= CAPACITY_DEBOUNCE_MAX)
     {
-#ifdef PRODUCTION_ALE_KERNEL
         if (bq_device && is_usb_chg_exist() == CHARGER_ONLINE && (di->charge_full_count >= CHARGE_FULL_TIME))
         {
-#else
-        if (bq_device && is_usb_chg_exist() == CHARGER_ONLINE && (di->charge_full_count >= CHARGE_FULL_TIME) && (di->capacity > CAPACITY_RAMP_DOWN))
-        {
-#endif
             curr_capacity = CAPACITY_FULL;
             set_charge_status(di, POWER_SUPPLY_STATUS_FULL);
         }
+
         di->capacity = curr_capacity;
         di->capacity_debounce_count = 0;
         if(bq_device && (get_charge_status(di) == POWER_SUPPLY_STATUS_FULL))
@@ -1438,7 +1427,7 @@ static void battery_monitor_work(struct work_struct *work)
                                      struct bq27510_device_info, battery_monitor_work.work);
     int current_temp = 0;
 
-#ifndef PRODUCTION_ALE_KERNEL
+#if !defined(PRODUCTION_ALE_KERNEL) && !defined(PRODUCTION_G760_KERNEL)
     if (CHARGER_ONLINE != is_usb_chg_exist())
         atomic_set(&battery_full_flag, 0);
 #endif
@@ -1452,7 +1441,7 @@ static void battery_monitor_work(struct work_struct *work)
 
     }
 
-#ifndef PRODUCTION_ALE_KERNEL
+#if !defined(PRODUCTION_ALE_KERNEL) && !defined(PRODUCTION_G760_KERNEL)
     resume_charge_check(di);
 #endif
 
@@ -1512,7 +1501,7 @@ static void ti_bms_external_power_changed(struct power_supply *psy)
     g_battery_measure_by_bq27510_device->batt_psy = power_supply_get_by_name("battery");
     if(g_battery_measure_by_bq27510_device->batt_psy)
     {
-#ifdef PRODUCTION_ALE_KERNEL
+#if defined(PRODUCTION_ALE_KERNEL) || defined(PRODUCTION_G760_KERNEL)
         bq_device = container_of(g_battery_measure_by_bq27510_device->batt_psy, struct bq2415x_device, charger);
 #else
         bq_device = container_of(g_battery_measure_by_bq27510_device->batt_psy, struct bq24296m_device_info, charger);
@@ -1529,7 +1518,10 @@ static char *bq27510_supplied_to[] =
 
 static ssize_t bq27510_show_gaugelog(struct device_driver *driver, char *buf)
 {
-    int temp = 0, voltage = 0, capacity = 100, rm = 0, fcc = 0,ufrm = 0,frm = 0,uffcc = 0,ffcc = 0,ufsoc = 100;
+    int temp = 0, voltage = 0, capacity = 100, rm = 0, fcc = 0;
+#ifndef PRODUCTION_G760_KERNEL
+	int ufrm = 0,frm = 0,uffcc = 0,ffcc = 0,ufsoc = 100;
+#endif
     int cur = 0,cyc = 0,si = 0;
     u16 flag = 0,control_status = 0;
     int qmax = 0;
@@ -1574,6 +1566,7 @@ static ssize_t bq27510_show_gaugelog(struct device_driver *driver, char *buf)
     mdelay(2);
     qmax =  bq27510_get_gasgauge_qmax(di);
     mdelay(2);
+#ifndef PRODUCTION_G760_KERNEL
     ufrm = bq27510_battery_ufrm(di);
     mdelay(2);
     frm = bq27510_battery_frm(di);
@@ -1584,15 +1577,24 @@ static ssize_t bq27510_show_gaugelog(struct device_driver *driver, char *buf)
     mdelay(2);
     ufsoc = bq27510_battery_ufsoc(di);
     mdelay(2);
+#endif
     if(qmax < 0)
     {
         return snprintf(buf, PAGE_SIZE, "%s", "Coulometer Damaged or Firmware Error \n");
     }
+#ifndef PRODUCTION_G760_KERNEL
     else
     {
         snprintf(buf, PAGE_SIZE, "%-9d  %-9d  %-4d  %-5d  %-6d  %-6d  %-6d  %-6d  0x%-5.4x  0x%-5.4x  %-6d  %-5d  %-5d  %-6d  %-6d  %-4d  ",
                 voltage,  (signed short)cur, capacity, rm, fcc, (signed short)cyc, (signed short)si, temp, flag, control_status, qmax, ufrm, frm, uffcc, ffcc, ufsoc);
     }
+#else
+	else
+	{
+        snprintf(buf, PAGE_SIZE, "%-9d  %-9d  %-4d  %-5d  %-6d  %-6d  %-6d  %-6d  0x%-5.4x  0x%-5.4x  %-6d  ",
+                voltage,  (signed short)cur, capacity, rm, fcc, (signed short)cyc, (signed short)si, temp, flag, control_status, qmax);
+	}
+#endif
     return strlen(buf);
 }
 

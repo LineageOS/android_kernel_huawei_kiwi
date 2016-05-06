@@ -56,6 +56,7 @@
 				cy,vbus = "vcc_i2c";
 				cy,fw_upgrade_start_ver = <4>;
 				cy,fw_uptate_logic = <1>; /* 0:update to higt 1:update when different*/
+				cy,input_register_early = <1>;
 				cy,hid_desc_register = <1>;
 				/* CY_CORE_FLAG_WAKE_ON_GESTURE | CY_CORE_FLAG_RESTORE_PARAMETERS */
 				cy,flags = <5>;
@@ -132,6 +133,11 @@
 
 					cy,vkeys_x = <720>;
 					cy,vkeys_y = <1280>;
+
+					cy,x_max = <1080>;
+					cy,y_max = <1920>;
+					cy,p_max = <255>;
+					cy,slots_max = <32>;
 
 					cy,virtual_keys = /* KeyCode CenterX CenterY Width Height */
 						/* KEY_BACK */

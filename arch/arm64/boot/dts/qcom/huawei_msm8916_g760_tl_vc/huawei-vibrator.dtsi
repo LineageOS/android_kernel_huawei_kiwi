@@ -1,0 +1,14 @@
+/* < DTS201505289999M zhujie 20150528 begin */
+&spmi_bus{
+	qcom,pm8916@1 {
+		pm8916_vib: qcom,vibrator@c000 {
+		compatible = "qcom,qpnp-vibrator";
+		qcom,vib-timeout-ms = <15000>;
+		qcom,vib-vtg-level-mV = <2800>;
+		reg = <0xc000 0x100>;
+		label = "vibrator";
+		status = "ok";
+		};
+	};
+};
+/* DTS201505289999M zhujie 20150528 end > */

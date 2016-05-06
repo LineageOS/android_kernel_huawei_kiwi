@@ -482,7 +482,7 @@ s32 gup_enter_update_mode(struct i2c_client *client)
     //step3:RST output high reset guitar
     gpio_direction_output(ts->pdata->reset_gpio, 1);
     
-
+    //20121211 modify start
     msleep(5);
     while(retry++ < 200)
     {
@@ -517,7 +517,7 @@ s32 gup_enter_update_mode(struct i2c_client *client)
     //step6:DSP_CK and DSP_ALU_CK PowerOn
     ret = gup_set_ic_msg(client, 0x4010, 0x00);
     
-
+    //20121211 modify end
     return ret;
 }
 

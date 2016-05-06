@@ -261,6 +261,17 @@
 				bias-disable;
 			};
 		};
+		pmx_i2c_gpio_0{
+			/* CLK, DATA */
+			qcom,pins = <&gp 7>, <&gp 6>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <0>;
+			label = "pmx_i2c_gpio_0";
+			i2c_0_defult: i2c_0_defult {
+				drive-strength = <8>; /* 8 MA */
+				bias-pull-up; /* pull up */
+			};
+		};
 
 		pmx_i2c_5 {
 			qcom,pins = <&gp 18>, <&gp 19>; /* SDA, SCL */
@@ -645,22 +656,7 @@
 			};
 		};
 
-		max77819_flash_en_pin {
-			/*qcom,pins = <&gp 31>, <&gp 86>;*/
-			qcom,pins = <&gp 31>, <&gp 86>;
-			qcom,num-grp-pins = <2>;
-			label = "max77819_flash_en_pins";
-			qcom,pin-func = <0>;
-
-			max77819_flash_en_default: en-default {
-				driver-strength = <2>;
-				bias-disable;
-			};
-			max77819_flash_en_suspend: en-suspend {
-				driver-strength = <2>;
-				bias-pull-down;
-			};
-		};
+		/* delete flash configuration of maxim charger module from here */
 		apds99xx_int_pin {
 			/* Ambient light and proximity sensor apds9930 and apds9900 */
 			qcom,pins = <&gp 113>;

@@ -70,6 +70,7 @@ void clear_reset_magic()
 static int huawei_apanic_handler(struct notifier_block *this,
 				  unsigned long event, void *ptr)
 {
+    int magic_number_test=0;
 	pr_info(RESET_DETECT_TAG "huawei_apanic_handler enters \n");
 
 
@@ -77,9 +78,11 @@ static int huawei_apanic_handler(struct notifier_block *this,
 	/* Ensure that cond_resched() won't try to preempt anybody */
 	add_preempt_count(PREEMPT_ACTIVE);
 #endif
-
-    set_reset_magic(RESET_MAGIC_APANIC);
-
+    magic_number_test= raw_readl(reset_magic_addr);
+    if(magic_number_test!= LONG_PRESS_RESET_REASON_MAGIC_NUM)
+    {
+        set_reset_magic(RESET_MAGIC_APANIC);
+    }
 #ifdef CONFIG_PREEMPT
         sub_preempt_count(PREEMPT_ACTIVE);
 #endif

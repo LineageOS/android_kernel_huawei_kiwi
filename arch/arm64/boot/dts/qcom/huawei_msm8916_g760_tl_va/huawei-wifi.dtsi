@@ -1,0 +1,11 @@
+/* < DTS201505289999M zhujie 20150528 begin */
+ / {
+        huawei_wifi_info {
+                  compatible = "huawei,hw_wifi_info";
+                  status = "ok";
+                  wifi,chiptype = "2.3";
+                  wifi,pubfile_id = "g760_tl";
+                  wifi,fw_ver = "QCOM_WCN3620_2.0.1";
+        };
+};
+/* DTS201505289999M zhujie 20150528 end > */

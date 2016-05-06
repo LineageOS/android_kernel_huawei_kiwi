@@ -184,7 +184,7 @@
 		qcom,mdss-dsi-panel-timings = [E6 38 26 00 68 6C 2A 3C 2C 03 04 00];
 		qcom,mdss-dsi-t-clk-post = <0x2c>;
 		qcom,mdss-dsi-t-clk-pre = <0x2d>;
-		qcom,mdss-dsi-bl-min-level = <6>;
+		qcom,mdss-dsi-bl-min-level = <4>;
 		qcom,mdss-dsi-bl-max-level = <250>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
@@ -250,9 +250,10 @@
 		qcom,frame-checksum-enable-dsi-state = "dsi_lp_mode";
 		qcom,frame-checksum-disable-dsi-state = "dsi_lp_mode";
 		qcom,mdss-dsi-lp11-init;
+		qcom,mdss-dsi-tp-reset_enable;
 		qcom,mdss-dsi-post-delay-time = <1000>;
-		qcom,mdss-pan-physical-width-dimension = <68>;
-		qcom,mdss-pan-physical-height-dimension = <121>;
+		qcom,mdss-pan-physical-width-dimension = <65>;
+		qcom,mdss-pan-physical-height-dimension = <115>;
 		qcom,mdss-dsi-mipi-rst-delay = <80>;
 		huawei,mdss-dsi-lens-type = <2>;
 			qcom,mdss-dsi-reset-sequence = <1 15>, <0 5>, <1 15>;

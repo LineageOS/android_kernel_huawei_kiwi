@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI C8818";
+                  fac,hardware_ver = "HL1CHMCLM";
+                  fac,software_ver = "MSM8939_C8818_VA";
+                  status = "ok";
+        };
+};

@@ -1,8 +1,7 @@
 #ifdef CONFIG_HUAWEI_USB_DSM
 #ifndef LINUX_USB_DSM_USB_H
 #define LINUX_USB_DSM_USB_H
-
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 
 /* define a 1024 size of array as buffer */
 #define USB_DSM_BUFFER_SIZE  1024

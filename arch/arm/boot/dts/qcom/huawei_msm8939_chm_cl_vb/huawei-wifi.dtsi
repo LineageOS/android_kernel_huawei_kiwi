@@ -1,0 +1,12 @@
+ / {
+        huawei_wifi_info {
+                  compatible = "huawei,hw_wifi_info";
+                  status = "ok";
+                  wifi,chiptype = "2.3";
+                  wifi,pubfile_id = "CHM-CL00";
+                  wifi,fw_ver = "QCOM_WCN3620_2.0.1";
+                  wifi,fem_check_flag = "enable";
+                  wifi,fem_check_low_pd_threshold = "650";
+                  wifi,fem_check_high_pd_threshold = "1050";
+        };
+};

@@ -1210,6 +1210,8 @@ static void mdp3_ctrl_pan_display(struct msm_fb_data_type *mfd)
 		/*wait for one frame time to ensure frame is sent to panel*/
 		msleep(1000 / panel_info->mipi.frame_rate);
 		mdp3_session->first_commit = false;
+		rc |= panel->event_handler(panel,
+					MDSS_EVENT_POST_PANEL_ON, NULL);
 	}
 
 	mdp3_session->vsync_before_commit = 0;

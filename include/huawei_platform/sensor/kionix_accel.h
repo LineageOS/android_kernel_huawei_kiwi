@@ -23,7 +23,7 @@
 #include	<linux/i2c.h>
 #include	<linux/input.h>
 #ifdef CONFIG_HUAWEI_DSM 
-#include 	<linux/dsm_pub.h>
+#include 	<dsm/dsm_pub.h>
 #endif
 #include	<linux/sensors.h>
 

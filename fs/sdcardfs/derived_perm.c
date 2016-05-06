@@ -31,6 +31,7 @@ static void inherit_derived_state(struct inode *parent, struct inode *child)
 	ci->d_uid = pi->d_uid;
 	ci->d_gid = pi->d_gid;
 	ci->d_mode = pi->d_mode;
+	ci->under_android = pi->under_android;
 }
 
 /* helper function for derived state */
@@ -86,7 +87,9 @@ void get_derived_permission(struct dentry *parent, struct dentry *dentry)
 			if (!strcasecmp(dentry->d_name.name, "Android")) {
 				/* App-specific directories inside; let anyone traverse */
 				info->perm = PERM_ANDROID;
-				info->d_mode = 00771;
+				info->under_android = true;
+				//info->d_mode = 00771;
+			/*
 			} else if (sbi->options.split_perms) {
 				if (!strcasecmp(dentry->d_name.name, "DCIM")
 					|| !strcasecmp(dentry->d_name.name, "Pictures")) {
@@ -99,17 +102,18 @@ void get_derived_permission(struct dentry *parent, struct dentry *dentry)
 						|| !strcasecmp(dentry->d_name.name, "Ringtones")) {
 					info->d_gid = AID_SDCARD_AV;
 				}
+				*/
 			}
 			break;
 		case PERM_ANDROID:
 			if (!strcasecmp(dentry->d_name.name, "data")) {
 				/* App-specific directories inside; let anyone traverse */
 				info->perm = PERM_ANDROID_DATA;
-				info->d_mode = 00771;
+				//info->d_mode = 00771;
 			} else if (!strcasecmp(dentry->d_name.name, "obb")) {
 				/* App-specific directories inside; let anyone traverse */
 				info->perm = PERM_ANDROID_OBB;
-				info->d_mode = 00771;
+				//info->d_mode = 00771;
 				// FIXME : this feature will be implemented later.
 				/* Single OBB directory is always shared */
 			} else if (!strcasecmp(dentry->d_name.name, "user")) {
@@ -118,7 +122,7 @@ void get_derived_permission(struct dentry *parent, struct dentry *dentry)
 				 * specific path. */
 				info->perm = PERM_ANDROID_USER;
 				info->d_gid = AID_SDCARD_ALL;
-				info->d_mode = 00770;
+				//info->d_mode = 00770;
 			}
 			break;
 		/* same policy will be applied on PERM_ANDROID_DATA
@@ -129,14 +133,14 @@ void get_derived_permission(struct dentry *parent, struct dentry *dentry)
 			if (appid != 0) {
 				info->d_uid = multiuser_get_uid(parent_info->userid, appid);
 			}
-			info->d_mode = 00770;
+			//info->d_mode = 00770;
 			break;
 		case PERM_ANDROID_USER:
 			/* Root of a secondary user */
 			info->perm = PERM_ROOT;
 			info->userid = simple_strtoul(dentry->d_name.name, NULL, 10);
 			info->d_gid = AID_SDCARD_R;
-			info->d_mode = 00771;
+			//info->d_mode = 00771;
 			break;
 	}
 }

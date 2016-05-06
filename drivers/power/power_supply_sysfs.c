@@ -190,6 +190,9 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(energy_avg),
 	POWER_SUPPLY_ATTR(hi_power),
 	POWER_SUPPLY_ATTR(low_power),
+#ifdef CONFIG_HUAWEI_KERNEL
+	POWER_SUPPLY_ATTR(cal_capacity),
+#endif
 	POWER_SUPPLY_ATTR(capacity),
 	POWER_SUPPLY_ATTR(capacity_alert_min),
 	POWER_SUPPLY_ATTR(capacity_alert_max),

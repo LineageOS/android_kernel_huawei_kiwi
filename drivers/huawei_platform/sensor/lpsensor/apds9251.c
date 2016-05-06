@@ -195,7 +195,6 @@ static struct workqueue_struct *rgb_apds9251_workqueue = NULL;
 /*init the register of device function for probe and every time the chip is powered on*/
 static int rgb_apds9251_init_client(struct i2c_client *client);
 /*we use the unified the function for i2c write and read operation*/
-static int apds_als_polling_count=0;
 static int rgb_apds9251_i2c_write(struct i2c_client*client, u8 reg, u16 value,bool flag)
 {
 	int err,loop;
@@ -436,18 +435,6 @@ static void apds9251_change_als_threshold(struct i2c_client *client)
 	// report to HAL
 	data->rgb_data.lx = (data->rgb_data.lx>30000) ? 30000 : data->rgb_data.lx;
 	data->rgb_data.cct = (data->rgb_data.cct<10000) ? data->rgb_data.cct : 10000;
-	if( apds_als_polling_count < 5 )
-	{
-		if(data->rgb_data.lx == APDS9251_LUX_MAX)
-		{
-			data->rgb_data.lx = data->rgb_data.lx - apds_als_polling_count%2;
-		}
-		else
-		{
-			data->rgb_data.lx = data->rgb_data.lx + apds_als_polling_count%2;
-		}
-		apds_als_polling_count++;
-	}
 	input_report_abs(data->input_dev_als, ABS_MISC, data->rgb_data.lx);
 	input_sync(data->input_dev_als);
 	//we does not use cct
@@ -527,7 +514,6 @@ static int rgb_apds9251_enable_als_sensor(struct i2c_client *client, int val)
 				mutex_unlock(&data->single_lock);
 				return ret;
 			}
-			apds_als_polling_count=0;
 			data->enable_als_sensor = val;
 			apds9251_dd_set_main_ctrl(client, APDS9251_DD_CS_MODE|APDS9251_DD_ALS_EN);
 
@@ -1343,7 +1329,7 @@ static int sensor_parse_dt(struct device *dev,
 	}
 	tp_moudle_count = tmp;
 
-	APDS9251_INFO("%s:%d read lux cal parameter count from dtsi  is %d\n", __FUNCTION__, __LINE__, tp_moudle_count);
+	APDS9251_FLOW("%s:%d read lux cal parameter count from dtsi  is %d\n", __FUNCTION__, __LINE__, tp_moudle_count);
 
 	if(tp_moudle_count > MODULE_MANUFACTURE_NUMBER){
 		APDS9251_ERR("%s,line %d:tp_moudle_count from dtsi too large: %d\n",__func__,__LINE__, tp_moudle_count);
@@ -1356,7 +1342,7 @@ static int sensor_parse_dt(struct device *dev,
 			APDS9251_ERR("%s:%d apds9251,junda_data0 length invaild or dts number is larger than:%d\n",__FUNCTION__,__LINE__,array_len);
 			return array_len;
 		}
-		APDS9251_INFO("%s:%d read lux cal parameter count from dtsi  is %d\n", __FUNCTION__, __LINE__, array_len);
+		APDS9251_FLOW("%s:%d read lux cal parameter count from dtsi  is %d\n", __FUNCTION__, __LINE__, array_len);
 
 		ptr = (long *)&apds9251_tp_module_parameter[i];
 
@@ -1367,7 +1353,7 @@ static int sensor_parse_dt(struct device *dev,
 				return retval;
 			}
 			ptr[index]  = simple_strtol(raw_data0_dts, NULL, 10);
-			APDS9251_INFO("%s:%d lux cal parameter from dtsi  is %ld\n", __FUNCTION__, __LINE__, ptr[index]);
+			APDS9251_FLOW("%s:%d lux cal parameter from dtsi  is %ld\n", __FUNCTION__, __LINE__, ptr[index]);
 		}
 	}
 

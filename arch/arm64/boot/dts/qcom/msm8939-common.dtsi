@@ -74,6 +74,14 @@
             label = "srecorder_mem";
         };
 
+        sahara_mem: sahara_region@0x8cb00000 {
+		linux,reserve-contiguous-region;
+                linux,reserve-region;
+                linux,remove-completely;
+                reg = <0x0 0x8cb00000 0x0 0x0050000>;
+                label = "sahara_mem";
+        };
+
 		hwlog_tz_mem: hwlog_tz_region@0 {
 			linux,reserve-contiguous-region;
 			linux,reserve-region;
@@ -920,9 +928,11 @@
 		clock-names = "iface_clk", "core_clk";
 		qcom,clk-freq-out = <100000>;
 		qcom,clk-freq-in  = <19200000>;
-		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-names = "i2c_active", "i2c_sleep", "i2c_defult";
 		pinctrl-0 = <&i2c_0_active>;
 		pinctrl-1 = <&i2c_0_sleep>;
+		pinctrl-2 = <&i2c_0_defult>;
+		gpios = <&msm_gpio 7 0>, <&msm_gpio 6 0>;
 		qcom,noise-rjct-scl = <0>;
 		qcom,noise-rjct-sda = <0>;
 		qcom,bam-pipe-idx-cons = <6>;

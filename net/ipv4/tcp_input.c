@@ -75,6 +75,10 @@
 #include <asm/unaligned.h>
 #include <net/netdma.h>
 
+#ifdef CONFIG_HW_WIFIPRO
+#include "wifipro_tcp_monitor.h"
+#endif
+
 int sysctl_tcp_timestamps __read_mostly = 1;
 int sysctl_tcp_window_scaling __read_mostly = 1;
 int sysctl_tcp_sack __read_mostly = 1;
@@ -3134,6 +3138,12 @@ static int tcp_clean_rtx_queue(struct sock *sk, int prior_fackets,
 
 		tcp_ack_update_rtt(sk, flag, seq_rtt);
 		tcp_rearm_rto(sk);
+
+#ifdef CONFIG_HW_WIFIPRO
+        if(is_wifipro_on && tp->srtt != 0 && !(flag & FLAG_RETRANS_DATA_ACKED)){
+            wifipro_update_rtt(tp->srtt, sk);
+        }
+#endif
 
 		if (tcp_is_reno(tp)) {
 			tcp_remove_reno_sacks(sk, pkts_acked);

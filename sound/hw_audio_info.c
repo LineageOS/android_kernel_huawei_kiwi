@@ -51,7 +51,7 @@ static struct dsm_client *audio_dclient = NULL;
 #define AUDIO_PROP_MASTER_MIC_EXIST_MASK    0x00000010
 #define AUDIO_PROP_SECONDARY_MIC_EXIST_MASK 0x00000020
 #define AUDIO_PROP_ERROR_MIC_EXIST_MASK     0x00000040
-
+#define AUDIO_PROP_DSP_DTS_ENABLE           0x00100000
 /* Bit12 ~ bit15:
    Denote which mic would be used in hand held mode, please add as needed */
 #define AUDIO_PROP_HANDHELD_MASTER_MIC_NODE "hand_held_master_mic_strategy"
@@ -596,6 +596,10 @@ static int audio_info_probe(struct platform_device *pdev)
     {
         memset(product_identifier, 0, sizeof(product_identifier));
         strncpy(product_identifier, string, sizeof(product_identifier) - 1);
+        if(strstr(product_identifier, "ath") || strstr(product_identifier, "rio"))
+        {
+           audio_property |= AUDIO_PROP_DSP_DTS_ENABLE;
+        }
     }
 
     string = NULL;

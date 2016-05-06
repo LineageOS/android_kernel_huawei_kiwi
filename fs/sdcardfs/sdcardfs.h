@@ -68,13 +68,14 @@
 #define AID_SDCARD_ALL    1035	/* access all users external storage */
 
 #define AID_PACKAGE_INFO  1027
-
+/*
 #define fix_derived_permission(x)	\
 	do {						\
 		(x)->i_uid = SDCARDFS_I(x)->d_uid;	\
 		(x)->i_gid = SDCARDFS_I(x)->d_gid;	\
 		(x)->i_mode = ((x)->i_mode & S_IFMT) | SDCARDFS_I(x)->d_mode;\
 	} while (0)
+*/
 
 /* OVERRIDE_CRED() and REVERT_CRED()
  * 	OVERRID_CRED()
@@ -183,6 +184,7 @@ struct sdcardfs_inode_info {
 	gid_t d_gid;
 	mode_t d_mode;
 
+	bool under_android;
 	struct inode vfs_inode;
 };
 
@@ -197,10 +199,12 @@ struct sdcardfs_mount_options {
 	uid_t fs_low_uid;
 	gid_t fs_low_gid;
 	gid_t write_gid;
+	gid_t m_gid;
 	int split_perms;
 	derive_t derive;
 	lower_fs_t lower_fs;
 	unsigned int reserved_mb;
+	mode_t mask;
 };
 
 /* sdcardfs super-block data in memory */
@@ -442,6 +446,46 @@ out:
 	mutex_unlock(&path.dentry->d_inode->i_mutex);
 	path_put(&path);
 	return err;
+}
+
+static inline void fix_derived_permission(struct inode* x)
+{
+    struct sdcardfs_sb_info *sbi = SDCARDFS_SB(x->i_sb);
+    int visible_mode = 0775 & ~(sbi->options.mask);
+    struct inode *current_lower_inode = sdcardfs_lower_inode(x);
+    struct sdcardfs_inode_info *info = SDCARDFS_I(x);
+    int owner_mode,filtered_mode;
+    x->i_uid = SDCARDFS_I(x)->d_uid;
+    x->i_gid = SDCARDFS_I(x)->d_gid;
+
+    if (sbi->options.m_gid == AID_SDCARD_RW) {
+        /* As an optimization, certain trusted system components only run
+         * as owner but operate across all users. Since we're now handing
+         * out the sdcard_rw GID only to trusted apps, we're okay relaxing
+         * the user boundary enforcement for the default view. The UIDs
+         * assigned to app directories are still multiuser aware. */
+        x->i_gid = AID_SDCARD_RW;
+    } else {
+        x->i_gid = multiuser_get_uid(info->userid, sbi->options.m_gid);
+    }
+
+    if (SDCARDFS_I(x)->perm == PERM_LEGACY_PRE_ROOT) {
+        /* Top of multi-user view should always be visible to ensure
+         * secondary users can traverse inside. */
+        visible_mode = 0711;
+    } else if (SDCARDFS_I(x)->under_android) {
+        /* Block "other" access to Android directories, since only apps
+         * belonging to a specific user should be in there; we still
+         * leave +x open for the default view. */
+        if (sbi->options.m_gid == AID_SDCARD_RW) {
+            visible_mode = visible_mode & ~0006;
+        } else {
+            visible_mode = visible_mode & ~0007;
+        }
+    }
+    owner_mode = current_lower_inode->i_mode & 0700;
+    filtered_mode = visible_mode & (owner_mode | (owner_mode >> 3) | (owner_mode >> 6));
+    x->i_mode = (x->i_mode & S_IFMT) | filtered_mode;
 }
 
 /*

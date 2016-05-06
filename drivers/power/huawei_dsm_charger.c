@@ -116,6 +116,7 @@ struct dsm_err_info dsm_err;
 static int usbin_irq_invoke_flag = 0;
 static unsigned long usbin_start_tm_sec = 0;
 static bool dsm_factory_flag = false;
+extern bool uvlo_event_trigger;
 
 int dsm_charger_ops_register(struct dsm_charger_ops *ops)
 {
@@ -473,7 +474,7 @@ static int dump_registers_and_adc(struct hw_dsm_charger_info *di, struct dsm_cli
     }
 
     if ((DSM_BMS_NORMAL_SOC_CHANGE_MUCH <= type)
-        && (DSM_BMS_POWON_SOC_CHANGE_MUCH >= type)) /* only care bms abnormal*/
+        && (DSM_BMS_ERR_NUMBER_MAX > type)) /* only care bms abnormal*/
     {
         ret = di->bms_ops->bms_dump_register(dclient); /* if bms abnormal, dump bms registers*/
         if(ret)
@@ -1035,6 +1036,14 @@ static void check_charging_batt_status_work(struct work_struct *work)
             dsm_dump_log(charger_dclient, DSM_BATT_TEMP_BELOW_0);
         }
 
+        if(uvlo_event_trigger)
+        {
+            if(ABNORMAL_UVLO_VOL_THR <= vbat_uv)
+            {
+                dsm_dump_log(bms_dclient, DSM_BMS_HIGH_VOLTAGE_UVLO);
+            }
+            uvlo_event_trigger = false;
+        }
         if(QCOM_LINEAR_CHARGER == g_charger_core->charger_type_info.charger_index)
         {
             if(CHARGE_CURRENT_MAX > current_ma)

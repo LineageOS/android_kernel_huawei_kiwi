@@ -70,7 +70,8 @@ struct otp_function_t otp_function_lists []=
 	#include "sensor_otp_kiw.h"
 	#include "sensor_otp_chm.h"
 	#include "sensor_otp_ale.h"
-	#include "sensor_otp_t2.h"
+	#include "sensor_otp_cherry.h"
+	/* #include "sensor_otp_t2.h" */
 };
 
 /*************************************************

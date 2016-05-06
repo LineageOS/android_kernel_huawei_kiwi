@@ -55,7 +55,7 @@
 #endif
 
 #ifdef CONFIG_HUAWEI_DSM
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #include <linux/errno.h>
 #endif
 #define _read_sample_test_size			40

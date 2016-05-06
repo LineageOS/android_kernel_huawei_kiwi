@@ -44,8 +44,8 @@ static  uint32_t bg_ratio_typical = 0x257;   //the average of 4 Golden samples' 
 #define OV13850_OTP_CHECKSUM_ERR      (1 << 5)
 #define OV13850_OTP_FAIL_FLAG             (1 << 6)
 
-#define OV1385_MODULE_HUAWEI_193_ID      0xC1 //KIW     23060193
-#define OV1385_MODULE_HUAWEI_167_ID      0xA7 //CHM/ALE 23060167
+#define OV1385_MODULE_HUAWEI_193_ID      0xC1 //23060193   KIW 
+#define OV1385_MODULE_HUAWEI_167_ID      0xA7 //23060167   CHM/ALE/CHERRY
 #define OV13850_OTP_LSC_SIZE             360
 
 #define OV13850_MMI_OTP_VCM_FLAG          (1 << 0)
@@ -54,6 +54,8 @@ static  uint32_t bg_ratio_typical = 0x257;   //the average of 4 Golden samples' 
 #define OV13850_MMI_OTP_LSC_FLAG          (1 << 3)
 #define OV13850_MMI_OTP_CHECKSUM_FLAG     (1 << 4)
 #define OV13850_MMI_OTP_SUMVAL_FLAG       (1 << 5)
+
+#define MMI_OTP_FLAG_FAILED_MASK           0x3F
 
 //the value used for vcm effect, maybe modified by others
 #define OV13850_LITEON_167_OTP_VCM_OFFSET_VALUE    100
@@ -449,25 +451,25 @@ static bool ov13850_otp_read_vcm(struct msm_sensor_ctrl_t *s_ctrl)
 		{
 			case LITEON_MODULE_167_NUM:
 			{
-				CMR_LOGW("ov13850 otp is liteon module and product name is CHM(ALE)!\n");
+				CMR_LOGW("ov13850 otp is liteon module and huawei code num is 167.\n");
 				vcm_offset_value = OV13850_LITEON_167_OTP_VCM_OFFSET_VALUE;
 				break;
 			}
 			case OFILM_MODULE_167_NUM:
 			{
-				CMR_LOGW("ov13850 otp is liteon module and product name is CHM(ALE)!\n");
+				CMR_LOGW("ov13850 otp is ofilm module and huawei code num is 167.\n");
 				vcm_offset_value = OV13850_OFILM_167_OTP_VCM_OFFSET_VALUE;
 				break;
 			}
 			case LITEON_MODULE_193_NUM:
 			{
-				CMR_LOGW("ov13850 otp is liteon module and product name is KIW!\n");
+				CMR_LOGW("ov13850 otp is liteon module and huawei code num is 193.\n");
 				vcm_offset_value = OV13850_LITEON_193_OTP_VCM_OFFSET_VALUE;
 				break;
 			}
 			case OFILM_MODULE_193_NUM:
 			{
-				CMR_LOGW("ov13850 otp is liteon module and product name is KIW!\n");
+				CMR_LOGW("ov13850 otp is ofilm module and huawei code num is 193.\n");
 				vcm_offset_value = OV13850_OFILM_193_OTP_VCM_OFFSET_VALUE;
 				break;
 			}
@@ -531,7 +533,7 @@ static bool ov13850_get_otp_from_sensor(struct msm_sensor_ctrl_t *s_ctrl)
 	u8   otpCheckSumVal = 0;
 	bool retVal = false;
 	uint8_t otpflag = 0;
-	uint16_t tmp_mmi_otp_flag = 0x3F;//set all mmi otp flag mask ,default:fail
+	uint16_t tmp_mmi_otp_flag = MMI_OTP_FLAG_FAILED_MASK; //set all mmi otp flag mask ,default:fail
 
 #ifdef OV13850_OTP_READ_TIME_PRINT
 	u16 otpReadUsed = 0;

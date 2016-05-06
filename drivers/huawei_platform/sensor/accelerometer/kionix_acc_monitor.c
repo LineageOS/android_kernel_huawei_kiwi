@@ -38,7 +38,7 @@
 #include	<linux/regulator/consumer.h>
 #include	<linux/of_gpio.h>
 #include	<linux/sensors.h>
-#include	<linux/dsm_pub.h>
+#include	<dsm/dsm_pub.h>
 #include	<huawei_platform/sensor/kionix_accel.h>
 #include	<huawei_platform/sensor/hw_sensor_info.h>
 

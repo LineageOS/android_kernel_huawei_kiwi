@@ -25,8 +25,7 @@
 #define LINUX_MMC_MMC_H
 
 #include <uapi/linux/mmc/mmc.h>
-
-static inline bool mmc_op_multi(u32 opcode)
+extern inline bool mmc_op_multi(u32 opcode)
 {
 	return opcode == MMC_WRITE_MULTIPLE_BLOCK ||
 	       opcode == MMC_READ_MULTIPLE_BLOCK;
@@ -236,6 +235,9 @@ struct _mmc_csd {
 #define EXT_CSD_WR_REL_PARAM		166	/* RO */
 #define EXT_CSD_RPMB_MULT		168	/* RO */
 #define EXT_CSD_FW_CONFIG		169	/* R/W */
+#ifdef CONFIG_HW_EMMC_PHYSICS_PROTECT
+#define EXT_CSD_USER_WP         171 /* R/W */
+#endif
 #define EXT_CSD_BOOT_WP			173	/* R/W */
 #define EXT_CSD_ERASE_GROUP_DEF		175	/* R/W */
 #define EXT_CSD_PART_CONFIG		179	/* R/W */

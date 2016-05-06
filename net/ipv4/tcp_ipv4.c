@@ -85,6 +85,10 @@
 #include <linux/crypto.h>
 #include <linux/scatterlist.h>
 
+#ifdef CONFIG_HW_WIFIPRO
+#include "wifipro_tcp_monitor.h"
+#endif
+
 int sysctl_tcp_tw_reuse __read_mostly;
 int sysctl_tcp_low_latency __read_mostly;
 EXPORT_SYMBOL(sysctl_tcp_low_latency);
@@ -793,6 +797,10 @@ static void tcp_v4_send_ack(struct sk_buff *skb, u32 seq, u32 ack,
 			      ip_hdr(skb)->daddr, &arg, arg.iov[0].iov_len);
 
 	TCP_INC_STATS_BH(net, TCP_MIB_OUTSEGS);
+
+#ifdef CONFIG_HW_WIFIPRO
+    wifipro_update_tcp_statistics(skb->sk, TCP_MIB_OUTSEGS, 1);
+#endif
 }
 
 static void tcp_v4_timewait_ack(struct sock *sk, struct sk_buff *skb)
@@ -1972,6 +1980,10 @@ int tcp_v4_rcv(struct sk_buff *skb)
 
 	/* Count it even if it's bad */
 	TCP_INC_STATS_BH(net, TCP_MIB_INSEGS);
+
+    #ifdef CONFIG_HW_WIFIPRO
+    wifipro_update_tcp_statistics(skb->sk, WIFIPRO_TCP_MIB_INSEGS, 1);
+    #endif
 
 	if (!pskb_may_pull(skb, sizeof(struct tcphdr)))
 		goto discard_it;

@@ -21,4 +21,11 @@ config HUAWEI_KERNEL_DEBUG
 	help
 	  Enable sysrq, dump mode and some debug masks by default.
 
+config SELINUX_DMD_REPORT
+	bool "Use selinux dmd report function"
+	depends on HUAWEI_KERNEL
+	default n
+	help
+	  Enable selinux dmd report function.
+
 source "arch/$SRCARCH/Kconfig"

@@ -66,7 +66,7 @@ extern unsigned int get_datamount_flag(void);
 
 #ifdef CONFIG_HUAWEI_DSM
 #define FS_DSM_BUFFER_SIZE  1024
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 struct dsm_dev dsm_fs = {
 	.name = "dsm_ext4",
 	.fops = NULL,

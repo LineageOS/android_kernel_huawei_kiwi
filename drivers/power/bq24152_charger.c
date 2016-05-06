@@ -1824,13 +1824,38 @@ static void set_charging_by_current_limit(struct bq2415x_device *bq)
             schedule_delayed_work(&bq->lower_power_charger_work, 0);
     }
 }
+#define OTG_RETRY_ENABLE_DELAY_MS	10
+#define OTG_RETRY_ERR_COUNT			3
+extern bool get_usb_id_status(void);
+static void check_otg_id_work(struct work_struct *work)
+{
+	struct bq2415x_device *bq = container_of(work, struct bq2415x_device,
+						 otg_id_check_work.work);
+	static unsigned int otg_err_count = 0;
+	if (get_usb_id_status() == true)
+	{
+		otg_err_count = 0;
+		return;
+	}
 
+	if (otg_err_count >= OTG_RETRY_ERR_COUNT)
+	{
+		pr_info("retry time out, open otg failed\n");
+		otg_err_count = 0;
+		return;
+	}
+
+	otg_err_count++;
+	pr_info("retry to open otg, count is %d\n", otg_err_count);
+	bq24152_control_otg(bq, true);
+}
 static void bq2415x_external_power_changed(struct power_supply *psy)
 {
 	struct bq2415x_device *bq = container_of(psy, struct bq2415x_device,
 								charger);
 	unsigned long flags;
     int current_ma = 0, charger_present = 0;
+	int usb_present = 0;
     union power_supply_propval ret = {0,};
 	spin_lock_irqsave(&bq->ibat_change_lock, flags);
     if(!bq->use_only_charge)
@@ -1845,6 +1870,12 @@ static void bq2415x_external_power_changed(struct power_supply *psy)
     }
 
 	spin_unlock_irqrestore(&bq->ibat_change_lock, flags);
+	usb_present = is_usb_chg_exist();
+	if ((usb_present == 0))
+	{
+		schedule_delayed_work(&bq->otg_id_check_work,
+				msecs_to_jiffies(OTG_RETRY_ENABLE_DELAY_MS));
+	}
 
     charger_present = bq24152_charger_present();
     if(charger_present)
@@ -2973,6 +3004,7 @@ static int bq2415x_probe(struct i2c_client *client,
 	}
 
     g_bq=bq;
+	INIT_DELAYED_WORK(&bq->otg_id_check_work, check_otg_id_work);
 	INIT_DELAYED_WORK(&bq->work, bq2415x_timer_work);
 	bq2415x_set_autotimer(bq, 1);
 	INIT_WORK(&bq->iusb_work,bq2415x_iusb_work);
@@ -3010,6 +3042,7 @@ static int bq2415x_remove(struct i2c_client *client)
 	if (bq->init_data.set_mode_hook)
 		bq->init_data.set_mode_hook(NULL, NULL);
 	cancel_delayed_work_sync(&bq->lower_power_charger_work);
+	cancel_delayed_work_sync(&bq->otg_id_check_work);
     regulator_unregister(bq->otg_vreg.rdev);
 	bq2415x_sysfs_exit(bq);
 	bq2415x_power_supply_exit(bq);

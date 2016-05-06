@@ -71,8 +71,8 @@
 		onnn,discharge-enable;
 		onnn,restore-reg;
 		monitor_reg_work_flag=<1>;
-	};	
-	
+	};
+
 	/*just can support 3 devices, delete this one*/
 
 	fan53555: fan53555-regulator@60 {

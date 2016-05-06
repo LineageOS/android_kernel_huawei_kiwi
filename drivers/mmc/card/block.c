@@ -189,7 +189,7 @@ MODULE_PARM_DESC(perdev_minors, "Minors numbers to allocate per device");
 
 static inline int mmc_blk_part_switch(struct mmc_card *card,
 				      struct mmc_blk_data *md);
-static int get_card_status(struct mmc_card *card, u32 *status, int retries);
+
 
 #ifdef CONFIG_HUAWEI_KERNEL
 extern int mmc_suspend(struct mmc_host *host);
@@ -209,7 +209,8 @@ static inline void mmc_blk_clear_packed(struct mmc_queue_req *mqrq)
 	packed->blocks = 0;
 }
 
-static struct mmc_blk_data *mmc_blk_get(struct gendisk *disk)
+
+struct mmc_blk_data *mmc_blk_get(struct gendisk *disk)
 {
 	struct mmc_blk_data *md;
 
@@ -223,6 +224,9 @@ static struct mmc_blk_data *mmc_blk_get(struct gendisk *disk)
 
 	return md;
 }
+#ifdef CONFIG_HW_EMMC_PHYSICS_PROTECT
+EXPORT_SYMBOL(mmc_blk_get);
+#endif
 
 static inline int mmc_get_devidx(struct gendisk *disk)
 {
@@ -1181,7 +1185,7 @@ static int send_stop(struct mmc_card *card, u32 *status)
 	return err;
 }
 
-static int get_card_status(struct mmc_card *card, u32 *status, int retries)
+int get_card_status(struct mmc_card *card, u32 *status, int retries)
 {
 	struct mmc_command cmd = {0};
 	int err;
@@ -1195,6 +1199,9 @@ static int get_card_status(struct mmc_card *card, u32 *status, int retries)
 		*status = cmd.resp[0];
 	return err;
 }
+#ifdef CONFIG_HW_EMMC_PHYSICS_PROTECT
+EXPORT_SYMBOL(get_card_status);
+#endif
 
 #define ERR_NOMEDIUM	3
 #define ERR_RETRY	2
@@ -3557,13 +3564,18 @@ static int mmc_blk_probe(struct mmc_card *card)
 #ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
 #ifdef CONFIG_HUAWEI_KERNEL
 	if (mmc_card_sd(card)) {
-		printk("%s: set manual_resume in mmc_blk_probe.\n", mmc_hostname(card->host));
-		mmc_set_bus_resume_policy(card->host, 1);
+		if (card->host->caps & MMC_CAP_NEEDS_POLL) {
+			pr_info("mmc_blk_probe, is polling method, not enable deferred resume\n");
+		} else {
+			pr_info("mmc_blk_probe, not polling method, enable deferred resume\n");
+			mmc_set_bus_resume_policy(card->host, 1);
+		}
 	}
 #else
 	mmc_set_bus_resume_policy(card->host, 1);
 #endif
 #endif
+
 	if (mmc_add_disk(md))
 		goto out;
 

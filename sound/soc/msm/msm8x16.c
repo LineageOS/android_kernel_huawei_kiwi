@@ -63,6 +63,15 @@ static int hac_en_gpio = 0;
 
 static int msm8916_hac_switch = DEFUALT_HAC_SWITCH_VALUE;
 
+/*for cherry-vd SPK-PA ext buck-boost ctl*/
+#define DEFUALT_SPK_SWITCH_VALUE 0x0
+#define SPK_ON 1
+#define GPIO_PULL_UP_FLAG 1
+#define GPIO_PULL_DOWN_FLAG 0
+
+static int spk_en_gpio = 0;
+static int ext_spk_switch = DEFUALT_SPK_SWITCH_VALUE;
+
 static int msm_btsco_rate = BTSCO_RATE_8KHZ;
 static int msm_btsco_ch = 1;
 
@@ -1046,7 +1055,92 @@ static int msm_external_pa_put(struct snd_kcontrol *kcontrol, struct snd_ctl_ele
 	}
 	return ret;
 }
+/* The function to pull up GPIO 0 to enable SPK_EXT_Boost*/
+static void spk_gpio_on(void)
+{
+	int ret = 0;
 
+	if (spk_en_gpio < 0)
+	{
+		pr_err("%s: spk_en_gpio is negative\n", __func__);
+		return;
+	}
+	
+	ret = gpio_request(spk_en_gpio, "spk_en_gpio");
+	if (ret)
+	{
+		pr_err("%s: Failed to configure spk enable "
+			"gpio %u\n", __func__, spk_en_gpio);
+		return;
+	}
+
+	pr_debug("%s: Enable SPK gpio %u\n", __func__, spk_en_gpio);
+	gpio_direction_output(spk_en_gpio, GPIO_PULL_UP_FLAG);
+}
+
+/* The function to pull down GPIO 0 to disable SPK_EXT_Boost*/
+static void spk_gpio_off(void)
+{
+	if (spk_en_gpio < 0)
+	{
+ 		pr_err("%s: spk_en_gpio is negative\n", __func__);
+		return;
+	}
+
+	pr_debug("%s: Pull down and free spk enable gpio %u\n",
+			__func__, spk_en_gpio);
+	
+	gpio_direction_output(spk_en_gpio, GPIO_PULL_DOWN_FLAG);
+	gpio_free(spk_en_gpio);
+}
+
+static const char *spk_switch_text[] = {"OFF","ON"};
+
+static const struct soc_enum ext_spk_switch_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(spk_switch_text),
+						spk_switch_text),
+};
+
+/* The function to get SPK status */
+static int ext_spk_switch_get(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	if(NULL == kcontrol || NULL == ucontrol)
+	{
+		pr_err("%s: input pointer is null\n", __func__);
+	}
+
+	pr_debug("%s: ext_spk_switch = %d\n", __func__,
+			 ext_spk_switch);
+	ucontrol->value.integer.value[0] = ext_spk_switch;
+	return 0;
+}
+
+/* The function to set SPK status */
+static int ext_spk_switch_put(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	int ret = 0;
+	if(NULL == kcontrol || NULL == ucontrol)
+	{
+		pr_err("%s: input pointer is null\n", __func__);
+	}
+	ext_spk_switch = ucontrol->value.integer.value[0];
+	pr_debug("%s: ext_spk_switch = %d"
+			" ucontrol->value.integer.value[0] = %d\n", __func__,
+			ext_spk_switch,
+			 (int) ucontrol->value.integer.value[0]);
+	if(ext_spk_switch)
+	{
+		spk_gpio_on();
+		ret = SPK_ON;
+	}
+	else
+	{
+		spk_gpio_off();
+	}
+	return ret;
+}
 static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, rx_bit_format_text),
 	SOC_ENUM_SINGLE_EXT(2, ter_mi2s_tx_ch_text),
@@ -1151,6 +1245,8 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm8916_hac_switch_get, msm8916_hac_switch_put),
 	SOC_ENUM_EXT("Initial external PA", msm_external_pa_enum[0],
 	     msm_external_pa_get, msm_external_pa_put),
+	SOC_ENUM_EXT("SPK",ext_spk_switch_enum[0],
+	     ext_spk_switch_get,ext_spk_switch_put),
 };
 
 static int msm8x16_mclk_event(struct snd_soc_dapm_widget *w,
@@ -2995,6 +3091,12 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	if (ret) {
 		ad_loge("%s: Failed to configure hac enable "
 				"gpio %u\n", __func__, hac_en_gpio);
+	}
+	/*Get GPIO num for SPK-PA ext buck-boost ctl*/
+	spk_en_gpio = of_get_named_gpio(pdev->dev.of_node,
+					"qcom,spk-buck-boost", 0);
+	if (spk_en_gpio < 0) {
+		pr_err("%s: failed to get spk_en_gpio\n", __func__);
 	}
 	return 0;
 err:

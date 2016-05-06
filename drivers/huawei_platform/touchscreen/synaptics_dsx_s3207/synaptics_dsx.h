@@ -164,6 +164,7 @@ struct synaptics_dsx_platform_data {
 	unsigned char truly_dwt;
 	unsigned char eely_dwt;
 	unsigned char lensone_dwt;
+	unsigned char gis_dwt;
 
 	bool holster_supported;
 #endif /*CONFIG_HUAWEI_KERNEL*/

@@ -1,7 +1,7 @@
 #ifndef _HW_AUDIO_INFO_H
 #define _HW_AUDIO_INFO_H
 
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 
 #define DSM_AUDIO_BUF_SIZE           (1024)   /*Byte*/
 

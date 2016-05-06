@@ -90,7 +90,9 @@ static unsigned long vddio_incell_poweroff_time = 0;
 
 /* FPC unlock can't light lcd backlight */
 static int lcd_power_delay_time = false;
-
+/* Difference synchronization to 8939-FEIMA-M-GP between LCD module 8939-L-GP and 8939-FEIMA-M-GP . */
+/*open tp gesture can't wake up screen probability*/
+static bool tp_reset_enable = false;
 unsigned long get_tp_vddio_poweroff_time(void)
 {
 	return vddio_incell_poweroff_time;
@@ -124,7 +126,18 @@ void set_lcd_power_delay_time(int delay_timeValue)
 	lcd_power_delay_time = delay_timeValue;
 	LCD_LOG_INFO("%s:lcd power delay time is : %d\n",__func__,delay_timeValue);
 }
-
+/* Difference synchronization to 8939-FEIMA-M-GP between LCD module 8939-L-GP and 8939-FEIMA-M-GP . */
+/*open tp gesture can't wake up screen probability*/
+/*get lcd module tp reset configcon*/
+bool get_tp_reset_enable(void)
+{
+	return tp_reset_enable;
+}
+/*set lcd module tp reset configcon*/
+void set_tp_reset_status(bool ath_tp_reset)
+{
+	tp_reset_enable = ath_tp_reset;
+}
 /* set global ctrl_pdata pointer */
 void lcd_dbg_set_dsi_ctrl_pdata(struct mdss_dsi_ctrl_pdata *ctrl)
 {

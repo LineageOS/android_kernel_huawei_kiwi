@@ -18,7 +18,7 @@
 
 /* remove to hw_lcd_debug.h */
 #ifdef CONFIG_HUAWEI_DSM
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif
 
 /* Add dynamic_log interface */
@@ -74,6 +74,10 @@ extern struct lcd_pwr_status_t lcd_pwr_status;
 /* FPC unlock can't light lcd backlight */
 int get_lcd_power_delay_time(void);
 void set_lcd_power_delay_time(int delay_timeValue);
+/* Difference synchronization to 8939-FEIMA-M-GP between LCD module 8939-L-GP and 8939-FEIMA-M-GP . */
+/*open tp gesture can't wake up screen probability*/
+bool get_tp_reset_enable(void);
+void set_tp_reset_status(bool ath_tp_reset);
 #ifndef LCD_LOG_ERR
 #define LCD_LOG_ERR( x...)					\
 do{											\

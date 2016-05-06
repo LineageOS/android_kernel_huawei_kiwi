@@ -157,7 +157,7 @@ int check_caller_access_to_name(struct inode *parent_node, const char* name,
 			(current_fsuid() == SDCARDFS_I(parent_node)->d_uid)) {
 			return 1;
 		}
-		return has_rw;
+		return 1;
 	}
 
 	/* No extra permissions to enforce */

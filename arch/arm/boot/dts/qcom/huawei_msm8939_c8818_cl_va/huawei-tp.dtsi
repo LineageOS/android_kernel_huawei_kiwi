@@ -1,0 +1,229 @@
+/*Add synaptics new driver "Synaptics DSX I2C V2.0"*/
+/* Open holster flag */
+/*Change i2c frepuence from 100kHZ to 400kHZ*/
+/*Open fast-relax config for better gesture performance*/
+&tlmm_pinmux {
+
+	synaptics_int_pin {
+		qcom,pins = <&gp 97>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "synaptics-irq";
+		synaptics_int_active: synaptics_int_active {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+		synaptics_int_sleep: synaptics_int_sleep {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	synaptics_rst_pin {
+		qcom,pins = <&gp 32>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "synaptics-rst";
+		synaptics_rst_active: synaptics_rst_active {
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+		synaptics_rst_sleep: synaptics_rst_sleep {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+};
+&soc {
+	i2c@78b9000 { /* BLSP1 QUP5 */
+		status = "ok";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		qcom,clk-freq-out = <400000>;
+		synaptics@70 {
+			compatible = "synaptics,dsx";
+			reg = <0x70>;
+			pinctrl-names = "active","sleep";
+			pinctrl-0 = <&synaptics_int_active &synaptics_rst_active>;
+			pinctrl-1 = <&synaptics_int_sleep &synaptics_rst_sleep>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <97 0x2008>;
+			vdd-supply = <&pm8916_l17>;
+			vcc_i2c-supply = <&pm8916_l16>;
+			/* Some of qcom's param will not be replaced by huawei in dtb, */
+			/* just ignore them:such as "pinctrl-names","pinctrl-0","pinctrl-1", */
+			/* "synaptics,display-coords","synaptics,panel-coords","synaptics,i2c-pull-up", */
+			/* "synaptics,power-down","synaptics,disable-gpios"*/
+			synaptics,vdd = "vdd";
+			synaptics,vbus = "vcc_i2c";
+			synaptics,irq-gpio = <&msm_gpio 97 0x2008>;
+			synaptics,reset-gpio = <&msm_gpio 32 0x0>;
+
+			synaptics,lcd-x = <720>;
+			synaptics,lcd-y = <1280>;
+			synaptics,lcd-all = <1379>;
+			synaptics,virtual_keys = /* KeyCode CenterX CenterY Width Height */
+				/* KEY_BACK */
+				<158 142 1348 150 100
+				/* KEY_HOME(172) */
+				172 360 1348 150 100
+				/* KEY_MENU */
+				139 578 1348 150 100>;
+
+			/* SYNAPTICS_WAKE_UP_GESTURE_FLAG:'1'->enabled,'0'->disabled */
+			/*IC flash is not enough for holster,so fw del one gesture*/
+			synaptics,gesture_enabled = <0>;
+			/* Gestures that supported:                           */
+			/* bit0  Double tap                                        */
+			/* bit1  Single finger slide from left to right     */
+			/* bit2  Single finger slide from right to left     */
+			/* bit3  Single finger slide from top to bottom  */
+			/* bit4  Single finger slide from bottom to top  */
+			/* bit5  Double finger slide from top to bottom--disable for holster*/
+			/* bit6  Single finger slide circle                     */
+			/* bit7  Single finger write letter c                  */
+			/* bit8  Single finger write letter e                  */
+			/* bit9  Single finger write letter m                 */
+			/* bit10 Single finger write letter w                 */
+			/* bit11 Palm off screen                                */
+			synaptics,easy_wakeup_supported_gestures = <0xF81>;
+
+			/*Defination of report key value  for different gestures*/
+			synaptics,easy_wakeup_gesture_keys = 
+			<	59 /*0.Double tap:KEY_F1*/
+				60 /*1.Single finger slide from left to right*/
+				61 /*2.Single finger slide from right to left:KEY_F3*/
+				62 /*3.Single finger slide from top to bottom*/
+				63 /*4.Single finger slide from bottom to top:KEY_F5*/
+				64 /*5.Single finger slide circle clockwise*/
+				65 /*6.Single finger slide circle counter-clockwise*/
+				66 /*7.Single finger write letter c*/
+				67 /*8.Single finger write letter e:KEY_F9*/
+				68 /*9.Single finger write letter m*/
+				87 /*10.Single finger write letter w:KEY_F11*/
+				88 /*11.Palm off screen*/
+			>;
+
+			/* Double-tap-zone defined by huawei */
+			/* Shielded area is:1cm left,1cm right,1cm up,1cm down */
+			huawei,dtz_x0 = <104>;
+			huawei,dtz_y0 = <116>;
+			huawei,dtz_x1 = <616>;
+			huawei,dtz_y1 = <1164>;
+
+			/* SYNAPTICS_GLOVE_FUNCTION_FLAG:'1'->enabled,'0'->disabled*/
+			synaptics,glove_enabled = <0>;
+			/*After reduce power-consumption by exit reduce mode,*/
+			/*we have to reduce f-r rate to make sure gesture work fine*/
+			synaptics,fast_relax_gesture = <7>;
+			/*Holster support flag*/
+			synaptics,holster_supported = <1>;
+			synaptics,glove_edge_switch_supported = <0>;
+			synaptics,esd_support = <1>;
+			sybaptics,support_low_power_model = <0>;
+			synaptics,reset-on-status = <0>;
+			synaptics,power-delay-ms = <160>;
+			synaptics,reset-delay-ms = <250>;
+			synaptics,reset-active-ms = <10>;
+			synaptics,product_name = "c8818";
+
+			/*capacitance self-adapt*/
+			/*To adjust the cutting angle threshold to the maximum range*/
+			huawei,ofilm {
+				huawei,name = "huawei,ofilm";
+				huawei,rxdiagonal_upperlimit = <1150>;
+				huawei,rxdiagonal_lowerlimit = <850>;
+				huawei,rxothers_upperlimit = <100>;
+				huawei,txtxreport_limit = <0>;
+				huawei,highres_upperlimit = <400 400 50>;
+				huawei,highres_lowerlimit = <0xfb50 0xfb50 0xf380>;/*0xfb50=-1200,0xf380=-3200*/
+				huawei,rawcap_upperlimit = <5000>;
+				huawei,rawcap_lowerlimit = <100>;
+
+				huawei,fullraw_upperlimit =
+					<3089 3157 3153 3139 3139 3134 3125 3121 3110 3105 3099 3090 3447 3387 3370 3347 3343 3339 3332 3330 3323 3324 3332 3000
+					3131 3202 3197 3184 3183 3178 3169 3164 3154 3149 3142 3136 3204 3197 3195 3184 3187 3186 3187 3188 3186 3189 3214 3115
+					3135 3205 3200 3187 3185 3180 3171 3167 3156 3152 3145 3138 3189 3182 3180 3168 3170 3167 3169 3171 3170 3175 3200 3229
+					3139 3209 3203 3190 3189 3183 3174 3170 3159 3154 3147 3141 3172 3167 3166 3154 3157 3155 3157 3159 3158 3165 3194 3104
+					3142 3212 3206 3193 3192 3186 3178 3173 3162 3157 3150 3144 3160 3156 3155 3144 3146 3144 3145 3147 3147 3155 3188 3083
+					3147 3217 3211 3197 3197 3191 3182 3178 3166 3161 3155 3148 3150 3146 3145 3134 3136 3134 3135 3137 3136 3145 3179 3084
+					3154 3224 3218 3205 3205 3199 3190 3185 3173 3168 3161 3155 3142 3137 3136 3125 3128 3125 3126 3127 3127 3137 3169 3247
+					3161 3231 3225 3212 3213 3209 3200 3196 3184 3179 3172 3165 3137 3132 3130 3119 3121 3119 3119 3122 3120 3130 3166 3074
+					3167 3238 3232 3220 3222 3217 3210 3207 3195 3191 3183 3177 3133 3128 3126 3114 3115 3114 3114 3115 3113 3122 3158 3059
+					3176 3248 3243 3232 3234 3231 3225 3223 3212 3209 3200 3195 3136 3130 3126 3113 3114 3113 3112 3113 3110 3117 3146 3069
+					3182 3254 3250 3240 3243 3241 3237 3235 3226 3222 3214 3208 3134 3128 3123 3109 3110 3107 3107 3107 3103 3106 3126 3224
+					3191 3264 3262 3253 3257 3255 3253 3252 3243 3239 3231 3227 3135 3129 3124 3109 3110 3107 3107 3106 3100 3101 3122 3028
+					3298 3389 3396 3381 3391 3395 3393 3390 3382 3380 3373 3382 3139 3146 3141 3127 3126 3123 3122 3120 3113 3109 3110 3000>;
+
+				huawei,fullraw_lowerlimit =
+					<1663 1700 1698 1690 1690 1688 1683 1680 1675 1672 1668 1664 1856 1824 1814 1802 1800 1798 1794 1793 1789 1790 1794 0
+					1686 1724 1722 1715 1714 1711 1706 1704 1698 1696 1692 1689 1725 1721 1721 1715 1716 1715 1716 1717 1716 1717 1731 1677
+					1688 1726 1723 1716 1715 1712 1707 1705 1700 1697 1693 1690 1717 1713 1712 1706 1707 1706 1706 1707 1707 1710 1723 1739
+					1690 1728 1725 1718 1717 1714 1709 1707 1701 1699 1695 1691 1708 1705 1705 1699 1700 1699 1700 1701 1701 1704 1720 1672
+					1692 1729 1726 1719 1719 1716 1711 1709 1703 1700 1696 1693 1702 1699 1699 1693 1694 1693 1694 1695 1694 1699 1716 1660
+					1694 1732 1729 1722 1722 1718 1713 1711 1705 1702 1699 1695 1696 1694 1693 1687 1689 1687 1688 1689 1689 1694 1712 1661
+					1699 1736 1733 1726 1726 1722 1718 1715 1708 1706 1702 1699 1692 1689 1689 1683 1684 1683 1683 1684 1684 1689 1707 1749
+					1702 1740 1736 1730 1730 1728 1723 1721 1715 1712 1708 1704 1689 1686 1685 1680 1681 1679 1680 1681 1680 1686 1705 1655
+					1705 1743 1740 1734 1735 1732 1729 1727 1721 1718 1714 1710 1687 1684 1683 1677 1678 1677 1677 1677 1676 1681 1701 1647
+					1710 1749 1746 1740 1741 1740 1737 1735 1730 1728 1723 1720 1689 1685 1683 1676 1677 1676 1676 1676 1675 1678 1694 1653
+					1714 1752 1750 1745 1746 1745 1743 1742 1737 1735 1731 1728 1688 1684 1682 1674 1675 1673 1673 1673 1671 1673 1683 1736
+					1718 1757 1756 1752 1754 1753 1752 1751 1746 1744 1740 1738 1688 1685 1682 1674 1675 1673 1673 1672 1669 1670 1681 1630
+					1776 1825 1828 1821 1826 1828 1827 1825 1821 1820 1816 1821 1690 1694 1691 1684 1683 1681 1681 1680 1676 1674 1675 0>;
+			};
+		
+			huawei,truly {
+				huawei,name = "huawei,truly";
+				huawei,rxdiagonal_upperlimit = <1200>;
+				huawei,rxdiagonal_lowerlimit = <800>;
+				huawei,rxothers_upperlimit = <100>;
+				huawei,txtxreport_limit = <0>;
+				huawei,highres_upperlimit = <550 550 100>;
+				huawei,highres_lowerlimit = <0xfc18 0xfc18 0xf830>;/*0xfc18=-1000,0xf830=-2000*/
+				huawei,rawcap_upperlimit = <5000>;
+				huawei,rawcap_lowerlimit = <100>;
+
+				huawei,fullraw_upperlimit =
+					<3052 3088 3087 3075 3076 3079 3071 3068 3052 3050 3045 3047 3406 3323 3300 3281 3278 3281 3281 3275 3273 3267 3282 3000
+					3062 3098 3096 3084 3086 3089 3082 3079 3063 3060 3056 3059 3111 3105 3095 3085 3087 3095 3100 3098 3098 3096 3133 3116
+					3065 3100 3098 3086 3087 3091 3084 3081 3065 3062 3058 3061 3098 3094 3082 3071 3074 3081 3086 3085 3087 3086 3125 3243
+					3070 3105 3103 3091 3092 3096 3088 3085 3070 3066 3062 3066 3087 3084 3075 3064 3067 3075 3080 3078 3081 3081 3123 3116
+					3073 3107 3105 3093 3094 3098 3091 3088 3072 3068 3064 3067 3078 3076 3067 3056 3058 3066 3071 3070 3072 3074 3119 3105
+					3078 3111 3108 3096 3097 3101 3094 3091 3075 3071 3067 3070 3071 3069 3060 3049 3051 3058 3063 3062 3065 3067 3113 3109
+					3085 3119 3115 3103 3104 3108 3100 3097 3080 3077 3072 3075 3066 3063 3054 3043 3045 3052 3056 3055 3059 3061 3108 3271
+					3089 3123 3119 3108 3110 3115 3108 3105 3090 3086 3080 3083 3063 3060 3051 3039 3041 3047 3051 3050 3054 3056 3104 3098
+					3095 3128 3125 3115 3117 3122 3116 3114 3099 3095 3090 3093 3061 3058 3048 3037 3038 3044 3048 3047 3049 3051 3098 3087
+					3103 3137 3135 3125 3128 3134 3128 3127 3113 3110 3104 3108 3065 3061 3050 3038 3039 3045 3048 3046 3048 3047 3089 3096
+					3106 3140 3139 3131 3136 3142 3136 3137 3123 3121 3115 3118 3065 3060 3049 3035 3036 3041 3044 3042 3042 3038 3075 3256
+					3112 3148 3149 3142 3147 3154 3149 3149 3137 3135 3130 3133 3066 3061 3049 3036 3036 3041 3043 3040 3039 3033 3065 3048
+					3224 3284 3283 3276 3284 3293 3288 3290 3277 3276 3271 3288 3058 3052 3041 3028 3028 3033 3035 3031 3028 3017 3037 3000>;
+
+				huawei,fullraw_lowerlimit =
+					<1754 1775 1774 1767 1768 1770 1765 1764 1755 1753 1750 1752 1958 1910 1897 1886 1884 1886 1886 1882 1881 1878 1886 200
+					1760 1781 1780 1773 1774 1776 1771 1770 1761 1759 1756 1758 1788 1785 1779 1773 1775 1779 1782 1781 1781 1779 1801 1791
+					1762 1782 1781 1774 1775 1777 1772 1771 1762 1760 1758 1759 1781 1778 1772 1765 1767 1771 1774 1773 1774 1774 1797 1864
+					1765 1785 1783 1777 1777 1779 1775 1773 1765 1763 1760 1762 1774 1773 1767 1761 1763 1767 1770 1770 1771 1771 1795 1791
+					1766 1786 1785 1778 1778 1781 1777 1775 1766 1764 1761 1763 1769 1768 1763 1757 1758 1762 1765 1764 1766 1767 1793 1785
+					1769 1788 1786 1779 1780 1783 1778 1776 1767 1765 1763 1765 1765 1764 1759 1752 1754 1758 1761 1760 1762 1763 1789 1787
+					1773 1793 1790 1783 1784 1786 1782 1780 1771 1768 1766 1768 1762 1761 1756 1749 1750 1754 1757 1756 1758 1759 1786 1880
+					1776 1795 1793 1786 1788 1790 1787 1785 1776 1774 1771 1772 1760 1759 1753 1747 1748 1751 1754 1753 1755 1757 1784 1781
+					1779 1798 1797 1790 1792 1795 1791 1790 1781 1779 1776 1778 1760 1758 1752 1745 1746 1750 1752 1751 1753 1754 1781 1774
+					1784 1803 1802 1796 1798 1801 1798 1798 1789 1788 1784 1786 1762 1760 1753 1746 1747 1750 1752 1751 1752 1751 1776 1779
+					1786 1805 1805 1800 1802 1806 1803 1803 1795 1794 1791 1792 1762 1759 1752 1745 1745 1748 1750 1748 1749 1746 1767 1872
+					1789 1809 1810 1806 1809 1813 1810 1810 1803 1802 1799 1801 1762 1759 1753 1745 1745 1748 1749 1747 1747 1743 1762 1752
+					1853 1888 1887 1883 1888 1893 1890 1891 1884 1883 1880 1890 1757 1754 1748 1740 1740 1743 1744 1742 1741 1734 1746 200>;
+			};
+		};
+	};
+	
+	/*To disable gen-vkeys.c probe,avoid generate kobject*/
+	gen-vkeys {
+		compatible = "huawei,gen-vkeys";
+		label = "synaptics_rmi4_i2c";
+		qcom,disp-maxx = <720>;
+		qcom,disp-maxy = <1280>;
+		qcom,panel-maxx = <720>;
+		qcom,panel-maxy = <1369>;
+		qcom,key-codes = <158 172 139>;
+	};
+
+};

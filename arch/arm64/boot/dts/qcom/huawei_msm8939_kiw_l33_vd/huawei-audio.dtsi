@@ -1,7 +1,7 @@
 / {
     huawei_audio_info {
         compatible = "huawei,hw_audio_info";
-        product-identifier = "kiw";
+        product-identifier = "kiw_l";
         speaker-pa = "tfa9895";
         speaker-box = "none";
         pa-i2c = "i2c_1";

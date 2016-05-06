@@ -31,7 +31,7 @@
 #ifdef CONFIG_HUAWEI_DSM
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #define DSMINFO_LEN_MAX        64
 static struct dsm_dev dsm_cyp_tp = {
 	.name = "dsm_i2c_bus",	// dsm client name

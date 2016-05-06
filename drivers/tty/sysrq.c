@@ -47,7 +47,9 @@
 
 #include <asm/ptrace.h>
 #include <asm/irq_regs.h>
-
+#ifdef CONFIG_HUAWEI_RESET_DETECT
+#include <linux/huawei_reset_detect.h>
+#endif
 /* Whether we react on sysrq keys or just ignore them */
 static int __read_mostly sysrq_enabled = SYSRQ_DEFAULT_ENABLE;
 static bool __read_mostly sysrq_always_enabled;
@@ -761,6 +763,9 @@ static bool sysrq_handle_keypress(struct sysrq_state *sysrq,
 		{
 			pr_info("trigger system crash by sysrq.\n");
 			/* trigger system crash */ 
+#ifdef CONFIG_HUAWEI_RESET_DETECT
+            set_reset_magic(LONG_PRESS_RESET_REASON_MAGIC_NUM);
+#endif
 			__handle_sysrq('c', true);
 		}
 		break;

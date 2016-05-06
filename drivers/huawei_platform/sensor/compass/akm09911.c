@@ -41,7 +41,7 @@
 #include <linux/hw_dev_dec.h>
 #endif
 #ifdef CONFIG_HUAWEI_DSM
-#include 	<linux/dsm_pub.h>
+#include 	<dsm/dsm_pub.h>
 #endif
 #include <misc/app_info.h>
 #ifdef CONFIG_HUAWEI_KERNEL

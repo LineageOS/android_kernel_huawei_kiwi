@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI Che1-CL20";
+                  fac,hardware_ver = "HL2CHERRYM";
+                  fac,software_ver = "MSM8916_Che1-CL20_VD";
+                  status = "ok";
+        };
+};

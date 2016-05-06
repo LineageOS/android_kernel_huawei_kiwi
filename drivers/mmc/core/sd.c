@@ -822,7 +822,9 @@ MMC_DEV_ATTR(serial, "0x%08x\n", card->cid.serial);
 #ifdef CONFIG_HUAWEI_KERNEL
 MMC_DEV_ATTR(speed_class, "0x%08x\n", card->ssr.speed_class); 
 #endif
-
+#ifdef CONFIG_HW_SD_HEALTH_DETECT
+MMC_DEV_ATTR(state, "0x%08x\n", card->state); 
+#endif
 
 static struct attribute *sd_std_attrs[] = {
 	&dev_attr_cid.attr,
@@ -839,6 +841,9 @@ static struct attribute *sd_std_attrs[] = {
 	&dev_attr_serial.attr,
 #ifdef CONFIG_HUAWEI_KERNEL
 	&dev_attr_speed_class.attr,
+#endif
+#ifdef CONFIG_HW_SD_HEALTH_DETECT
+	&dev_attr_state.attr, 
 #endif
 	NULL,
 };
@@ -868,10 +873,6 @@ int mmc_sd_get_cid(struct mmc_host *host, u32 ocr, u32 *cid, u32 *rocr)
      * timeout panic,especially bad card
      */
 	int retries = 5;
-
-#ifdef CONFIG_HUAWEI_KERNEL
-	int cmd11_retries = 3;
-#endif
 
 try_again:
 	if (!retries) {
@@ -941,14 +942,6 @@ try_again:
 			goto try_again;
 		} else if (err) {
 			retries = 0;
-#ifdef CONFIG_HUAWEI_KERNEL
-			cmd11_retries--;
-			if(cmd11_retries == 0)
-			{
-				EMMCSD_LOG_ERR("%s:mmc_set_signal_voltage fail after retry\n",mmc_hostname(host));
-				return err;
-			}
-#endif
 			goto try_again;
 		}
 	}

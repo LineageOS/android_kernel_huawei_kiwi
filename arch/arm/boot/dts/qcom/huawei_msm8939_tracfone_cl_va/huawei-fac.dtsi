@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI H710VL";
+                  fac,hardware_ver = "HL1H710VLMAA";
+                  fac,software_ver = "MSM8939_H710VL_VA";
+                  status = "ok";
+        };
+};
