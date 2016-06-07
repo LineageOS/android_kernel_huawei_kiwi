@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5faad753_37c5f2f1",
+        "filename": "drivers/media/platform/msm/camera_v2/ispif/msm_ispif.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1161,
+      "author": {
+        "id": 6351
+      },
+      "writtenOn": "2016-06-07T23:19:17Z",
+      "side": 1,
+      "message": "Is this indented 1 space too many?",
+      "revId": "193f4b71892a647270c5858deb01a86c54b6793a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5faad753_778daad1",
+        "filename": "drivers/media/platform/msm/camera_v2/ispif/msm_ispif.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1169,
+      "author": {
+        "id": 6351
+      },
+      "writtenOn": "2016-06-07T23:19:17Z",
+      "side": 1,
+      "message": "This looks like you had a merge conflict or something and resolved it incorrectly.\n\nAfter the pair of commits, if should read as\n\nif (!vfe_info...) {\n   ....\n}\n\nmemcpy(...)\n\nand nothing else.",
+      "revId": "193f4b71892a647270c5858deb01a86c54b6793a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
