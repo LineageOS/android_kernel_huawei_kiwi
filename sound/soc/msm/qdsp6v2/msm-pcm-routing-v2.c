@@ -108,10 +108,12 @@ static void msm_pcm_routing_cfg_pp(int port_id, int copp_idx, int topology,
 {
 	int rc = 0;
 	switch (topology) {
+#ifdef CONFIG_DTS_SRS_TM
 	case SRS_TRUMEDIA_TOPOLOGY_ID:
 		ad_logd("%s: SRS_TRUMEDIA_TOPOLOGY_ID\n", __func__);
 		msm_dts_srs_tm_init(port_id, copp_idx);
 		break;
+#endif
 	case DS2_ADM_COPP_TOPOLOGY_ID:
 		ad_logd("%s: DS2_ADM_COPP_TOPOLOGY %d\n",
 			 __func__, DS2_ADM_COPP_TOPOLOGY_ID);
@@ -153,10 +155,12 @@ static void msm_pcm_routing_cfg_pp(int port_id, int copp_idx, int topology,
 static void msm_pcm_routing_deinit_pp(int port_id, int topology)
 {
 	switch (topology) {
+#ifdef CONFIG_DTS_SRS_TM
 	case SRS_TRUMEDIA_TOPOLOGY_ID:
 		ad_logd("%s: SRS_TRUMEDIA_TOPOLOGY_ID\n", __func__);
 		msm_dts_srs_tm_deinit(port_id);
 		break;
+#endif
 	case DS2_ADM_COPP_TOPOLOGY_ID:
 		ad_logd("%s: DS2_ADM_COPP_TOPOLOGY_ID %d\n",
 			 __func__, DS2_ADM_COPP_TOPOLOGY_ID);
@@ -5707,7 +5711,9 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 
 	msm_qti_pp_add_controls(platform);
 
+#ifdef CONFIG_DTS_SRS_TM
 	msm_dts_srs_tm_add_controls(platform);
+#endif
 
 	msm_dolby_dap_add_controls(platform);
 
