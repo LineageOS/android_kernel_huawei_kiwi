@@ -1895,6 +1895,7 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 	if (atomic_read(&this_adm.copp.cnt[port_idx][copp_idx]) == 0) {
 		ad_logd("%s: open ADM: port_idx: %d, copp_idx: %d\n", __func__,
 			 port_idx, copp_idx);
+#ifdef CONFIG_DTS_SRS_TM
 	if (( topology == SRS_TRUMEDIA_TOPOLOGY_ID) && !perf_mode) {
 		int res;
 		atomic_set(&this_adm.mem_map_cal_index, ADM_SRS_TRUMEDIA);
@@ -1907,6 +1908,7 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 		(uint32_t)this_adm.outband_memmap.size);
 		}
 	}
+#endif
 
 		open.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
 						   APR_HDR_LEN(APR_HDR_SIZE),
