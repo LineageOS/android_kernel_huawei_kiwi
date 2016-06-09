@@ -90,7 +90,7 @@ config MMC_BLOCK_TEST
 config HW_EMMC_PROTECT_MODULE
 	tristate "EMMC write protect driver by Huawei"
 	depends on HW_SYSTEM_WR_PROTECT && HUAWEI_KERNEL
-	default m
+	default n
 	help
 	  This is for EMMC to write protect
 config HW_MMC_TEST
