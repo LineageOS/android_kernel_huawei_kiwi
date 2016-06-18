@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5faad753_e769ccf8",
+        "filename": "drivers/platform/msm/qpnp-vibrator.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 507,
+      "author": {
+        "id": 6351
+      },
+      "writtenOn": "2016-06-18T22:49:21Z",
+      "side": 1,
+      "message": "I get a compilation error here...",
+      "revId": "73a8a1705a03f31469604c40e21dc29b9988ab5f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
