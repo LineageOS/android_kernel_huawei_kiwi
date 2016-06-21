@@ -5424,14 +5424,6 @@ static ssize_t cyttsp5_easy_wakeup_gesture_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	/* open/close easy wakeup function when system is sleep will make touch panel do not work.
-	   so, when system is sleep, stop to set easy wakeup mode */
-	if (cd->sleep_state != SS_SLEEP_OFF) {
-		tp_log_err("%s,system is not awake, can not set gesture, state:%d\n",
-			__func__, cd->sleep_state);
-		return -EINVAL;
-	}
-	
 	ret = kstrtoul(buf, 10, &value);
 	if (ret < 0) {
 		tp_log_err("%s %d:Parse input value fail, value: %s, ret:%d\n",
