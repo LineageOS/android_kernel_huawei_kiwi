@@ -75,10 +75,6 @@
 #include <linux/context_tracking.h>
 #include <linux/cpufreq.h>
 
-#ifdef CONFIG_HUAWEI_MSG_POLICY
-#include <power/msgnotify.h>
-#endif
-
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
 #include <asm/irq_regs.h>
@@ -4727,10 +4723,6 @@ need_resched:
 		rq->nr_switches++;
 		rq->curr = next;
 		++*switch_count;
-
-#ifdef CONFIG_HUAWEI_MSG_POLICY
-		update_msg_stat(cpu, prev, next);
-#endif
 
 #ifdef CONFIG_ARCH_WANTS_CTXSW_LOGGING
 		dlog("%s: enter context_switch at %llu\n",
