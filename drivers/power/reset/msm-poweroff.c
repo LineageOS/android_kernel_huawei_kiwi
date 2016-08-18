@@ -381,8 +381,13 @@ static void msm_restart_prepare(const char *cmd)
 #ifdef CONFIG_HUAWEI_FEATURE_NFF
 	clear_bootup_flag();
 #endif     
+
+#ifdef CONFIG_MSM_PRESERVE_MEM
+	need_warm_reset = true;
+#else
 	need_warm_reset = (in_panic || get_dload_mode() ||
 				(cmd != NULL && cmd[0] != '\0'));
+#endif
 
 	if (qpnp_pon_check_hard_reset_stored()) {
 		/* Set warm reset as true when device is in dload mode
