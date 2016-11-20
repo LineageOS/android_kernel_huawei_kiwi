@@ -57,7 +57,7 @@
 #include <linux/platform_device.h>
 #endif
 
-/* Define a MobiCore device structure for use with dev_debug() etc */
+/* Define a MobiCore device structure for use with dev_dbg() etc */
 struct device_driver mcd_debug_name = {
 	.name = "MobiCore"
 };

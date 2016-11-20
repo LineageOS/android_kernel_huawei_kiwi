@@ -7,7 +7,6 @@
  */
  
 #include <linux/init.h>
-#include <sound/hw_audio_log.h>
 #include <linux/module.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
@@ -195,124 +194,6 @@ static ssize_t audiopara_version_show(struct device_driver *driver, char *buf)
 
 DRIVER_ATTR(aud_param_ver, 0444, audiopara_version_show, NULL);
 
-
-/* Default audio log level */
-int audio_log_level = AUDIO_LOG_LEVEL_INFO;
-
-/**
- * * audio_property - Product specified audio properties
- * */
-static ssize_t audio_log_level_show(struct device_driver *driver, char *buf)
-{
-    char level_char = ' ';
-
-    if(NULL == buf)
-    {
-        ad_loge("%s get NULL argument/n", __func__);
-        return 0;
-    }
-
-    switch(audio_log_level)
-    {
-        case AUDIO_LOG_LEVEL_VERBOSE:
-            level_char = 'V';
-            break;
-        case AUDIO_LOG_LEVEL_DEBUG:
-            level_char = 'D';
-            break;
-        case AUDIO_LOG_LEVEL_INFO:
-            level_char = 'I';
-            break;
-        case AUDIO_LOG_LEVEL_NOTICE:
-            level_char = 'N';
-            break;
-        case AUDIO_LOG_LEVEL_WARNING:
-            level_char = 'W';
-            break;
-        case AUDIO_LOG_LEVEL_ERROR:
-            level_char = 'E';
-            break;
-        case AUDIO_LOG_LEVEL_NONE:
-            level_char = '0';
-            break;
-        default:
-            level_char = ' ';
-            ad_loge("Unkown audio log level/n");
-            break;
-    }
-
-    ad_logi("Current log level is %d:%c/n", audio_log_level, level_char);
-
-    /* Those logs are for log level confirm and test */
-    ad_logv("This is verbose log/n");
-    ad_logd("This is debug log/n");
-    ad_logi("This is info log/n");
-    ad_logn("This is notice log/n");
-    ad_logw("This is warning log/n");
-    ad_loge("This is error log/n");
-    return snprintf(buf, PAGE_SIZE, "%d:%c", audio_log_level, level_char);
-}
-
-/**
- * * audio_property - Product specified audio properties
- * */
-static ssize_t audio_log_level_store(struct device_driver *driver, const char *buf, size_t count)
-{
-    char level_char;
-    int new_log_level = audio_log_level;
-
-    if((NULL == buf) || (count < 1))
-    {
-        ad_loge("%s get illegal arguments/n", __func__);
-        return -EINVAL;
-    }
-
-    level_char = buf[0];
-    ad_logi("Get audio log level char %c/n", level_char);
-
-    switch(level_char)
-    {
-        case 'V':
-            new_log_level = AUDIO_LOG_LEVEL_VERBOSE;
-            break;
-        case 'D':
-            new_log_level = AUDIO_LOG_LEVEL_DEBUG;
-            break;
-        case 'I':
-            new_log_level = AUDIO_LOG_LEVEL_INFO;
-            break;
-        case 'N':
-            new_log_level = AUDIO_LOG_LEVEL_NOTICE;
-            break;
-        case 'W':
-            new_log_level = AUDIO_LOG_LEVEL_WARNING;
-            break;
-        case 'E':
-            new_log_level = AUDIO_LOG_LEVEL_ERROR;
-            break;
-        case '0':
-            new_log_level = AUDIO_LOG_LEVEL_NONE;
-            break;
-        default:
-            ad_loge("Unkown audio log level character: %c/n", level_char);
-            new_log_level = audio_log_level;
-            break;
-    }
-
-    if(audio_log_level != new_log_level)
-    {
-        ad_logi("Change audio log level from %d to %d/n", audio_log_level, new_log_level);
-        audio_log_level = new_log_level;
-    }
-    else
-    {
-        ad_logi("Audio log level remains %d/n", audio_log_level);
-    }
-    return count;
-}
-DRIVER_ATTR(audio_log_level, 0644, audio_log_level_show, audio_log_level_store);
-
-
 static struct attribute *audio_attrs[] = {
     &driver_attr_audio_property.attr,
     &driver_attr_product_identifier.attr,
@@ -320,7 +201,6 @@ static struct attribute *audio_attrs[] = {
     &driver_attr_speaker_pa.attr,
     &driver_attr_speaker_box_id.attr,
     &driver_attr_pa_i2c.attr,
-    &driver_attr_audio_log_level.attr,
     NULL,
 };
 
@@ -460,27 +340,27 @@ int get_pa_box_id(struct platform_device *pdev, struct pinctrl *pinctrl)
 	gpio_box_id = of_get_named_gpio(pdev->dev.of_node, "qcom,box-id", 0);
     if (gpio_box_id < 0) 
     {
-        ad_loge("%s: failed to get gpio_box_id\n", __func__);
+        pr_err("%s: failed to get gpio_box_id\n", __func__);
         return -1;
     }
     ret = gpio_request(gpio_box_id, "gpio_box_id");
     if (ret) 
     {
-        ad_loge("%s: unable to request gpio_box_id\n", __func__);
+        pr_err("%s: unable to request gpio_box_id\n", __func__);
         return -1;
     }
     
     pin_default = pinctrl_lookup_state(pinctrl, "box_default");
 	if (IS_ERR(pin_default)) 
 	{
-        ad_loge("%s: Unable to get pinctrl box_default state handle\n", __func__);
+        pr_err("%s: Unable to get pinctrl box_default state handle\n", __func__);
         return -1;
 	}
 
 	pin_sleep = pinctrl_lookup_state(pinctrl, "box_sleep");
     if (IS_ERR(pin_sleep)) 
     {
-	    ad_loge("%s: Unable to get pinctrl box_sleep state handle\n", __func__);
+	    pr_err("%s: Unable to get pinctrl box_sleep state handle\n", __func__);
 	    return -1;
     }
 		
@@ -488,13 +368,13 @@ int get_pa_box_id(struct platform_device *pdev, struct pinctrl *pinctrl)
     udelay(10);
     gpio_direction_input(gpio_box_id);
     box_value_pull_up = gpio_get_value(gpio_box_id);
-    ad_loge("%s: box_value up = %d, ret = %d\n", __func__, box_value_pull_up, ret);
+    pr_err("%s: box_value up = %d, ret = %d\n", __func__, box_value_pull_up, ret);
 
     pinctrl_select_state(pinctrl, pin_sleep);
     udelay(10);
     gpio_direction_input(gpio_box_id);
     box_value_pull_down = gpio_get_value(gpio_box_id);
-    ad_loge("%s: box_value down = %d, ret = %d\n", __func__, box_value_pull_down, ret);
+    pr_err("%s: box_value down = %d, ret = %d\n", __func__, box_value_pull_down, ret);
     gpio_free(gpio_box_id);
 
     if(box_value_pull_up == box_value_pull_down) // pin is high or low
@@ -524,13 +404,13 @@ static int audio_info_probe(struct platform_device *pdev)
     
     if(NULL == pdev)
     {
-        ad_loge( "huawei_audio: audio_info_probe failed, pdev is NULL\n");
+        pr_err( "huawei_audio: audio_info_probe failed, pdev is NULL\n");
         return 0;
     }
     
     if(NULL == pdev->dev.of_node)
     {
-        ad_loge( "huawei_audio: audio_info_probe failed, of_node is NULL\n");
+        pr_err( "huawei_audio: audio_info_probe failed, of_node is NULL\n");
         return 0;
     }
 
@@ -542,7 +422,7 @@ static int audio_info_probe(struct platform_device *pdev)
     }
     else
     {
-        ad_loge( "huawei_audio: check mic config, no master mic found\n");
+        pr_err( "huawei_audio: check mic config, no master mic found\n");
         audio_dsm_report_info(DSM_AUDIO_CARD_LOAD_FAIL_ERROR_NO, "master mic not found!");
     }
     
@@ -590,7 +470,7 @@ static int audio_info_probe(struct platform_device *pdev)
     ret = of_property_read_string(pdev->dev.of_node, PRODUCT_IDENTIFIER_NODE, &string);
     if(ret || (NULL == string))
     {
-        ad_loge( "huawei_audio: of_property_read_string product-identifier failed %d\n", ret);
+        pr_err( "huawei_audio: of_property_read_string product-identifier failed %d\n", ret);
     }
     else
     {
@@ -635,10 +515,10 @@ static int audio_info_probe(struct platform_device *pdev)
         pinctrl = devm_pinctrl_get(&pdev->dev);
         if (IS_ERR(pinctrl)) 
         {
-			ad_loge( "Unable to get pinctrl handle\n");
+			pr_err( "Unable to get pinctrl handle\n");
 		}
         speaker_box = get_pa_box_id(pdev, pinctrl);
-        ad_loge( "speaker_box = %d\n", speaker_box);
+        pr_err( "speaker_box = %d\n", speaker_box);
         memset(speaker_box_id, 0, sizeof(speaker_box_id));
         if(PIN_VOLTAGE_LOW == speaker_box)
         {
@@ -660,7 +540,7 @@ static int audio_info_probe(struct platform_device *pdev)
 
     if(false == of_property_read_bool(pdev->dev.of_node, PRODUCT_NERC_ADAPT_CONFIG))
     {
-        ad_loge( "huawei_audio: of_property_read_bool PRODUCT_NERC_ADAPT_CONFIG failed %d\n", ret);
+        pr_err( "huawei_audio: of_property_read_bool PRODUCT_NERC_ADAPT_CONFIG failed %d\n", ret);
         audio_property |= (AUDIO_PROP_BTSCO_NREC_ADAPT_OFF & AUDIO_PROP_BTSCO_NREC_ADAPT_MASK);
     }
     else       
@@ -672,7 +552,7 @@ static int audio_info_probe(struct platform_device *pdev)
     ret = of_property_read_string(pdev->dev.of_node, PA_i2C_NODE, &string);
     if(ret || (NULL == string))
     {
-        ad_loge( "huawei_audio: of_property_read_string pa-i2c failed %d\n", ret);
+        pr_err( "huawei_audio: of_property_read_string pa-i2c failed %d\n", ret);
     }
     else
     {
@@ -684,7 +564,7 @@ static int audio_info_probe(struct platform_device *pdev)
     ret = of_property_read_string(pdev->dev.of_node, AUD_PARAM_VER_NODE, &string);
     if(ret || (NULL == string))
     {
-        ad_loge( "huawei_audio: of_property_read_string aud_param_ver failed %d\n", ret);
+        pr_err( "huawei_audio: of_property_read_string aud_param_ver failed %d\n", ret);
     }
     else
     {

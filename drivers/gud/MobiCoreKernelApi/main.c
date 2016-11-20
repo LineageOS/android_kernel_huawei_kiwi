@@ -36,7 +36,7 @@ struct mc_kernelapi_ctx {
 
 struct mc_kernelapi_ctx *mod_ctx;
 
-/* Define a MobiCore Kernel API device structure for use with dev_debug() etc */
+/* Define a MobiCore Kernel API device structure for use with dev_dbg() etc */
 struct device_driver mc_kernel_api_name = {
 	.name = "mckernelapi"
 };

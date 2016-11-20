@@ -13,7 +13,6 @@
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
 #include <linux/init.h>
-#include <sound/hw_audio_log.h>
 #include <linux/kernel.h>
 #include <linux/err.h>
 #include <linux/module.h>
@@ -189,7 +188,7 @@ static void qpnpint_irq_ack(struct irq_data *d)
 	struct q_irq_data *irq_d = irq_data_get_irq_chip_data(d);
 	int rc;
 
-	ad_logd("hwirq %lu irq: %d\n", d->hwirq, d->irq);
+	pr_debug("hwirq %lu irq: %d\n", d->hwirq, d->irq);
 
 	rc = qpnpint_spmi_write(irq_d, QPNPINT_REG_LATCHED_CLR,
 				&irq_d->mask_shift, 1);
@@ -208,7 +207,7 @@ static void qpnpint_irq_mask(struct irq_data *d)
 	int rc;
 	uint8_t prev_int_en = per_d->int_en;
 
-	ad_logd("hwirq %lu irq: %d\n", d->hwirq, d->irq);
+	pr_debug("hwirq %lu irq: %d\n", d->hwirq, d->irq);
 
 	if (!chip_d->cb) {
 		pr_warn_ratelimited("No arbiter on bus=%u slave=%u offset=%u\n",
@@ -234,12 +233,12 @@ static void qpnpint_irq_mask(struct irq_data *d)
 		return;
 	}
 
-	ad_logd("done hwirq %lu irq: %d\n", d->hwirq, d->irq);
+	pr_debug("done hwirq %lu irq: %d\n", d->hwirq, d->irq);
 }
 
 static void qpnpint_irq_mask_ack(struct irq_data *d)
 {
-	ad_logd("hwirq %lu irq: %d\n", d->hwirq, d->irq);
+	pr_debug("hwirq %lu irq: %d\n", d->hwirq, d->irq);
 
 	qpnpint_irq_mask(d);
 	qpnpint_irq_ack(d);
@@ -254,7 +253,7 @@ static void qpnpint_irq_unmask(struct irq_data *d)
 	uint8_t buf[2];
 	uint8_t prev_int_en = per_d->int_en;
 
-	ad_logd("hwirq %lu irq: %d\n", d->hwirq, d->irq);
+	pr_debug("hwirq %lu irq: %d\n", d->hwirq, d->irq);
 
 	if (!chip_d->cb) {
 		pr_warn_ratelimited("No arbiter on bus=%u slave=%u offset=%u\n",
@@ -276,7 +275,7 @@ static void qpnpint_irq_unmask(struct irq_data *d)
 	/* Check the current state of the interrupt enable bit. */
 	rc = qpnpint_spmi_read(irq_d, QPNPINT_REG_EN_SET, buf, 1);
 	if (rc) {
-		ad_loge("SPMI read failure for IRQ %d, rc=%d\n", d->irq, rc);
+		pr_err("SPMI read failure for IRQ %d, rc=%d\n", d->irq, rc);
 		return;
 	}
 
@@ -290,7 +289,7 @@ static void qpnpint_irq_unmask(struct irq_data *d)
 		buf[1] = irq_d->mask_shift;
 		rc = qpnpint_spmi_write(irq_d, QPNPINT_REG_LATCHED_CLR, buf, 2);
 		if (rc) {
-			ad_loge("SPMI write failure for IRQ %d, rc=%d\n", d->irq,
+			pr_err("SPMI write failure for IRQ %d, rc=%d\n", d->irq,
 				rc);
 			return;
 		}
@@ -304,7 +303,7 @@ static int qpnpint_irq_set_type(struct irq_data *d, unsigned int flow_type)
 	int rc;
 	u8 buf[3];
 
-	ad_logd("hwirq %lu irq: %d flow: 0x%x\n", d->hwirq,
+	pr_debug("hwirq %lu irq: %d flow: 0x%x\n", d->hwirq,
 							d->irq, flow_type);
 
 	per_d->pol_high &= ~irq_d->mask_shift;
@@ -332,7 +331,7 @@ static int qpnpint_irq_set_type(struct irq_data *d, unsigned int flow_type)
 
 	rc = qpnpint_spmi_write(irq_d, QPNPINT_REG_SET_TYPE, &buf, 3);
 	if (rc) {
-		ad_loge("spmi failure on irq %d\n", d->irq);
+		pr_err("spmi failure on irq %d\n", d->irq);
 		return rc;
 	}
 
@@ -350,11 +349,11 @@ static int qpnpint_irq_read_line(struct irq_data *d)
 	int rc;
 	u8 buf;
 
-	ad_logd("hwirq %lu irq: %d\n", d->hwirq, d->irq);
+	pr_debug("hwirq %lu irq: %d\n", d->hwirq, d->irq);
 
 	rc = qpnpint_spmi_read(irq_d, QPNPINT_REG_RT_STS, &buf, 1);
 	if (rc) {
-		ad_loge("spmi failure on irq %d\n", d->irq);
+		pr_err("spmi failure on irq %d\n", d->irq);
 		return rc;
 	}
 
@@ -458,7 +457,7 @@ static int qpnpint_irq_domain_dt_translate(struct irq_domain *d,
 	struct qpnp_irq_spec addr;
 	int ret;
 
-	ad_logd("intspec[0] 0x%x intspec[1] 0x%x intspec[2] 0x%x\n",
+	pr_debug("intspec[0] 0x%x intspec[1] 0x%x intspec[2] 0x%x\n",
 				intspec[0], intspec[1], intspec[2]);
 
 	if (d->of_node != controller)
@@ -472,13 +471,13 @@ static int qpnpint_irq_domain_dt_translate(struct irq_domain *d,
 
 	ret = qpnpint_encode_hwirq(&addr);
 	if (ret < 0) {
-		ad_loge("invalid intspec\n");
+		pr_err("invalid intspec\n");
 		return ret;
 	}
 	*out_hwirq = ret;
 	*out_type = IRQ_TYPE_NONE;
 
-	ad_logd("out_hwirq = %lu\n", *out_hwirq);
+	pr_debug("out_hwirq = %lu\n", *out_hwirq);
 
 	return 0;
 }
@@ -499,22 +498,22 @@ static int qpnpint_irq_domain_map(struct irq_domain *d,
 	struct q_irq_data *irq_d;
 	int rc;
 
-	ad_logd("hwirq = %lu\n", hwirq);
+	pr_debug("hwirq = %lu\n", hwirq);
 
 	if (hwirq < 0 || hwirq >= QPNPINT_NR_IRQS) {
-		ad_loge("hwirq %lu out of bounds\n", hwirq);
+		pr_err("hwirq %lu out of bounds\n", hwirq);
 		return -EINVAL;
 	}
 
 	irq_d = qpnpint_alloc_irq_data(chip_d, hwirq);
 	if (IS_ERR(irq_d)) {
-		ad_loge("failed to alloc irq data for hwirq %lu\n", hwirq);
+		pr_err("failed to alloc irq data for hwirq %lu\n", hwirq);
 		return PTR_ERR(irq_d);
 	}
 
 	rc = qpnpint_init_irq_data(chip_d, irq_d, hwirq);
 	if (rc) {
-		ad_loge("failed to init irq data for hwirq %lu\n", hwirq);
+		pr_err("failed to init irq data for hwirq %lu\n", hwirq);
 		goto map_err;
 	}
 
@@ -606,7 +605,7 @@ static int __qpnpint_handle_irq(struct spmi_controller *spmi_ctrl,
 	if (!spec || !spmi_ctrl)
 		return -EINVAL;
 
-	ad_logd("spec slave = %u per = %u irq = %u\n",
+	pr_debug("spec slave = %u per = %u irq = %u\n",
 					spec->slave, spec->per, spec->irq);
 
 	busno = spmi_ctrl->nr;
@@ -615,7 +614,7 @@ static int __qpnpint_handle_irq(struct spmi_controller *spmi_ctrl,
 
 	hwirq = qpnpint_encode_hwirq(spec);
 	if (hwirq < 0) {
-		ad_loge("invalid irq spec passed\n");
+		pr_err("invalid irq spec passed\n");
 		return -EINVAL;
 	}
 
@@ -632,7 +631,7 @@ static int __qpnpint_handle_irq(struct spmi_controller *spmi_ctrl,
 		else if (desc->action && desc->action->name)
 			name = desc->action->name;
 
-		ad_logw("%d triggered [0x%01x, 0x%02x,0x%01x] %s\n",
+		pr_warn("%d triggered [0x%01x, 0x%02x,0x%01x] %s\n",
 				irq, spec->slave, spec->per, spec->irq, name);
 	} else {
 		generic_handle_irq(irq);
@@ -667,7 +666,7 @@ int __init qpnpint_of_init(struct device_node *node, struct device_node *parent)
 	chip_d->domain = irq_domain_add_tree(node,
 					&qpnpint_irq_domain_ops, chip_d);
 	if (!chip_d->domain) {
-		ad_loge("Unable to allocate irq_domain\n");
+		pr_err("Unable to allocate irq_domain\n");
 		kfree(chip_d);
 		return -ENOMEM;
 	}
