@@ -1042,13 +1042,13 @@ errout:
 }
 
 static inline int search_dirblock(struct buffer_head *bh,
-        struct inode *dir,
-        const struct qstr *d_name,
-        unsigned int offset,
-        struct ext4_dir_entry_2 **res_dir)
+				  struct inode *dir,
+				  const struct qstr *d_name,
+				  unsigned int offset,
+				  struct ext4_dir_entry_2 **res_dir)
 {
-    return search_dir(bh, bh->b_data, dir->i_sb->s_blocksize, dir,
-            d_name, offset, res_dir);
+	return search_dir(bh, bh->b_data, dir->i_sb->s_blocksize, dir,
+			  d_name, offset, res_dir);
 }
 
 /*
@@ -1211,9 +1211,9 @@ static int is_dx_internal_node(struct inode *dir, ext4_lblk_t block,
  * to brelse() it when appropriate.
  */
 static struct buffer_head * ext4_find_entry (struct inode *dir,
-        const struct qstr *d_name,
-        struct ext4_dir_entry_2 **res_dir,
-        int *inlined)
+					const struct qstr *d_name,
+					struct ext4_dir_entry_2 **res_dir,
+					int *inlined)
 {
 	struct super_block *sb;
 	struct buffer_head *bh_use[NAMEI_RA_SIZE];
@@ -1237,8 +1237,8 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
 
 	if (ext4_has_inline_data(dir)) {
 		int has_inline_data = 1;
-        ret = ext4_find_inline_entry(dir, d_name, res_dir,
-                &has_inline_data);
+		ret = ext4_find_inline_entry(dir, d_name, res_dir,
+					     &has_inline_data);
 		if (has_inline_data) {
 			if (inlined)
 				*inlined = 1;
@@ -1256,7 +1256,7 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
 		nblocks = 1;
 		goto restart;
 	}
-        if (is_dx(dir)) {
+	if (is_dx(dir)) {
 		bh = ext4_dx_find_entry(dir, d_name, res_dir, &err);
 		/*
 		 * On success, or if the error was file not found,
@@ -1321,8 +1321,8 @@ restart:
 			goto next;
 		}
 		set_buffer_verified(bh);
-        i = search_dirblock(bh, dir, d_name,
-                block << EXT4_BLOCK_SIZE_BITS(sb), res_dir);
+		i = search_dirblock(bh, dir, d_name,
+			    block << EXT4_BLOCK_SIZE_BITS(sb), res_dir);
 		if (i == 1) {
 			EXT4_I(dir)->i_dir_start_lookup = block;
 			ret = bh;
@@ -1374,9 +1374,9 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir, const struct q
 			*err = PTR_ERR(bh);
 			goto errout;
 		}
-        retval = search_dirblock(bh, dir, d_name,
-                block << EXT4_BLOCK_SIZE_BITS(sb),
-                res_dir);
+		retval = search_dirblock(bh, dir, d_name,
+					 block << EXT4_BLOCK_SIZE_BITS(sb),
+					 res_dir);
 		if (retval == 1) { 	/* Success! */
 			dx_release(frames);
 			return bh;
@@ -1415,7 +1415,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
 	if (dentry->d_name.len > EXT4_NAME_LEN)
 		return ERR_PTR(-ENAMETOOLONG);
 
-    bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
+	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
 	inode = NULL;
 	if (bh) {
 		__u32 ino = le32_to_cpu(de->inode);
@@ -1438,7 +1438,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
 			return ERR_PTR(-EIO);
 		}
 	}
-    return d_splice_alias(inode, dentry);
+	return d_splice_alias(inode, dentry);
 }
 
 
