@@ -113,7 +113,6 @@ static ssize_t ramdump_read(struct file *filep, char __user *buf, size_t count,
 	size_t copy_size = 0, alignsize;
 	unsigned char *alignbuf = NULL, *finalbuf = NULL;
 	int ret = 0;
-	struct platform_device *pdevice;
 	struct dma_attrs *attrs;
 	loff_t orig_pos = *pos;
 
@@ -155,7 +154,6 @@ static ssize_t ramdump_read(struct file *filep, char __user *buf, size_t count,
 	copy_size = min((unsigned long)copy_size, data_left);
 
 	attrs=kmalloc(sizeof(struct dma_attrs ),GFP_KERNEL);
-	pdevice=kmalloc(sizeof(struct platform_device),GFP_KERNEL);
 	dma_set_attr(DMA_ATTR_SKIP_ZEROING, attrs);
 
 	device_mem2=dma_remap(NULL,NULL,addr,copy_size,attrs);

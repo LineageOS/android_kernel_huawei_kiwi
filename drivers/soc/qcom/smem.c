@@ -29,10 +29,6 @@
 
 #include <soc/qcom/smem.h>
 
-#ifdef CONFIG_HUAWEI_KERNEL
-#include <soc/qcom/subsystem_restart.h>
-#endif
-
 #include "smem_private.h"
 
 #define MODEM_SBL_VERSION_INDEX 7
@@ -1021,12 +1017,6 @@ static int restart_notifier_cb(struct notifier_block *this,
 			pr_info("smem.c:%s:%d no ramdump!\n", __func__, __LINE__);
 			break;
 		}
-#ifdef CONFIG_HUAWEI_KERNEL
-		if(!enable_ramdumps){
-			pr_info("smem.c:%s:%d no ramdump!\n", __func__, __LINE__);
-			break;
-		}
-#endif
 		pr_info("%s: saving ramdump\n", __func__);
 		/*
 		 * XPU protection does not currently allow the
