@@ -94,12 +94,3 @@ config HW_FEATURE_STORAGE_DIAGNOSE_LOG
         bool "storage log support"
 	help
 	  Enables storage log support for logging storage error.
-config SDCARD_FS_CI_SEARCH
-	bool "sdcard file system case-insensitive search support"
-	depends on EXT4_FS
-	default n
-	help
-	Enable sdcard file system case-insensitive search. 
-
-	If you select Y here, then you will be able to turn on case-insensitive search,
-	regardless of upper and lower case of file name.
