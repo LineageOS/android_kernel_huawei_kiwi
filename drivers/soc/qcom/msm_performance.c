@@ -426,7 +426,7 @@ static void __ref try_hotplug(struct cpu_hp *data)
 	unsigned int i;
 
 	if (!clusters_inited)
-			return;
+		return;
 
 	pr_debug("msm_perf: Trying hotplug...%d:%d\n",
 			num_online_managed(data->cpus),	num_online_cpus());
