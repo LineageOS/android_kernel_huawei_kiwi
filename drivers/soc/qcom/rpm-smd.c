@@ -309,6 +309,79 @@ static void tr_update(struct slp_buf *s, char *buf)
 		}
 	}
 }
+static atomic_t msm_rpm_msg_id = ATOMIC_INIT(0);
+
+struct msm_rpm_request {
+	struct rpm_request_header req_hdr;
+	struct rpm_message_header msg_hdr;
+	struct msm_rpm_kvp_data *kvp;
+	uint32_t num_elements;
+	uint32_t write_idx;
+	uint8_t *buf;
+	uint32_t numbytes;
+};
+
+/*
+ * Data related to message acknowledgement
+ */
+
+LIST_HEAD(msm_rpm_wait_list);
+
+struct msm_rpm_wait_data {
+	struct list_head list;
+	uint32_t msg_id;
+	bool ack_recd;
+	int errno;
+	struct completion ack;
+};
+DEFINE_SPINLOCK(msm_rpm_list_lock);
+
+struct msm_rpm_ack_msg {
+	uint32_t req;
+	uint32_t req_len;
+	uint32_t rsc_id;
+	uint32_t msg_len;
+	uint32_t id_ack;
+};
+
+LIST_HEAD(msm_rpm_ack_list);
+
+static DECLARE_COMPLETION(data_ready);
+
+static inline uint32_t msm_rpm_get_msg_id_from_ack(uint8_t *buf)
+{
+	return ((struct msm_rpm_ack_msg *)buf)->id_ack;
+}
+
+static inline int msm_rpm_get_error_from_ack(uint8_t *buf)
+{
+	uint8_t *tmp;
+	uint32_t req_len = ((struct msm_rpm_ack_msg *)buf)->req_len;
+
+	int rc = -ENODEV;
+
+	req_len -= sizeof(struct msm_rpm_ack_msg);
+	req_len += 2 * sizeof(uint32_t);
+	if (!req_len)
+		return 0;
+
+	tmp = buf + sizeof(struct msm_rpm_ack_msg);
+
+	BUG_ON(memcmp(tmp, ERR, sizeof(uint32_t)));
+
+	tmp += 2 * sizeof(uint32_t);
+
+	if (!(memcmp(tmp, INV_RSC, min_t(uint32_t, req_len,
+						sizeof(INV_RSC))-1))) {
+		pr_err("%s(): RPM NACK Unsupported resource\n", __func__);
+		rc = -EINVAL;
+	} else {
+		pr_err("%s(): RPM NACK Invalid header\n", __func__);
+	}
+
+	return rc;
+}
+
 
 int msm_rpm_smd_buffer_request(char *buf, uint32_t size, gfp_t flag)
 {
@@ -463,45 +536,6 @@ static int msm_rpm_flush_requests(bool print)
 	}
 	return 0;
 }
-
-static atomic_t msm_rpm_msg_id = ATOMIC_INIT(0);
-
-struct msm_rpm_request {
-	struct rpm_request_header req_hdr;
-	struct rpm_message_header msg_hdr;
-	struct msm_rpm_kvp_data *kvp;
-	uint32_t num_elements;
-	uint32_t write_idx;
-	uint8_t *buf;
-	uint32_t numbytes;
-};
-
-/*
- * Data related to message acknowledgement
- */
-
-LIST_HEAD(msm_rpm_wait_list);
-
-struct msm_rpm_wait_data {
-	struct list_head list;
-	uint32_t msg_id;
-	bool ack_recd;
-	int errno;
-	struct completion ack;
-};
-DEFINE_SPINLOCK(msm_rpm_list_lock);
-
-struct msm_rpm_ack_msg {
-	uint32_t req;
-	uint32_t req_len;
-	uint32_t rsc_id;
-	uint32_t msg_len;
-	uint32_t id_ack;
-};
-
-LIST_HEAD(msm_rpm_ack_list);
-
-static DECLARE_COMPLETION(data_ready);
 
 static void msm_rpm_notify_sleep_chain(struct rpm_message_header *hdr,
 		struct msm_rpm_kvp_data *kvp)
@@ -823,40 +857,6 @@ struct msm_rpm_kvp_packet {
 	uint32_t len;
 	uint32_t val;
 };
-
-static inline uint32_t msm_rpm_get_msg_id_from_ack(uint8_t *buf)
-{
-	return ((struct msm_rpm_ack_msg *)buf)->id_ack;
-}
-
-static inline int msm_rpm_get_error_from_ack(uint8_t *buf)
-{
-	uint8_t *tmp;
-	uint32_t req_len = ((struct msm_rpm_ack_msg *)buf)->req_len;
-
-	int rc = -ENODEV;
-
-	req_len -= sizeof(struct msm_rpm_ack_msg);
-	req_len += 2 * sizeof(uint32_t);
-	if (!req_len)
-		return 0;
-
-	tmp = buf + sizeof(struct msm_rpm_ack_msg);
-
-	BUG_ON(memcmp(tmp, ERR, sizeof(uint32_t)));
-
-	tmp += 2 * sizeof(uint32_t);
-
-	if (!(memcmp(tmp, INV_RSC, min_t(uint32_t, req_len,
-						sizeof(INV_RSC))-1))) {
-		pr_err("%s(): RPM NACK Unsupported resource\n", __func__);
-		rc = -EINVAL;
-	} else {
-		pr_err("%s(): RPM NACK Invalid header\n", __func__);
-	}
-
-	return rc;
-}
 
 static int msm_rpm_read_smd_data(char *buf)
 {
