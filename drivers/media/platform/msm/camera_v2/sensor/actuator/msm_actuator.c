@@ -90,6 +90,7 @@ static void msm_actuator_parse_i2c_params(struct msm_actuator_ctrl_t *a_ctrl,
 		return;
 	}
 	for (i = 0; i < size; i++) {
+		int this_entry_delay = delay;
 		/* check that the index into i2c_tbl cannot grow larger that
 		the allocated size of i2c_tbl */
 		if ((a_ctrl->total_steps + 1) < (a_ctrl->i2c_tbl_index)) {
@@ -130,16 +131,12 @@ static void msm_actuator_parse_i2c_params(struct msm_actuator_ctrl_t *a_ctrl,
 			i2c_byte1 = write_arr[i].reg_addr;
 			i2c_byte2 = (hw_dword & write_arr[i].hw_mask) >>
 				write_arr[i].hw_shift;
-			i2c_tbl[a_ctrl->i2c_tbl_index].reg_addr = i2c_byte1;
-			i2c_tbl[a_ctrl->i2c_tbl_index].reg_data = i2c_byte2;
-			i2c_tbl[a_ctrl->i2c_tbl_index].delay = 0;
-			a_ctrl->i2c_tbl_index++;
-			continue;
+			this_entry_delay = 0;
 		}
 		hw_camera_log_debug("i2c_byte1:0x%x, i2c_byte2:0x%x\n", i2c_byte1, i2c_byte2);
 		i2c_tbl[a_ctrl->i2c_tbl_index].reg_addr = i2c_byte1;
 		i2c_tbl[a_ctrl->i2c_tbl_index].reg_data = i2c_byte2;
-		i2c_tbl[a_ctrl->i2c_tbl_index].delay = delay;
+		i2c_tbl[a_ctrl->i2c_tbl_index].delay = this_entry_delay;
 		a_ctrl->i2c_tbl_index++;
 	}
 	CDBG("Exit\n");
