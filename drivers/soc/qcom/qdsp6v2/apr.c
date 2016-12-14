@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -454,7 +454,7 @@ void apr_cb_func(void *buf, int len, void *priv)
 	ad_logd("\n*****************\n");
 
 	if (!buf || len <= APR_HDR_SIZE) {
-		ad_loge("APR: Improper apr pkt received:%p %d\n", buf, len);
+		ad_loge("APR: Improper apr pkt received:%pK %d\n", buf, len);
 		return;
 	}
 	hdr = buf;
@@ -540,7 +540,7 @@ void apr_cb_func(void *buf, int len, void *priv)
 		return;
 	}
 	ad_logd("svc_idx = %d\n", i);
-	ad_logd("%x %x %x %p %p\n", c_svc->id, c_svc->dest_id,
+	ad_logd("%x %x %x %p %pK\n", c_svc->id, c_svc->dest_id,
 		 c_svc->client_id, c_svc->fn, c_svc->priv);
 	data.payload_size = hdr->pkt_size - hdr_size;
 	data.opcode = hdr->opcode;
@@ -604,7 +604,7 @@ static void apr_reset_deregister(struct work_struct *work)
 			container_of(work, struct apr_reset_work, work);
 
 	handle = apr_reset->handle;
-	ad_logd("%s:handle[%p]\n", __func__, handle);
+	ad_logd("%s:handle[%pK]\n", __func__, handle);
 	apr_deregister(handle);
 	kfree(apr_reset);
 }
@@ -637,7 +637,7 @@ int apr_deregister(void *handle)
 		client[dest_id][client_id].svc_cnt--;
 		if (!client[dest_id][client_id].svc_cnt) {
 			svc->need_reset = 0x0;
-			ad_logd("%s: service is reset %p\n", __func__, svc);
+			ad_logd("%s: service is reset %pK\n", __func__, svc);
 		}
 	}
 
@@ -665,7 +665,7 @@ void apr_reset(void *handle)
 
 	if (!handle)
 		return;
-	ad_logd("%s: handle[%p]\n", __func__, handle);
+	ad_logd("%s: handle[%pK]\n", __func__, handle);
 
 	if (apr_reset_workqueue == NULL) {
 		ad_loge("%s: apr_reset_workqueue is NULL\n", __func__);
