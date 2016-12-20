@@ -60,7 +60,7 @@ int sysrq_reset_downtime_ms __weak;
 #ifdef CONFIG_HUAWEI_DEBUG_MODE
 extern char *saved_command_line;
 #endif
-static bool sysrq_on(void)
+bool sysrq_on(void)
 {
 #ifdef CONFIG_HUAWEI_DEBUG_MODE
     if(strstr(saved_command_line,"huawei_debug_mode=1")!=NULL
@@ -73,6 +73,7 @@ static bool sysrq_on(void)
 #endif
 	return sysrq_enabled || sysrq_always_enabled;
 }
+EXPORT_SYMBOL(sysrq_on);
 
 /*
  * A value of 1 means 'all', other nonzero values are an op mask:
