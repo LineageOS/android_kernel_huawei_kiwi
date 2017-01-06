@@ -16,6 +16,24 @@
       "revId": "605002d4c3b9de2183bbef2c606d34eacd7a383c",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_43417638",
+        "filename": "arch/arm64/configs/kiwi-64_defconfig",
+        "patchSetId": 2
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 6351
+      },
+      "writtenOn": "2017-01-06T14:13:04Z",
+      "side": 1,
+      "message": "Lineage is better.  Or just leave it blank.",
+      "parentUuid": "fa3479d7_233792e5",
+      "revId": "605002d4c3b9de2183bbef2c606d34eacd7a383c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
