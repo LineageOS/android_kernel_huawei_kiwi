@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_233792e5",
+        "filename": "arch/arm64/configs/kiwi-64_defconfig",
+        "patchSetId": 2
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 16071
+      },
+      "writtenOn": "2017-01-06T13:46:22Z",
+      "side": 1,
+      "message": "please rename \"-lineageos\"",
+      "revId": "605002d4c3b9de2183bbef2c606d34eacd7a383c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
