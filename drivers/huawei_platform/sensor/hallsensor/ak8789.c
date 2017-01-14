@@ -41,6 +41,7 @@
 #include <asm/io.h>
 #include <linux/platform_device.h>
 #include <linux/input.h>
+#include <linux/switch.h>
 #include <asm/atomic.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
@@ -157,6 +158,10 @@ typedef enum hall_used_type{
 	/*usd for camare hall*/
 	ONE_POLE_FOR_CAMARE = 5,
 } hall_used_type_t;
+
+static struct switch_dev cover_switch = {
+	.name = "smartcover",
+};
 
 struct hall_dev {
 	struct sensors_classdev cdev;
@@ -468,6 +473,12 @@ static void hall_timer_handler(unsigned long data)
 	queue_work(hall_timer_temp->hall_wq, &hall_timer_temp->hall_work);
 }
 
+static void cover_switch_report(unsigned value)
+{
+	pr_info("%s: value = 0x%x\n", __func__, value);
+	switch_set_state(&cover_switch, value & 0x1);
+}
+
 void hall_work_func(struct work_struct *work)
 {
 	int value = 0;
@@ -492,6 +503,7 @@ void hall_work_func(struct work_struct *work)
 	value = query_hall_event();
 	if((camera_hall_support_is_true == true) && ((value == 0x10) || (value == 0x20)))
 		report_overturn_num += 1; 
+	cover_switch_report(value);
 	input_event(hw_hall_dev.hw_input_hall, EV_MSC, MSC_SCAN, value);
 	input_sync(hw_hall_dev.hw_input_hall);
 	atomic_dec(&irq_no_at);
@@ -892,6 +904,13 @@ int hall_pf_probe(struct platform_device *pdev)
 		goto sysfs_create_fail;
 	}
 
+	if (switch_dev_register(&cover_switch) < 0) {
+		pr_err("failed to register cover switch\n");
+		return 0;
+	}
+
+	cover_switch_report(query_hall_event());
+
 	hw_hall_dev.hw_input_hall = input_allocate_device();
 	if (IS_ERR(hw_hall_dev.hw_input_hall)){
 		AK8789_ERRMSG("hw_input_hall alloc error %ld", PTR_ERR(hw_hall_dev.hw_input_hall));
@@ -1002,6 +1021,7 @@ static void __exit ak8789_exit(void)
 {
 	input_unregister_device(hw_hall_dev.hw_input_hall);
 	platform_driver_unregister(&hw_hall_dev.hall_drv_pf);
+	switch_dev_unregister(&cover_switch);
 }
 
 MODULE_AUTHOR("huawei");
