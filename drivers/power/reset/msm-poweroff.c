@@ -459,6 +459,7 @@ static void msm_restart_prepare(const char *cmd)
             pr_info("do nothing\n");
 #endif
 		} else {
+			qpnp_pon_set_restart_reason(PON_RESTART_REASON_UNKNOWN);
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}
