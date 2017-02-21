@@ -173,7 +173,7 @@ static void put_crypt_info(struct fscrypt_info *ci)
 	if (!ci)
 		return;
 
-	crypto_free_ablkcipher(ci->ci_ctfm);
+	crypto_free_skcipher(ci->ci_ctfm);
 	kmem_cache_free(fscrypt_info_cachep, ci);
 }
 
@@ -193,6 +193,9 @@ int fscrypt_get_encryption_info(struct inode *inode)
 	res = fscrypt_initialize(inode->i_sb->s_cop->flags);
 	if (res)
 		return res;
+
+	if (!inode->i_sb->s_cop->get_context)
+		return -EOPNOTSUPP;
 
 	res = inode->i_sb->s_cop->get_context(inode, &ctx, sizeof(ctx));
 	if (res < 0) {
