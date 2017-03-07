@@ -95,8 +95,33 @@ dtb-$(CONFIG_ARCH_MSM8916) += 	huawei_kiw_al10_vc3.0.dtb \
 	huawei_rio_l03_va3.0.dtb \
 	huawei_kiw_ul00_vd.dtb \
 
- 
- 
+# The following were extracted from the dt.img in fix_boot.zip in BUGBASH-222
+dtb-$(CONFIG_ARCH_MSM8916) += \
+	huawei_KIW-CL00__107_1f47_0_0.dtb \
+	huawei_KIW-CL00__107_1f47_0_30000.dtb \
+	huawei_KIW-CL00__107_1f47_4_0.dtb \
+	huawei_KIW-CL00__107_1f47_4_30000.dtb \
+	huawei_KIW-CL00__107_1f61_0_0.dtb \
+	huawei_KIW-CL00__107_1f61_0_30000.dtb \
+	huawei_KIW-CL00__107_1f61_4_0.dtb \
+	huawei_KIW-CL00__107_1f61_4_30000.dtb \
+	huawei_KIW-CL00__ef_1f47_0_0.dtb \
+	huawei_KIW-CL00__ef_1f47_0_30000.dtb \
+	huawei_KIW-CL00__ef_1f47_4_0.dtb \
+	huawei_KIW-CL00__ef_1f47_4_30000.dtb \
+	huawei_KIW-CL00__ef_1f61_0_0.dtb \
+	huawei_KIW-CL00__ef_1f61_0_30000.dtb \
+	huawei_KIW-CL00__ef_1f61_4_0.dtb \
+	huawei_KIW-CL00__ef_1f61_4_30000.dtb \
+	huawei_KIW-CL00__f1_1f47_0_0.dtb \
+	huawei_KIW-CL00__f1_1f47_0_30000.dtb \
+	huawei_KIW-CL00__f1_1f47_4_0.dtb \
+	huawei_KIW-CL00__f1_1f47_4_30000.dtb \
+	huawei_KIW-CL00__f1_1f61_0_0.dtb \
+	huawei_KIW-CL00__f1_1f61_0_30000.dtb \
+	huawei_KIW-CL00__f1_1f61_4_0.dtb \
+	huawei_KIW-CL00__f1_1f61_4_30000.dtb
+
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE_NAMES))
 ifneq ($(DTB_NAMES),)
 DTB_LIST := $(addsuffix .dtb,$(DTB_NAMES))
