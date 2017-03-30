@@ -107,7 +107,7 @@
         reg = <0x38>;
         vdd-supply = <&pm8916_l17>;
         vio-supply = <&pm8916_l6>;
-        bh1745,tp_moudle_count = <1>;
+        bh1745,tp_module_count = <1>;
         /*[module_id] [golden judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
         bh1745,cal_data0 = "2","328","980","257","6636","6801","0","0",
         /*[white judge] r[0] r[1] g[0]  g[1] b[0] b[1]*/

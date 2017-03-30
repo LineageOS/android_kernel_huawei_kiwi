@@ -161,7 +161,7 @@ static struct swrm_ops swrm_ops = {
 
 static int __init swrm_module(void)
 {
-	printk(KERN_DEBUG "SWRM moudle loaded %s", SWRM_VERSION);
+	printk(KERN_DEBUG "SWRM module loaded %s", SWRM_VERSION);
 	return swrm_install_mmc_io_callback(&swrm_ops);
 }
 
