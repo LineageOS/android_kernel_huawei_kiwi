@@ -1329,7 +1329,7 @@ static int sensor_parse_dt(struct device *dev,
 	}
 	tp_module_count = tmp;
 
-	APDS9251_FLOW("%s:%d read lux cal parameter count from dtsi  is %d\n", __FUNCTION__, __LINE__, tp_modiule_count);
+	APDS9251_FLOW("%s:%d read lux cal parameter count from dtsi  is %d\n", __FUNCTION__, __LINE__, tp_module_count);
 
 	if(tp_module_count > MODULE_MANUFACTURE_NUMBER){
 		APDS9251_ERR("%s,line %d:tp_module_count from dtsi too large: %d\n",__func__,__LINE__, tp_module_count);
