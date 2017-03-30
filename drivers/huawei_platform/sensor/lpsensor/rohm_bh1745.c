@@ -1412,7 +1412,7 @@ static int sensor_parse_dt(struct device *dev,
 {
 	struct device_node *np = dev->of_node;
 	unsigned int tmp;
-	int tp_moudle_count = 0;
+	int tp_module_count = 0;
 	int index =0;
 	int rc = 0;
 	int array_len = 0;
@@ -1427,21 +1427,21 @@ static int sensor_parse_dt(struct device *dev,
 	pdata->exit = sensor_platform_hw_exit;
 	pdata->power_on = sensor_platform_hw_power_on;
 
-	rc = of_property_read_u32(np, "bh1745,tp_moudle_count", &tmp);
+	rc = of_property_read_u32(np, "bh1745,tp_module_count", &tmp);
 	if (rc) {
 		BH1745_ERR("%s,line %d:Unable to read ga_a_value\n",__func__,__LINE__);
 		return rc;
 	}
-	tp_moudle_count = tmp;
+	tp_module_count = tmp;
 
-	BH1745_FLOW("%s:%d read lux cal parameter count from dtsi  is %d\n", __FUNCTION__, __LINE__, tp_moudle_count);
+	BH1745_FLOW("%s:%d read lux cal parameter count from dtsi  is %d\n", __FUNCTION__, __LINE__, tp_module_count);
 
-	if(tp_moudle_count > MODULE_MANUFACTURE_NUMBER){
-		BH1745_ERR("%s,line %d:tp_moudle_count from dtsi too large: %d\n",__func__,__LINE__, tp_moudle_count);
+	if(tp_module_count > MODULE_MANUFACTURE_NUMBER){
+		BH1745_ERR("%s,line %d:tp_module_count from dtsi too large: %d\n",__func__,__LINE__, tp_module_count);
 		return  -EINVAL;
 	}
 
-	for(i=0; i<tp_moudle_count; i++){
+	for(i=0; i<tp_module_count; i++){
 		array_len = of_property_count_strings(np, data_array_name[i]);
 		if (array_len != PARSE_DTSI_NUMBER) {
 			BH1745_ERR("%s:%d bh1745,junda_data0 length invaild or dts number is larger than:%d\n",__FUNCTION__,__LINE__,array_len);

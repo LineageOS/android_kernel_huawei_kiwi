@@ -2395,7 +2395,7 @@ int misp_get_otp_data(struct msm_sensor_otp_info *otp_info, uint8_t cam_pos)
 	memcpy(otp_data, pdata->rx_buf, otp_length);
 	spi_data_debug(pdata->rx_buf, 16, 16);
 
-	pr_info("%s: otp data: DATE=20%d.%d.%d, huawei ID=%d, moudle ID=%d \n",
+	pr_info("%s: otp data: DATE=20%d.%d.%d, huawei ID=%d, module ID=%d \n",
 		__func__, otp_data[0], otp_data[1], otp_data[2], otp_data[3], otp_data[4]);
 	pr_info("%s, is otp data vaild=%d \n", __func__, otp_data[otp_length-1]);
 
@@ -2508,7 +2508,7 @@ void misp_get_otp(struct msm_sensor_otp_info *otp_info, uint8_t cam_pos)
 		goto free_otp_data;
 	}
 
-	pr_debug("%s: otp data: DATE=20%d.%d.%d, huawei ID=%d, moudle ID=%d",
+	pr_debug("%s: otp data: DATE=20%d.%d.%d, huawei ID=%d, module ID=%d",
 		__func__, otp_data[0], otp_data[1], otp_data[2], otp_data[3], otp_data[4]);
 	pr_err("%s, is otp data vaild=%d \n", __func__, otp_data[otp_length-1]);
 
