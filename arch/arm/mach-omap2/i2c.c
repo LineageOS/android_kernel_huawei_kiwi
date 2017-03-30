@@ -54,7 +54,7 @@ static void __init omap2_i2c_mux_pins(int bus_id)
  * omap_i2c_reset - reset the omap i2c module.
  * @oh: struct omap_hwmod *
  *
- * The i2c moudle in omap2, omap3 had a special sequence to reset. The
+ * The i2c module in omap2, omap3 had a special sequence to reset. The
  * sequence is:
  * - Disable the I2C.
  * - Write to SOFTRESET bit.

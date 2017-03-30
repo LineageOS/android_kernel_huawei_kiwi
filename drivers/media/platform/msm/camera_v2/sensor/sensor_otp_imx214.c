@@ -276,7 +276,7 @@ static bool imx214_otp_get_chksum(struct msm_sensor_ctrl_t* s_ctrl, uint8_t* che
 }
 /****************************************************************************
 * FunctionName: imx214_otp_get_module_id;
-* Description : used to read moudle id info value from eeprom
+* Description : used to read module id info value from eeprom
 * Input       :
 * Output      imx214_otp:
 * ReturnValue :
