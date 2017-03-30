@@ -136,7 +136,7 @@
 		reg = <0x52>;
 		vdd-supply = <&pm8916_l17>;
 		vio-supply = <&pm8916_l6>;
-		apds9251,tp_moudle_count = <3>;
+		apds9251,tp_module_count = <3>;
 		/*[module_id] [CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
 		apds9251,cal_data0 = "0","10467","1782","844","984","1199","9666","9378","8362","25","15","10",
 		/*[CCT_M] [CCT_N] [H] [A] [D] [LUX_P] [LUX_Q] [LUX_R] [cofficient0] [cofficient1] [cofficient2]*/
@@ -161,7 +161,7 @@
 		reg = <0x38>;
 		vdd-supply = <&pm8916_l17>;
 		vio-supply = <&pm8916_l6>;
-		bh1745,tp_moudle_count = <3>;
+		bh1745,tp_module_count = <3>;
 		/*[module_id] [golden judge] r[0] r[1] g[0] g[1] b[0] b[1]*/
 		bh1745,cal_data0 = "0","280","1591","750","9359","9149","0","0",
 		/*[white judge] r[0] r[1] g[0] g[1] b[0] b[1]*/

@@ -205,7 +205,7 @@ static bool imx328_otp_read_checksum(struct msm_sensor_ctrl_t *s_ctrl, uint8_t *
 }
 /****************************************************************************
 * FunctionName: imx328_read_otp;
-* Description : used to read moudle id info value from eeprom
+* Description : used to read module id info value from eeprom
 * Input       :
 * Output      :
 * ReturnValue :
