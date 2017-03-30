@@ -545,7 +545,7 @@ int msm_sensor_get_otp(struct msm_sensor_ctrl_t *s_ctrl,struct msm_sensor_otp_in
 		goto out;
 	}
 	// handle otp data
-	pr_info("%s: otp data: DATE=20%d.%d.%d, huawei ID=%d, moudle ID=%d \n",
+	pr_info("%s: otp data: DATE=20%d.%d.%d, huawei ID=%d, module ID=%d \n",
 		__func__, otp_data[0], otp_data[1], otp_data[2], otp_data[3], otp_data[4]);
 	pr_info("%s, is otp data vaild=%d \n", __func__, otp_data[otp_info->otp_size-1]);
 
