@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_a94819cd",
+        "filename": "drivers/mmc/swrm/swrm_main.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 17206
+      },
+      "writtenOn": "2017-04-05T21:24:44Z",
+      "side": 1,
+      "message": "dmesg.log shows:\n\n\u003c7\u003e[1, swapper/0][    1.990437] SWRM moudle loaded 0.2\n\nso it\u0027s only this file i should\u0027ve posted the commit for",
+      "revId": "9ae1a656f425382d7c33e7519d9541a95957b451",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
