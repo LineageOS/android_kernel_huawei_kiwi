@@ -257,12 +257,6 @@ struct iattr {
  */
 #include <linux/quota.h>
 
-/*
- * Maximum number of layers of fs stack.  Needs to be limited to
- * prevent kernel stack overflow
- */
-#define FILESYSTEM_MAX_STACK_DEPTH 2
-
 /** 
  * enum positive_aop_returns - aop return codes with specific semantics
  *
