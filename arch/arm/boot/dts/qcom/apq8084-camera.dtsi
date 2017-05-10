@@ -26,6 +26,8 @@
 		reg-names = "csiphy", "csiphy_clk_mux";
 		interrupts = <0 78 0>;
 		interrupt-names = "csiphy";
+		qcom,csi-vdd-voltage = <1800000>;
+		qcom,mipi-csi-vdd-supply = <&pma8084_l12>;
 		clock-names = "camss_top_ahb_clk",
 			"camss_ahb_clk", "ispif_ahb_clk",
 			"csiphy_timer_src_clk", "csiphy_timer_clk";
@@ -40,6 +42,8 @@
 		reg-names = "csiphy", "csiphy_clk_mux";
 		interrupts = <0 79 0>;
 		interrupt-names = "csiphy";
+		qcom,csi-vdd-voltage = <1800000>;
+		qcom,mipi-csi-vdd-supply = <&pma8084_l12>;
 		clock-names = "camss_top_ahb_clk",
 			"camss_ahb_clk", "ispif_ahb_clk",
 			"csiphy_timer_src_clk", "csiphy_timer_clk";
@@ -54,6 +58,8 @@
 		reg-names = "csiphy", "csiphy_clk_mux";
 		interrupts = <0 80 0>;
 		interrupt-names = "csiphy";
+		qcom,csi-vdd-voltage = <1800000>;
+		qcom,mipi-csi-vdd-supply = <&pma8084_l12>;
 		clock-names = "camss_top_ahb_clk",
 			"camss_ahb_clk", "ispif_ahb_clk",
 			"csiphy_timer_src_clk", "csiphy_timer_clk";

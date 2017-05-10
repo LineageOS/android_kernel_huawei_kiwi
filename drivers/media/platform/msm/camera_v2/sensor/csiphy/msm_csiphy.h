@@ -81,6 +81,8 @@ struct csiphy_device {
 	struct clk *csiphy_clk[CSIPHY_NUM_CLK_MAX];
 	int32_t ref_count;
 	uint16_t lane_mask[MAX_CSIPHY];
+	struct regulator *csi_vdd;
+	struct regulator *reg_ptr;
 	uint32_t is_3_1_20nm_hw;
 	uint32_t is_3_1_rev3;
 	uint32_t csiphy_clk_index;
