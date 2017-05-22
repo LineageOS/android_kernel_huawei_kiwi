@@ -15,6 +15,26 @@
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
 #include <trace/events/power.h>
+#include <linux/moduleparam.h>
+
+static bool enable_si_ws = true;
+module_param(enable_si_ws, bool, 0644);
+static bool enable_msm_hsic_ws = true;
+module_param(enable_msm_hsic_ws, bool, 0644);
+static bool wlan_rx_wake = true;
+module_param(wlan_rx_wake, bool, 0644);
+static bool wlan_ctrl_wake = true;
+module_param(wlan_ctrl_wake, bool, 0644);
+static bool wlan_wake = true;
+module_param(wlan_wake, bool, 0644);
+static bool enable_bluedroid_timer_ws = true;
+module_param(enable_bluedroid_timer_ws, bool, 0644);
+static bool enable_qcom_rx_wakelock_ws = true;
+module_param(enable_qcom_rx_wakelock_ws, bool, 0644);
+static bool enable_timerfd_ws = true;
+module_param(enable_timerfd_ws, bool, 0644);
+static bool enable_netlink_ws = true;
+module_param(enable_netlink_ws, bool, 0644);
 
 #include "power.h"
 
@@ -121,6 +141,15 @@ void wakeup_source_destroy(struct wakeup_source *ws)
 }
 EXPORT_SYMBOL_GPL(wakeup_source_destroy);
 
+ /**
+ * wakeup_source_destroy_cb
+ * defer processing until all rcu references have expired
+ */
+static void wakeup_source_destroy_cb(struct rcu_head *head)
+{
+	wakeup_source_destroy(container_of(head, struct wakeup_source, rcu));
+}
+
 /**
  * wakeup_source_add - Add given object to the list of wakeup sources.
  * @ws: Wakeup source object to add to the list.
@@ -162,6 +191,27 @@ void wakeup_source_remove(struct wakeup_source *ws)
 EXPORT_SYMBOL_GPL(wakeup_source_remove);
 
 /**
+ * wakeup_source_remove_async - Remove given object from the wakeup sources
+ * list.
+ * @ws: Wakeup source object to remove from the list.
+ *
+ * Use only for wakeup source objects created with wakeup_source_create().
+ * Memory for ws must be freed via rcu.
+ */
+static void wakeup_source_remove_async(struct wakeup_source *ws)
+{
+	unsigned long flags;
+
+	if (WARN_ON(!ws))
+		return;
+
+	spin_lock_irqsave(&events_lock, flags);
+	list_del_rcu(&ws->entry);
+	spin_unlock_irqrestore(&events_lock, flags);
+}
+
+
+/**
  * wakeup_source_register - Create wakeup source and add it to the list.
  * @name: Name of the wakeup source to register.
  */
@@ -184,8 +234,8 @@ EXPORT_SYMBOL_GPL(wakeup_source_register);
 void wakeup_source_unregister(struct wakeup_source *ws)
 {
 	if (ws) {
-		wakeup_source_remove(ws);
-		wakeup_source_destroy(ws);
+		wakeup_source_remove_async(ws);
+		call_rcu(&ws->rcu, wakeup_source_destroy_cb);
 	}
 }
 EXPORT_SYMBOL_GPL(wakeup_source_unregister);
@@ -381,6 +431,33 @@ EXPORT_SYMBOL_GPL(device_set_wakeup_enable);
 static void wakeup_source_activate(struct wakeup_source *ws)
 {
 	unsigned int cec;
+
+	
+	if (!enable_si_ws && !strcmp(ws->name, "sensor_ind"))
+		return;
+
+	if (!enable_msm_hsic_ws && !strcmp(ws->name, "msm_hsic_host"))
+	return;
+
+	if (!wlan_rx_wake && !strcmp(ws->name, "wlan_rx_wake"))
+	return;
+
+	if (!wlan_ctrl_wake && !strcmp(ws->name, "wlan_ctrl_wake"))
+	return;
+
+	if (!wlan_wake && !strcmp(ws->name, "wlan_wake"))
+	return;
+
+	if (!enable_bluedroid_timer_ws && !strcmp(ws->name, "bluedroid_timer"))
+		return;
+
+	if ((!enable_qcom_rx_wakelock_ws && !strncmp(ws->name, "qcom_rx_wakelock", 16)) ||
+			(!enable_timerfd_ws && !strncmp(ws->name, "[timerfd]", 9)) ||
+			(!enable_netlink_ws && !strncmp(ws->name, "NETLINK", 7))) {
+		return;
+	}
+
+
 
 	/*
 	 * active wakeup source should bring the system
