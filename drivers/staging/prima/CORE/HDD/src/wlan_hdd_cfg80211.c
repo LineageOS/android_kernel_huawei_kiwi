@@ -2176,6 +2176,7 @@ wlan_hdd_extscan_config_policy
                                                            { .type = NLA_U32 },
     [QCA_WLAN_VENDOR_ATTR_EXTSCAN_SIGNIFICANT_CHANGE_PARAMS_NUM_AP] = { .type =
                                                                      NLA_U32 },
+    [QCA_WLAN_VENDOR_ATTR_EXTSCAN_BSSID_HOTLIST_PARAMS_LOST_AP_SAMPLE_SIZE] = { .type = NLA_U32 },
 };
 
 static void wlan_hdd_cfg80211_extscan_get_capabilities_ind(void *ctx, void *pMsg)
