@@ -16,6 +16,7 @@
 #include <linux/debugfs.h>
 #include <trace/events/power.h>
 #include <linux/moduleparam.h>
+#include <linux/display_state.h>
 
 static bool enable_si_ws = true;
 module_param(enable_si_ws, bool, 0644);
@@ -141,7 +142,7 @@ void wakeup_source_destroy(struct wakeup_source *ws)
 }
 EXPORT_SYMBOL_GPL(wakeup_source_destroy);
 
- /**
+/**
  * wakeup_source_destroy_cb
  * defer processing until all rcu references have expired
  */
@@ -209,7 +210,6 @@ static void wakeup_source_remove_async(struct wakeup_source *ws)
 	list_del_rcu(&ws->entry);
 	spin_unlock_irqrestore(&events_lock, flags);
 }
-
 
 /**
  * wakeup_source_register - Create wakeup source and add it to the list.
@@ -431,7 +431,6 @@ EXPORT_SYMBOL_GPL(device_set_wakeup_enable);
 static void wakeup_source_activate(struct wakeup_source *ws)
 {
 	unsigned int cec;
-
 	
 	if (!enable_si_ws && !strcmp(ws->name, "sensor_ind"))
 		return;
@@ -450,7 +449,7 @@ static void wakeup_source_activate(struct wakeup_source *ws)
 
 	if (!enable_bluedroid_timer_ws && !strcmp(ws->name, "bluedroid_timer"))
 		return;
-
+	
 	if ((!enable_qcom_rx_wakelock_ws && !strncmp(ws->name, "qcom_rx_wakelock", 16)) ||
 			(!enable_timerfd_ws && !strncmp(ws->name, "[timerfd]", 9)) ||
 			(!enable_netlink_ws && !strncmp(ws->name, "NETLINK", 7))) {
@@ -1156,3 +1155,4 @@ static int __init wakeup_sources_debugfs_init(void)
 }
 
 postcore_initcall(wakeup_sources_debugfs_init);
+
