@@ -91,3 +91,4 @@ obj-$(CONFIG_INPUT_MT_WRAPPER)		+= input_mt_wrapper.o
 #obj-$(CONFIG_TOUCHSCREEN_HUAWEI_FOCALTECH_FT6X06) += focaltech/
 #obj-$(CONFIG_TOUCHSCREEN_HUAWEI_MSTAR_MSG21XX) += mstar/
 #delete huawei switch
+obj-$(CONFIG_STATE_NOTIFIER)		+= state_notifier.o

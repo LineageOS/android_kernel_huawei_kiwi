@@ -47,5 +47,9 @@ config GT9XX_TOUCHPANEL_DEBUG
 
 	  If unsure, say N.
 
+config STATE_NOTIFIER
+	bool "State Notifier"
+	default y
+
 	  To compile this driver as a module, choose M here: the
 	  module will be called gt9xx_update.

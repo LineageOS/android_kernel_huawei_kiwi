@@ -21,7 +21,7 @@
 #include <linux/leds.h>
 #include <linux/qpnp/pwm.h>
 #include <linux/err.h>
-
+#include <linux/display_state.h>
 #include "mdss_dsi.h"
 /*add boe esd  solutions*/
 #ifdef CONFIG_LOG_JANK
@@ -61,6 +61,13 @@ static int LcdPow_DelayTime = false;
 /*open tp gesture can't wake up screen probability*/
 static bool get_tp_reset_status = false;
 DEFINE_LED_TRIGGER(bl_led_trigger);
+
+bool display_on = true;
+
+bool is_display_on()
+{
+	return display_on;
+}
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
@@ -172,6 +179,9 @@ u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
 /*set hs mode flag for read cmd*/
+
+display_on = true;
+
 #ifdef CONFIG_HUAWEI_LCD
 	if(ctrl->esd_check_enable)
 	{
@@ -888,6 +898,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		if (ctrl->ndx != DSI_CTRL_LEFT)
 			goto end;
 	}
+
+		display_on = false;
 
 #ifndef CONFIG_HUAWEI_LCD
 	if (ctrl->on_cmds.cmd_cnt)
