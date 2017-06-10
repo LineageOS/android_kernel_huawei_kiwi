@@ -1042,4 +1042,5 @@ backported_cfg80211_vendor_event_alloc(struct wiphy *wiphy,
 #define cfg80211_vendor_event_alloc backported_cfg80211_vendor_event_alloc
 #endif
 
+int wlan_hdd_try_disconnect(hdd_adapter_t *pAdapter);
 #endif

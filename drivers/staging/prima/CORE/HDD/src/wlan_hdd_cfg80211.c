@@ -3563,8 +3563,7 @@ static int __wlan_hdd_cfg80211_extscan_set_bssid_hotlist(struct wiphy *wiphy,
 
     if (i < pReqMsg->numAp) {
         hddLog(LOGW, FL("Number of AP %u less than expected %u"),
-               i, pReqMsg->numAp);
-        pReqMsg->numAp = i;
+                 i, pReqMsg->numAp);
     }
 
     status = sme_SetBssHotlist(pHddCtx->hHal, pReqMsg);
@@ -12213,7 +12212,7 @@ int wlan_hdd_cfg80211_set_privacy(hdd_adapter_t *pAdapter,
  * This function is used to disconnect from previous
  * connection
  */
-static int wlan_hdd_try_disconnect( hdd_adapter_t *pAdapter )
+int wlan_hdd_try_disconnect( hdd_adapter_t *pAdapter )
 {
     long ret = 0;
     hdd_station_ctx_t *pHddStaCtx;
@@ -12297,10 +12296,6 @@ static int __wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
         return status;
     }
 
-    if (vos_max_concurrent_connections_reached()) {
-        hddLog(VOS_TRACE_LEVEL_INFO, FL("Reached max concurrent connections"));
-        return -ECONNREFUSED;
-    }
 
 #ifdef WLAN_BTAMP_FEATURE
     //Infra connect not supported when AMP traffic is on.
@@ -12327,6 +12322,11 @@ static int __wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
         hddLog(VOS_TRACE_LEVEL_ERROR, FL("Failed to disconnect the existing"
                 " connection"));
         return -EALREADY;
+    }
+    /* Check for max concurrent connections after doing disconnect if any*/
+    if (vos_max_concurrent_connections_reached()) {
+        hddLog(VOS_TRACE_LEVEL_INFO, FL("Reached max concurrent connections"));
+        return -ECONNREFUSED;
     }
 
     /*initialise security parameters*/
@@ -16607,16 +16607,16 @@ static int __wlan_hdd_cfg80211_testmode(struct wiphy *wiphy, void *data, int len
             buf = nla_data(tb[WLAN_HDD_TM_ATTR_DATA]);
             buf_len = nla_len(tb[WLAN_HDD_TM_ATTR_DATA]);
 
-            hb_params_temp =(tSirLPHBReq *)buf;
-            if ((hb_params_temp->cmd == LPHB_SET_TCP_PARAMS_INDID) &&
-                (hb_params_temp->params.lphbTcpParamReq.timePeriodSec == 0))
-                return -EINVAL;
-
             if (buf_len > sizeof(*hb_params)) {
                 hddLog(LOGE, FL("buf_len=%d exceeded hb_params size limit"),
                        buf_len);
                 return -ERANGE;
             }
+
+            hb_params_temp =(tSirLPHBReq *)buf;
+            if ((hb_params_temp->cmd == LPHB_SET_TCP_PARAMS_INDID) &&
+                (hb_params_temp->params.lphbTcpParamReq.timePeriodSec == 0))
+                return -EINVAL;
 
             hb_params = (tSirLPHBReq *)vos_mem_malloc(sizeof(tSirLPHBReq));
             if (NULL == hb_params)
