@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -181,6 +181,7 @@ struct ipa_flt_entry {
  * @idx: routing table index
  * @rule_cnt: number of rules in routing table
  * @ref_cnt: reference counter of routing table
+ * @user_deleted: is the header deleted by the user?
  * @set: collection of routing tables
  * @cookie: cookie used for validity check
  * @in_sys: flag indicating if the table is located in system memory
@@ -239,6 +240,7 @@ struct ipa_hdr_entry {
 	u32 cookie;
 	u32 ref_cnt;
 	int id;
+	bool user_deleted;
 	u8 is_eth2_ofst_valid;
 	u16 eth2_ofst;
 };
@@ -1136,8 +1138,9 @@ void ipa_inc_client_enable_clks(void);
 int ipa_inc_client_enable_clks_no_block(void);
 void ipa_dec_client_disable_clks(void);
 int ipa_interrupts_init(u32 ipa_irq, u32 ee, struct device *ipa_dev);
+int ipa_del_hdr_by_user(struct ipa_ioc_del_hdr *hdls, bool by_user);
 int __ipa_del_rt_rule(u32 rule_hdl);
-int __ipa_del_hdr(u32 hdr_hdl);
+int __ipa_del_hdr(u32 hdr_hdl, bool by_user);
 int __ipa_release_hdr(u32 hdr_hdl);
 int __ipa_release_hdr_proc_ctx(u32 proc_ctx_hdl);
 int _ipa_read_gen_reg_v1_0(char *buff, int max_len);
