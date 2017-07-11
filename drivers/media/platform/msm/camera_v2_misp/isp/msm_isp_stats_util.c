@@ -189,6 +189,12 @@ int msm_isp_stats_create_stream(struct vfe_device *vfe_dev,
 	stats_idx = vfe_dev->hw_info->vfe_ops.stats_ops.
 		get_stats_idx(stream_req_cmd->stats_type);
 
+	if ((stats_idx > MSM_ISP_STATS_MAX) ||
+		(stats_idx == -EINVAL)) {
+		pr_err("%s: Stats idx Error\n", __func__);
+		return rc;
+	}
+
 	if (stats_idx >= vfe_dev->hw_info->stats_hw_info->num_stats_type) {
 		pr_err("%s Invalid stats index %d", __func__, stats_idx);
 		return -EINVAL;
