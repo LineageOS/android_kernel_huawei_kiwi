@@ -36,11 +36,6 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/cpufreq_interactive.h>
 
-#ifdef CONFIG_HUAWEI_MSG_POLICY
-#include <linux/kernel_stat.h>
-#include <power/msgnotify.h>
-#endif
-
 struct cpufreq_interactive_cpuinfo {
 	struct timer_list cpu_timer;
 	struct timer_list cpu_slack_timer;
@@ -49,9 +44,6 @@ struct cpufreq_interactive_cpuinfo {
 	u64 time_in_idle_timestamp;
 	u64 cputime_speedadj;
 	u64 cputime_speedadj_timestamp;
-#ifdef CONFIG_HUAWEI_MSG_POLICY
-	u64 cputime_msg_timestamp;
-#endif
 	u64 last_evaluated_jiffy;
 	struct cpufreq_policy *policy;
 	struct cpufreq_frequency_table *freq_table;
@@ -83,7 +75,7 @@ static int migration_register_count;
 static struct mutex sched_lock;
 
 /* Target load.  Lower values result in higher CPU speeds. */
-#define DEFAULT_TARGET_LOAD 90
+#define DEFAULT_TARGET_LOAD 85
 static unsigned int default_target_loads[] = {DEFAULT_TARGET_LOAD};
 
 #define DEFAULT_TIMER_RATE (20 * USEC_PER_MSEC)
@@ -96,7 +88,7 @@ struct cpufreq_interactive_tunables {
 	/* Hi speed to bump to from lo speed when load burst (default max) */
 	unsigned int hispeed_freq;
 	/* Go to hi speed when CPU load at or above this value. */
-#define DEFAULT_GO_HISPEED_LOAD 99
+#define DEFAULT_GO_HISPEED_LOAD 90
 	unsigned long go_hispeed_load;
 	/* Target load. Lower values result in higher CPU speeds. */
 	spinlock_t target_loads_lock;
@@ -106,7 +98,7 @@ struct cpufreq_interactive_tunables {
 	 * The minimum amount of time to spend at a frequency before we can ramp
 	 * down.
 	 */
-#define DEFAULT_MIN_SAMPLE_TIME (80 * USEC_PER_MSEC)
+#define DEFAULT_MIN_SAMPLE_TIME (40 * USEC_PER_MSEC)
 	unsigned long min_sample_time;
 	/*
 	 * The sample rate of the timer used to increase frequency
@@ -237,9 +229,6 @@ static void cpufreq_interactive_timer_start(
 				  tunables->io_is_busy);
 	pcpu->cputime_speedadj = 0;
 	pcpu->cputime_speedadj_timestamp = pcpu->time_in_idle_timestamp;
-#ifdef CONFIG_HUAWEI_MSG_POLICY
-	pcpu->cputime_msg_timestamp = kcpustat_cpu(cpu).cpustat[CPUTIME_MESSAGE];
-#endif
 	spin_unlock_irqrestore(&pcpu->load_lock, flags);
 }
 
@@ -377,32 +366,18 @@ static u64 update_load(int cpu)
 		pcpu->policy->governor_data;
 	u64 now;
 	u64 now_idle;
-	unsigned int delta_idle;
-	unsigned int delta_time;
+	u64 delta_idle;
+	u64 delta_time;
 	u64 active_time;
-#ifdef CONFIG_HUAWEI_MSG_POLICY
-	u64 now_msg_timestamp;
-#endif
 
 	now_idle = get_cpu_idle_time(cpu, &now, tunables->io_is_busy);
-	delta_idle = (unsigned int)(now_idle - pcpu->time_in_idle);
-	delta_time = (unsigned int)(now - pcpu->time_in_idle_timestamp);
+	delta_idle = (now_idle - pcpu->time_in_idle);
+	delta_time = (now - pcpu->time_in_idle_timestamp);
 
 	if (delta_time <= delta_idle)
 		active_time = 0;
 	else
 		active_time = delta_time - delta_idle;
-
-#ifdef CONFIG_HUAWEI_MSG_POLICY
-	now_msg_timestamp = kcpustat_cpu(cpu).cpustat[CPUTIME_MESSAGE];
-
-	if (active_time != 0) {
-		active_time = adjust_active_time_by_msg(cpu,active_time,delta_time,
-			(now_msg_timestamp - pcpu->cputime_msg_timestamp));
-
-	}
-	pcpu->cputime_msg_timestamp = now_msg_timestamp;
-#endif
 
 	pcpu->cputime_speedadj += active_time * pcpu->policy->cur;
 
@@ -410,22 +385,6 @@ static u64 update_load(int cpu)
 	pcpu->time_in_idle_timestamp = now;
 	return now;
 }
-
-#ifdef CONFIG_CLUSTER_PLUG
-
-extern bool cluster_plug_is_low_power_mode(void);
-
-unsigned long go_hispeed_load(struct cpufreq_interactive_tunables *tunables)
-{
-	if (cluster_plug_is_low_power_mode())
-		return 10000;
-	else
-		return tunables->go_hispeed_load;
-}
-
-#else
-#define go_hispeed_load(tunables) ((tunables)->go_hispeed_load)
-#endif
 
 static void cpufreq_interactive_timer(unsigned long data)
 {
@@ -493,7 +452,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 	cpu_load = loadadjfreq / pcpu->policy->cur;
 	boosted = tunables->boost_val || now < tunables->boostpulse_endtime;
 
-	if (cpu_load >= go_hispeed_load(tunables) || boosted) {
+	if (cpu_load >= tunables->go_hispeed_load || boosted) {
 		if (pcpu->policy->cur < tunables->hispeed_freq) {
 			new_freq = tunables->hispeed_freq;
 		} else {
@@ -1307,15 +1266,19 @@ static ssize_t store_use_sched_load(
 
 	if (tunables->use_sched_load == (bool) val)
 		return count;
+
+	tunables->use_sched_load = val;
+
 	if (val)
 		ret = cpufreq_interactive_enable_sched_input(tunables);
 	else
 		ret = cpufreq_interactive_disable_sched_input(tunables);
 
-	if (ret)
+	if (ret) {
+		tunables->use_sched_load = !val;
 		return ret;
+	}
 
-	tunables->use_sched_load = val;
 	return count;
 }
 
@@ -1729,7 +1692,6 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 	case CPUFREQ_GOV_LIMITS:
 		__cpufreq_driver_target(policy,
 				policy->cur, CPUFREQ_RELATION_L);
-
 		for_each_cpu(j, policy->cpus) {
 			pcpu = &per_cpu(cpuinfo, j);
 

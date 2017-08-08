@@ -240,7 +240,7 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 	  else echo sh; fi ; fi)
 
 HOSTCC       = gcc
-HOSTCXX      = g++
+HOSTCXX      = ccache g++
 HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer -std=gnu89
 HOSTCXXFLAGS = -O2
 
@@ -397,6 +397,16 @@ KBUILD_AFLAGS   := -D__ASSEMBLY__
 KBUILD_AFLAGS_MODULE  := -DMODULE
 KBUILD_CFLAGS_MODULE  := -DMODULE
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
+
+# User supplied flags
+KCFLAGS	:= -pipe -fno-tree-vectorize -ffast-math \
+	   -fmodulo-sched -fmodulo-sched-allow-regmoves
+KCFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
+
+# Some A53 optimizations
+ifdef CONFIG_ARCH_MSM8916
+KCFLAGS	+= -mfix-cortex-a53-843419 -mfix-cortex-a53-835769
+endif
 
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
 KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
@@ -587,7 +597,11 @@ endif # $(dot-config)
 # Defaults to vmlinux, but the arch makefile usually adds further targets
 all: vmlinux
 
-KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
+# force no-pie for distro compilers that enable pie by default
+KBUILD_CFLAGS	+= $(call cc-option, -fno-pie)
+KBUILD_CFLAGS	+= $(call cc-option, -no-pie)
+KBUILD_AFLAGS	+= $(call cc-option, -fno-pie)
+KBUILD_CPPFLAGS += $(call cc-option, -fno-pie)
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os

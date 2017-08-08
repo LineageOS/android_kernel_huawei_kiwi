@@ -23,6 +23,11 @@
 #include <linux/regulator/consumer.h>
 #include <linux/leds-qpnp-wled.h>
 #include <linux/clk.h>
+
+#ifdef CONFIG_STATE_NOTIFIER
+#include <linux/state_notifier.h>
+#endif
+
 /* optimize the screen wake up time*/
 #include <linux/pm_qos.h>
 #include "mdss.h"
@@ -1717,6 +1722,9 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		if (ctrl_pdata->on_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_unblank(pdata);
 		pdata->panel_info.esd_rdy = true;
+#ifdef CONFIG_STATE_NOTIFIER
+		state_notifier_call_chain(STATE_NOTIFIER_ACTIVE, NULL);
+#endif
 		break;
 	case MDSS_EVENT_BLANK:
 		if (ctrl_pdata->hw_product_pad)
@@ -1737,6 +1745,10 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 			rc = mdss_dsi_blank(pdata, power_state);
 		if (!(pdata->panel_info.mipi.always_on))
 			rc = mdss_dsi_off(pdata, power_state);
+#ifdef CONFIG_STATE_NOTIFIER
+		state_notifier_call_chain(STATE_NOTIFIER_SUSPEND, NULL);
+#endif
+
 		break;
 	case MDSS_EVENT_CONT_SPLASH_FINISH:
 		if (ctrl_pdata->off_cmds.link_state == DSI_LP_MODE)
