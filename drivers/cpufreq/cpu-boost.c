@@ -44,7 +44,7 @@ static struct notifier_block notif;
 
 static bool input_boost_enabled;
 
-static unsigned int input_boost_ms = 40;
+static unsigned int input_boost_ms = 100;
 module_param(input_boost_ms, uint, 0644);
 
 static bool sched_boost_on_input;
