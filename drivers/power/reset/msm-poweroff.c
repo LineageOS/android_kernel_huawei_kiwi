@@ -137,6 +137,7 @@ static bool get_dload_mode(void)
 }
 
 #ifndef CONFIG_HUAWEI_KERNEL
+#if 0
 static void enable_emergency_dload_mode(void)
 {
 	int ret;
@@ -161,6 +162,7 @@ static void enable_emergency_dload_mode(void)
 	if (ret)
 		pr_err("Failed to set secure EDLOAD mode: %d\n", ret);
 }
+#endif
 #endif
 
 #ifdef CONFIG_HUAWEI_KERNEL
@@ -317,8 +319,10 @@ static void msm_restart_prepare(const char *cmd)
 				__raw_writel(0x6f656d00 | (code & 0xff),
 					     restart_reason);
 #ifndef CONFIG_HUAWEI_KERNEL
+#if 0
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
+#endif
 #endif
 #ifdef CONFIG_HUAWEI_KERNEL
 		} else if (!strncmp(cmd, "huawei_rtc", 10)) {
