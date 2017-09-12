@@ -30,6 +30,7 @@
 #include <misc/app_info.h>
 #include <linux/hw_lcd_common.h>
 #include <hw_lcd_debug.h>
+#include <linux/display_state.h>
 /*delete cpuget() to avoid panic*/
 #ifdef CONFIG_HUAWEI_LCD
 int lcd_debug_mask = LCD_INFO;
@@ -960,6 +961,7 @@ static int mdss_dsi_post_panel_on(struct mdss_panel_data *pdata)
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
 	}
+		display_on = true;
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
@@ -1013,6 +1015,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
+		
+		display_on = false;
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;
@@ -1061,7 +1065,7 @@ static int mdss_dsi_panel_inversion_ctrl(struct mdss_panel_data *pdata,u32 imode
 	}
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
-	
+
 	switch(imode)
 	{
 		case COLUMN_INVERSION: //column inversion mode
@@ -1088,8 +1092,8 @@ static int mdss_dsi_check_panel_status(struct mdss_panel_data *pdata)
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	int ret = 0;
 	int count = 5;
-	/* because the max read length is 3, so change returned value buffer size to char*3 */  
-	char rdata[3] = {0}; 
+	/* because the max read length is 3, so change returned value buffer size to char*3 */
+	char rdata[3] = {0};
 	char expect_value = 0x9C;
 	int read_length = 1;
 
@@ -1123,7 +1127,7 @@ static int mdss_dsi_check_panel_status(struct mdss_panel_data *pdata)
 			ret = -EINVAL;
 			lcd_report_dsm_err(DSM_LCD_STATUS_ERROR_NO, rdata[0], 0x0A);
 		}
-	
+
 		return ret;
 	}
 }
@@ -1131,7 +1135,7 @@ int mdss_dsi_check_panel_status_n(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	int ret = 0;
-	char rdata[3] = {0}; 
+	char rdata[3] = {0};
 	char expect_value = 0x9C;
 	int read_length = 1;
 
@@ -1153,16 +1157,16 @@ int mdss_dsi_check_panel_status_n(struct mdss_panel_data *pdata)
 			expect_value = ctrl_pdata->reg_expect_value;
 			read_length = ctrl_pdata->reg_expect_count;
 		}
-		
+
 		mdss_dsi_panel_cmd_read(ctrl_pdata,0x0A,0x00,NULL,rdata,read_length);
 		LCD_LOG_INFO("exit %s ,0x0A = 0x%x \n",__func__,rdata[0]);
-		
+
 		if((expect_value != rdata[0]))
 		{
 			ret = -EINVAL;
 			lcd_report_dsm_err(DSM_LCD_STATUS_ERROR_NO, rdata[0], 0x0A);
 		}
-	
+
 		return ret;
 	}
 }
@@ -1221,7 +1225,7 @@ int panel_check_live_status(struct mdss_dsi_ctrl_pdata *ctrl)
 					/*if ctrl->inversion_state is 0,ctrl->inversion_state<<5 equal 0x00*/
 					/*ctrl->esd_cmds.cmds[j].payload[1] equal 0x00*/
 					/*when we read the 0x0d register,0x20 means enter color inversion mode when inversion mode on,not esd issue*/
-					ctrl->esd_cmds.cmds[j].payload[1] = ctrl->esd_cmds.cmds[j].payload[1] | (ctrl->inversion_state<<5);					
+					ctrl->esd_cmds.cmds[j].payload[1] = ctrl->esd_cmds.cmds[j].payload[1] | (ctrl->inversion_state<<5);
 				}
 				if(esd_buf[i] != ctrl->esd_cmds.cmds[j].payload[i+1])
 				{
@@ -1359,7 +1363,7 @@ static int mdss_lcd_frame_checksum(struct mdss_panel_data *pdata)
 	pinfo = &ctrl->panel_data.panel_info;
 
 	return 0;
-	
+
 	if(!ctrl->frame_checksum_support){
 		LCD_LOG_INFO("%s:this panel frame checksum not supported!\n",__func__);
 		return ret;//if not support, return 0 to RT test(0 == sucess)
@@ -1380,7 +1384,7 @@ static int mdss_lcd_frame_checksum(struct mdss_panel_data *pdata)
 	}
 
 	mdelay(50);
-	
+
 	do{
 		mdss_dsi_panel_cmd_read(ctrl,ctrl->frame_crc_read_cmds[i],0x00,NULL,&rdata,read_length);
 		if(i == 0 && rdata != ctrl->frame_crc_read_cmds_value[offset+i]){
@@ -1407,7 +1411,7 @@ static int mdss_lcd_frame_checksum(struct mdss_panel_data *pdata)
 		}
 		i++;
 	}while(i < ctrl->panel_checksum_cmd_len);
-	
+
     /* BOE-OTM1901 panel doesn't support checksum disable cmd */
 	if (strcmp(pinfo->panel_name,"BOE_OTM1901_5P5_1080P_VIDEO") != 0) {
 		if (ctrl->dsi_frame_crc_disable_cmds.cmd_cnt){
@@ -2076,7 +2080,7 @@ static void mdss_panel_parse_frame_checksum_dt(struct device_node *np,
 {
 	int rc = 0, i = 0, len = 0;
 	const char *data;
-	
+
 	ctrl_pdata->frame_checksum_support = of_property_read_bool(np, "qcom,panel-frame-checksum-support");
 	LCD_LOG_INFO("%s: frame checksum %s by this panel!\n",__func__,
 					ctrl_pdata->frame_checksum_support?"supported":"not supported");
@@ -2126,7 +2130,7 @@ static void mdss_panel_parse_frame_checksum_dt(struct device_node *np,
 				ctrl_pdata->frame_crc_read_cmds_value[i] = data[i];
 			}
 		}
-		
+
 	}
 
 	return;
@@ -2475,7 +2479,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 #ifdef CONFIG_FB_AUTO_CABC
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->dsi_panel_cabc_ui_cmds,
-		"qcom,panel-cabc-ui-cmds", "qcom,cabc-ui-cmds-dsi-state"); 
+		"qcom,panel-cabc-ui-cmds", "qcom,cabc-ui-cmds-dsi-state");
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->dsi_panel_cabc_video_cmds,
 		"qcom,panel-cabc-video-cmds", "qcom,cabc-video-cmds-dsi-state");
 #endif
