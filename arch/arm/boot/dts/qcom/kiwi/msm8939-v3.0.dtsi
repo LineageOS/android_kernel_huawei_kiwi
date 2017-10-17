@@ -11,6 +11,25 @@
  * GNU General Public License for more details.
  */
 
+/ {
+	firmware: firmware {
+		android {
+			compatible = "android,firmware";
+			fstab {
+				compatible = "android,fstab";
+				system {
+					compatible = "android,system";
+					dev = "/dev/block/platform/soc.0/7824900.sdhci/by-name/system";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,discard";
+					fsmgr_flags = "wait";
+					status = "ok";
+				};
+			};
+		};
+	};
+};
+
 &soc {
 	apc_vreg_corner: regulator@b018000 {
 		qcom,cpr-voltage-floor = <1050000 1150000 1100000>;
