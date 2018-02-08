@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -234,6 +234,9 @@ typedef v_U8_t tWlanHddMacAddr[HDD_MAC_ADDR_LEN];
 #define MIN(a, b) (a > b ? b : a)
 
 #endif
+
+#define HDD_MAX_STA_COUNT (HAL_NUM_STA)
+
 /*
  * Generic asynchronous request/response support
  *
@@ -1453,6 +1456,8 @@ struct hdd_context_s
 #ifdef WLAN_FEATURE_LINK_LAYER_STATS
     struct hdd_ll_stats_context ll_stats_context;
 #endif /* End of WLAN_FEATURE_LINK_LAYER_STATS */
+    unsigned long  last_suspend_success;
+    v_U32_t  continuous_suspend_fail_cnt;
 };
 
 
@@ -1728,5 +1733,16 @@ static inline void hdd_init_ll_stat_ctx(void)
 void hdd_wlan_free_wiphy_channels(struct wiphy *wiphy);
 void hdd_initialize_adapter_common(hdd_adapter_t *pAdapter);
 
+/**
+ * hdd_drv_cmd_validate() - Validates for space in hdd driver command
+ * @command: pointer to input data (its a NULL terminated string)
+ * @len: length of command name
+ *
+ * This function checks for space after command name and if no space
+ * is found returns error.
+ *
+ * Return: 0 for success non-zero for failure
+ */
+int hdd_drv_cmd_validate(tANI_U8 *command, int len);
 
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )
