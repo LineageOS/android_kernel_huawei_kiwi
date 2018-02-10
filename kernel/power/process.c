@@ -17,6 +17,10 @@
 #include <linux/delay.h>
 #include <linux/workqueue.h>
 #include <linux/kmod.h>
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <linux/wakelock.h>
+#include "power.h"
+#endif
 
 /* 
  * Timeout for stopping processes
@@ -84,6 +88,14 @@ static int try_to_freeze_tasks(bool user_only)
 
 	if (todo) {
 		printk("\n");
+
+#ifdef CONFIG_HUAWEI_KERNEL
+		if(wakeup) {
+			printk(KERN_ERR "Freezing of %s aborted, system been waking up\n",
+					user_only ? "user space " : "tasks ");
+		}
+#endif
+
 		printk(KERN_ERR "Freezing of tasks %s after %d.%03d seconds "
 		       "(%d tasks refusing to freeze, wq_busy=%d):\n",
 		       wakeup ? "aborted" : "failed",
@@ -151,6 +163,12 @@ int freeze_kernel_threads(void)
 {
 	int error;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+    error = suspend_sys_sync_wait();
+	if(error)
+	   return error;
+#endif
+	
 	printk("Freezing remaining freezable tasks ... ");
 	pm_nosig_freezing = true;
 	error = try_to_freeze_tasks(false);

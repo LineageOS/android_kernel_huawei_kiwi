@@ -23,6 +23,16 @@
 #include <linux/syscore_ops.h>
 #include "pinctrl-msm.h"
 
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <linux/of.h>
+#include <linux/slab.h>
+#endif
+
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <linux/debugfs.h>
+static const struct file_operations msm_gpio_stats_fops;
+#endif
+
 /* config translations */
 #define drv_str_to_rval(drv)	((drv >> 1) - 1)
 #define rval_to_drv_str(val)	((val + 1) << 1)
@@ -44,6 +54,10 @@
 #define GPIO_OUT_BIT			1
 #define GPIO_IN_BIT			0
 #define GPIO_OE_BIT			9
+#ifdef  CONFIG_HUAWEI_KERNEL
+#define TLMM_GP_FUNC		0
+#define TLMM_GP_DRV_2MA	0
+#endif
 /* SDC1 PIN TYPE REG MASKS */
 #define TLMM_SDC1_CLK_DRV_SHFT		6
 #define TLMM_SDC1_CLK_DRV_MASK		0x7
@@ -1197,6 +1211,12 @@ static int msm_tlmm_probe(struct platform_device *pdev)
 		}
 		tlmm_desc->irq = irq;
 	}
+
+#ifdef  CONFIG_HUAWEI_KERNEL
+	debugfs_create_file("hw_gpio_stats", S_IRUGO,
+		NULL, NULL, &msm_gpio_stats_fops);
+#endif
+
 	pintype_data = (const struct msm_pintype_data **)match->data;
 	for (i = 0; i < MSM_PINTYPE_MAX; i++)
 		tlmm_pininfo[i].pintype_data = pintype_data[i];
@@ -1213,7 +1233,211 @@ static struct platform_driver msm_tlmm_drv = {
 		.of_match_table = of_match_ptr(msm_tlmm_dt_match),
 	},
 };
+#ifdef  CONFIG_HUAWEI_KERNEL
+static const char * const gpiomux_drv_str[] = {
+	"DRV_2mA",
+	"DRV_4mA",
+	"DRV_6mA",
+	"DRV_8mA",
+	"DRV_10mA",
+	"DRV_12mA",
+	"DRV_14mA",
+	"DRV_16mA",
+};
 
+static const char * const gpiomux_func_str[] = {
+	"GPIO",
+	"Func_1",
+	"Func_2",
+	"Func_3",
+	"Func_4",
+	"Func_5",
+	"Func_6",
+	"Func_7",
+	"Func_8",
+	"Func_9",
+	"Func_a",
+	"Func_b",
+	"Func_c",
+	"Func_d",
+	"Func_e",
+	"Func_f",
+};
+
+static const char * const gpiomux_pull_str[] = {
+	"PULL_NONE",
+	"PULL_DOWN",
+	"PULL_KEEPER",
+	"PULL_UP",
+};
+
+static const char * const gpiomux_dir_str[] = {
+	"IN",
+	"OUT",
+};
+
+static const char * const gpiomux_val_str[] = {
+	"LOW",
+	"HIGH",
+};
+
+void msm_gpio_print_enabled(void)
+{
+	int i;
+	unsigned int pull_index, func_index, drv_index, dir_index, val_index;
+	unsigned int cfg_val, inout_val;
+	unsigned int pin_no;
+
+	void __iomem *cfg_reg;
+	void __iomem *inout_reg;
+
+	struct msm_pintype_info *pintype;
+
+	printk(KERN_INFO "GPIO \tFunc \tDir \tPull State \tDrive Strength \tVal\n");
+
+	pintype = &tlmm_pininfo[0];
+	/*Remove the dead code here*/
+	for (i = 0; i < pintype->num_pins; i++) {
+		pin_no = i + pintype->pin_start;
+
+		cfg_reg = TLMM_GP_CFG(pintype, pin_no);
+		inout_reg = TLMM_GP_INOUT(pintype, pin_no);
+
+		cfg_val = readl_relaxed(cfg_reg);
+		inout_val = readl_relaxed(inout_reg) & BIT(GPIO_IN_BIT);
+		pull_index = (cfg_val >> TLMM_GP_PULL_SHFT) & TLMM_GP_PULL_MASK;
+		func_index = (cfg_val >> TLMM_GP_FUNC_SHFT) & TLMM_GP_FUNC_MASK;
+		drv_index =  (cfg_val >> TLMM_GP_DRV_SHFT) & TLMM_GP_DRV_MASK;
+		dir_index =  (cfg_val >> TLMM_GP_DIR_SHFT) & TLMM_GP_DIR_MASK; //1:out, 0:in
+		val_index = inout_val;
+
+		printk(KERN_INFO "GPIO[%u] \t%s \t%s \t%s \t%s \t%s\n", pin_no,
+			gpiomux_func_str[func_index],
+			func_index?"NA":gpiomux_dir_str[dir_index],
+			gpiomux_pull_str[pull_index],
+			gpiomux_drv_str[drv_index],
+			func_index?"NA":gpiomux_val_str[val_index]);
+	}
+}
+EXPORT_SYMBOL(msm_gpio_print_enabled);
+
+static int msm_gpio_stats_show(struct seq_file *s, void *data)
+{
+	int i = 0;
+	unsigned int pull_index, func_index, drv_index, dir_index, val_index;
+	unsigned int cfg_val, inout_val;
+	unsigned int pin_no;
+
+	void __iomem *cfg_reg;
+	void __iomem *inout_reg;
+
+	struct msm_pintype_info *pintype;
+
+	seq_puts(s, "GPIO \tFunc \tDir \tPull State \tDrive Strength \tVal\n");
+
+	pintype = &tlmm_pininfo[0];
+	for (i = 0; i < pintype->num_pins; i++) {
+		pin_no = i + pintype->pin_start;
+
+		cfg_reg = TLMM_GP_CFG(pintype, pin_no);
+		inout_reg = TLMM_GP_INOUT(pintype, pin_no);
+
+		cfg_val = readl_relaxed(cfg_reg);
+		inout_val = readl_relaxed(inout_reg) & BIT(GPIO_IN_BIT);
+		pull_index = (cfg_val >> TLMM_GP_PULL_SHFT) & TLMM_GP_PULL_MASK;
+		func_index = (cfg_val >> TLMM_GP_FUNC_SHFT) & TLMM_GP_FUNC_MASK;
+		drv_index =  (cfg_val >> TLMM_GP_DRV_SHFT) & TLMM_GP_DRV_MASK;
+		dir_index =  (cfg_val >> TLMM_GP_DIR_SHFT) & TLMM_GP_DIR_MASK; //1:out, 0:in
+		val_index = inout_val;
+
+		seq_printf(s, "GPIO[%u] \t%s \t%s \t%s \t%s \t%s\n", pin_no,
+			gpiomux_func_str[func_index],
+			func_index?"NA":gpiomux_dir_str[dir_index],
+			gpiomux_pull_str[pull_index],
+			gpiomux_drv_str[drv_index],
+			func_index?"NA":gpiomux_val_str[val_index]);
+	}
+	return 0;
+}
+
+static int msm_gpio_stats_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, msm_gpio_stats_show, NULL);
+}
+
+static const struct file_operations msm_gpio_stats_fops = {
+	.owner		= THIS_MODULE,
+	.open		= msm_gpio_stats_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+#endif
+
+#ifdef  CONFIG_HUAWEI_KERNEL
+static void msm_gpio_config(unsigned int gpio_num)
+{
+	unsigned int val = 0;
+	void __iomem *cfg_reg;
+	struct msm_pintype_info *pintype;
+	int *test = NULL;
+
+	pintype = &tlmm_pininfo[0];
+
+	if (!pintype)
+		return;
+    
+	cfg_reg = TLMM_GP_CFG(pintype, gpio_num);
+	test = cfg_reg;
+    /*configure the nc gpio to input and pulldown*/
+	val |= (TLMM_PULL_DOWN >> TLMM_GP_PULL_SHFT) & TLMM_GP_PULL_MASK;
+	val |= (TLMM_GP_FUNC >> TLMM_GP_FUNC_SHFT) & TLMM_GP_FUNC_MASK;
+	val |= (TLMM_GP_DRV_2MA >> TLMM_GP_DRV_SHFT) & TLMM_GP_DRV_MASK;
+	val |= (GPIO_IN_BIT >> TLMM_GP_DIR_SHFT) & TLMM_GP_DIR_MASK;
+	writel_relaxed(val, cfg_reg);
+}
+
+/*read the nc gpio from dtsi and configure it*/
+int msm_cfg_nc_gpio(void)
+{
+	struct device_node *of_gpio_node;
+	int ngpio = 0;
+	int rc = 0;
+	unsigned* record = NULL;
+	int i;
+
+	of_gpio_node = of_find_compatible_node(NULL, NULL, "qcom,sleep_gpio");
+	if (!of_gpio_node) {
+		pr_err("%s: Failed to find qcom,sleep_gpio node\n", __func__);
+		return -ENODEV;
+	}
+	
+	rc = of_property_read_u32(of_gpio_node, "ngpio", &ngpio);
+	if (rc) {
+		pr_err("%s: Failed to find ngpio property in msm-gpio ngpio node %d\n"
+				, __func__, rc);
+		return rc;
+	}
+
+	record = kmalloc(sizeof(int) * ngpio , GFP_KERNEL);
+	if (!record)
+	{
+		return -ENOMEM;
+	}
+	memset(record,0,sizeof(int) * ngpio);
+	of_property_read_u32_array(of_gpio_node,"gpio",record,ngpio); 
+
+	for(i=0;i<ngpio;i++)
+	{
+		msm_gpio_config(record[i]);
+	}
+
+	kfree(record);
+    record = NULL;
+	return rc;
+}
+EXPORT_SYMBOL(msm_cfg_nc_gpio);
+#endif
 static int __init msm_tlmm_drv_register(void)
 {
 	return platform_driver_register(&msm_tlmm_drv);

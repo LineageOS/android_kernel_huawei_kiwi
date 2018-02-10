@@ -7,6 +7,18 @@
 
 static int version_proc_show(struct seq_file *m, void *v)
 {
+#ifdef CONFIG_HUAWEI_KERNEL
+#ifndef HIDE_PRODUCT_INFO_KERNEL
+	if(hide_info)
+	{
+		seq_printf(m, hide_version,
+			utsname()->sysname,
+			utsname()->release,
+			utsname()->version);
+	}
+	else
+#endif
+#endif
 	seq_printf(m, linux_proc_banner,
 		utsname()->sysname,
 		utsname()->release,

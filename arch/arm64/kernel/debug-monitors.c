@@ -29,16 +29,7 @@
 #include <asm/debug-monitors.h>
 #include <asm/cputype.h>
 #include <asm/system_misc.h>
-
-/* Low-level stepping controls. */
-#define DBG_MDSCR_SS		(1 << 0)
-#define DBG_SPSR_SS		(1 << 21)
-
-/* MDSCR_EL1 enabling bits */
-#define DBG_MDSCR_KDE		(1 << 13)
-#define DBG_MDSCR_MDE		(1 << 15)
-#define DBG_MDSCR_MASK		~(DBG_MDSCR_KDE | DBG_MDSCR_MDE)
-
+#include <linux/kprobes.h>
 /* Determine debug architecture. */
 u8 debug_monitors_arch(void)
 {
@@ -237,7 +228,7 @@ static int single_step_handler(unsigned long addr, unsigned int esr,
 			       struct pt_regs *regs)
 {
 	siginfo_t info;
-
+	bool handler_found = false;
 	/*
 	 * If we are stepping a pending breakpoint, call the hw_breakpoint
 	 * handler first.
@@ -260,15 +251,21 @@ static int single_step_handler(unsigned long addr, unsigned int esr,
 		 */
 		user_rewind_single_step(current);
 	} else {
+#ifdef	CONFIG_KPROBES
+		if (kprobe_single_step_handler(regs, esr) == DBG_HOOK_HANDLED)
+			handler_found = true;
+#endif
 		if (call_step_hook(regs, esr) == DBG_HOOK_HANDLED)
-			return 0;
-
-		pr_warning("Unexpected kernel single-step exception at EL1\n");
-		/*
-		 * Re-enable stepping since we know that we will be
-		 * returning to regs.
-		 */
-		set_regs_spsr_ss(regs);
+			handler_found = true;
+		
+		if (!handler_found) {
+			pr_warning("Unexpected kernel single-step exception at EL1\n");
+			/*
+			 * Re-enable stepping since we know that we will be
+			 * returning to regs.
+			 */
+			set_regs_spsr_ss(regs);
+		}
 	}
 
 	return 0;
@@ -314,21 +311,26 @@ static int brk_handler(unsigned long addr, unsigned int esr,
 		       struct pt_regs *regs)
 {
 	siginfo_t info;
+	if (user_mode(regs)) {
+		info = (siginfo_t) {
+			.si_signo = SIGTRAP,
+			.si_errno = 0,
+			.si_code  = TRAP_BRKPT,
+			.si_addr  = (void __user *)instruction_pointer(regs),
+		};
 
-	if (call_break_hook(regs, esr) == DBG_HOOK_HANDLED)
-		return 0;
-
-	if (!user_mode(regs))
+		force_sig_info(SIGTRAP, &info, current);
+	} 
+#ifdef	CONFIG_KPROBES
+	else if ((esr & BRK64_ESR_MASK) == BRK64_ESR_KPROBES) {
+		if (kprobe_breakpoint_handler(regs, esr) != DBG_HOOK_HANDLED)
+			return -EFAULT;
+	}
+#endif
+	else if (call_break_hook(regs, esr) != DBG_HOOK_HANDLED) {
+		pr_warning("Unexpected kernel BRK exception at EL1\n");
 		return -EFAULT;
-
-	info = (siginfo_t) {
-		.si_signo = SIGTRAP,
-		.si_errno = 0,
-		.si_code  = TRAP_BRKPT,
-		.si_addr  = (void __user *)instruction_pointer(regs),
-	};
-
-	force_sig_info(SIGTRAP, &info, current);
+	}
 	return 0;
 }
 
