@@ -20,6 +20,22 @@
 #include <linux/mmc/card.h>
 #include <linux/mmc/host.h>
 
+#ifdef CONFIG_HW_MMC_TOSHIBA_HEALTH_API
+#include <linux/mmc/mmc.h>
+#include <linux/scatterlist.h>
+#define MMC_GEN_CMD 56
+#define DHRDF_OK 0xA0
+#define DHCF_SUB_CMD_NO 0x5
+#define DHCF_PASSWORD 0x00175063
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+/* Enum of power state */
+enum sd_type {
+    SDHC = 0,
+    SDXC,
+};
+#endif
+
 #include "core.h"
 #include "mmc_ops.h"
 
@@ -246,6 +262,25 @@ out:
 
 DEFINE_SIMPLE_ATTRIBUTE(mmc_max_clock_fops, mmc_max_clock_get,
 		mmc_max_clock_set, "%llu\n");
+
+#ifdef CONFIG_HUAWEI_KERNEL
+static int mmc_sdxc_opt_get(void *data, u64 *val)
+{
+	struct mmc_card	*card = data;
+
+	if (mmc_card_ext_capacity(card))
+	{
+		*val = SDXC;
+		printk(KERN_INFO "sd card SDXC type is detected\n");
+		return 0;
+	}
+	*val = SDHC;
+	printk(KERN_INFO "sd card SDHC type is detected\n");
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(mmc_sdxc_fops, mmc_sdxc_opt_get,
+			NULL, "%llu\n");
+#endif
 
 void mmc_add_host_debugfs(struct mmc_host *host)
 {
@@ -685,15 +720,248 @@ static const struct file_operations mmc_dbg_bkops_stats_fops = {
 	.read		= mmc_bkops_stats_read,
 	.write		= mmc_bkops_stats_write,
 };
+#ifdef CONFIG_HW_MMC_TOSHIBA_HEALTH_API
+static int mmc_health_st_open(struct inode *inode, struct file *filp)
+{
+	struct mmc_card *card = inode->i_private;
+	filp->private_data = card;
+
+	return 0;
+}
+
+static int issue_health_st_cmd(struct mmc_card * card, int arg,
+        char *pbuf, int len)
+{
+    struct mmc_command cmd = {0};
+    struct mmc_data data = {0};
+	struct mmc_request brq = {0};
+	struct scatterlist sg;
+
+    brq.cmd = &cmd;
+	brq.data = &data;
+	brq.stop = NULL;
+
+	cmd.opcode = MMC_GEN_CMD;
+	cmd.arg = arg;
+	cmd.flags = MMC_RSP_R1 | MMC_CMD_ADTC;
+
+    data.blksz = len;
+	data.blocks = 1;
+    if(arg == 0){
+        data.flags = MMC_DATA_WRITE;
+    }else{
+        data.flags = MMC_DATA_READ;
+    }
+
+	data.sg = &sg;
+	data.sg_len = 1;
+
+	sg_init_one(&sg, pbuf, len);
+	mmc_set_data_timeout(&data, card);
+	mmc_wait_for_req(card->host, &brq);
+
+	if (cmd.error){
+		return cmd.error;
+    }
+
+	if (data.error){
+		return data.error;
+    }
+
+	return 0;
+}
+
+static ssize_t mmc_health_st_read(struct file *filp, char __user *ubuf,
+				     size_t cnt, loff_t *ppos)
+{
+    char *pbuf = 0;
+    int len = 512;
+    u32 status = 0;
+    struct mmc_card *card = filp->private_data;
+    int err = 0;
+    int card_used_life = 0;
+
+    pbuf = kmalloc(len, GFP_KERNEL);
+    if(!pbuf){
+        return 0;
+    }
+
+    /*********************************************
+     * Device Health Command Format(DHCF).
+     * DHCF[0] : 0x5 Sub Command Number
+     * DHCF[1^3] : Dummy Data.
+     * DHCF[4^7] : Defined password for device health.
+     * DHCF[8^0x1FF] : reserved.
+     ******************************************/
+	memset(pbuf, 0x00, len);
+
+    pbuf[0] = DHCF_SUB_CMD_NO;
+    pbuf[4] = DHCF_PASSWORD & 0xFF;
+    pbuf[5] = (DHCF_PASSWORD >> 8) & 0xFF;
+    pbuf[6] = (DHCF_PASSWORD >> 16) & 0xFF;
+    pbuf[7] = (DHCF_PASSWORD >> 24) & 0xFF;
+
+    /*cmd 56 (arg = 0)->R1(512B)->DHC(Device Health Command)*/
+    mmc_rpm_hold(card->host, &card->dev);
+    mmc_claim_host(card->host);
+    err = issue_health_st_cmd(card, 0, pbuf, len);
+    if(err){
+        pr_err("[HW]:%s:failed to issue health state command.", __func__);
+        goto error;
+    }
+
+    //make sure device state is READY.
+    do {
+        err =  mmc_send_status(card, &status);
+        if (err) {
+            pr_err("[HW]:%s:failed to request device status\n",
+                    __func__);
+            goto error;
+        }
+
+    } while (!(status & R1_READY_FOR_DATA) ||
+            (R1_CURRENT_STATE(status) == R1_STATE_PRG));
+
+    /*cmd 56 (arg =1)->R1(512B)->DHRD(Device Health Response Data)*/
+    memset(pbuf, 0x00, len);
+    err = issue_health_st_cmd(card, 1, pbuf, len);
+    mmc_release_host(card->host);
+    mmc_rpm_release(card->host, &card->dev);
+    if(err){
+        pr_err("[HW]:%s:failed to get health state.", __func__);
+        goto error;
+    }
+
+     /*********************************************
+     * Device Health Response Data Format(DHRDF).
+     * DHRDF[0] : Sub Command Number(0x5)
+     * DHRDF[1^2] : Reserved.
+     * DHRDF[3] : Status(0xA0:valid; 0xE0:NG).
+     * DHRDF[4] : Device Health.
+     * DHRDF[5^0x1FF] : reserved.
+     ******************************************/
+    if(pbuf[3] == DHRDF_OK){
+        card_used_life = pbuf[4];
+        memset(pbuf, 0x00, len);
+        snprintf(pbuf, len, "0x%02x.", card_used_life);
+        len = simple_read_from_buffer(ubuf, cnt, ppos,
+                pbuf, 4);
+    }else{
+        pr_err("[HW]:%s: health state is invalid.", __func__);
+        goto error;
+    }
+
+    kfree(pbuf);
+    return len;
+error:
+    kfree(pbuf);
+    return -1;
+}
+
+static const struct file_operations mmc_dbg_health_st_fops = {
+	.open		= mmc_health_st_open,
+	.read		= mmc_health_st_read,
+    .llseek     = default_llseek,
+};
+#endif
+
+#ifdef CONFIG_HW_MMC_TEST
+static int mmc_card_addr_open(struct inode *inode, struct file *filp)
+{
+	struct mmc_card *card = inode->i_private;
+	filp->private_data = card;
+
+	return 0;
+}
+
+static ssize_t mmc_card_addr_read(struct file *filp, char __user *ubuf,
+				     size_t cnt, loff_t *ppos)
+{
+    char buf[64] = {0};
+    struct mmc_card *card = filp->private_data;
+    long card_addr = (long)card;
+
+    card_addr = (long)(card_addr ^ CARD_ADDR_MAGIC);
+    snprintf(buf, sizeof(buf), "%ld", card_addr);
+
+    return simple_read_from_buffer(ubuf, cnt, ppos,
+            buf, sizeof(buf));
+}
+
+static const struct file_operations mmc_dbg_card_addr_fops = {
+	.open		= mmc_card_addr_open,
+	.read		= mmc_card_addr_read,
+    .llseek     = default_llseek,
+};
+
+static int mmc_test_st_open(struct inode *inode, struct file *filp)
+{
+	struct mmc_card *card = inode->i_private;
+
+	filp->private_data = card;
+
+	return 0;
+}
+
+static ssize_t mmc_test_st_read(struct file *filp, char __user *ubuf,
+				     size_t cnt, loff_t *ppos)
+{
+    char buf[64] = {0};
+	struct mmc_card *card = filp->private_data;
+
+	if (!card)
+		return cnt;
+
+    snprintf(buf, sizeof(buf), "%d", card->host->test_status);
+
+    return simple_read_from_buffer(ubuf, cnt, ppos,
+            buf, sizeof(buf));
+
+}
+
+static ssize_t mmc_test_st_write(struct file *filp,
+				      const char __user *ubuf, size_t cnt,
+				      loff_t *ppos)
+{
+	struct mmc_card *card = filp->private_data;
+	int value;
+
+	if (!card){
+        return cnt;
+    }
+
+	sscanf(ubuf, "%d", &value);
+    card->host->test_status = value;
+
+	return cnt;
+}
+
+static const struct file_operations mmc_dbg_test_st_fops = {
+	.open		= mmc_test_st_open,
+	.read		= mmc_test_st_read,
+	.write		= mmc_test_st_write,
+};
+#endif
 
 void mmc_add_card_debugfs(struct mmc_card *card)
 {
 	struct mmc_host	*host = card->host;
 	struct dentry	*root;
-
+#ifdef CONFIG_HUAWEI_KERNEL
+	struct dentry   *sdxc_root;
+#endif
+	
 	if (!host->debugfs_root)
 		return;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	sdxc_root = debugfs_create_dir("sdxc_root", host->debugfs_root);
+	if (IS_ERR(sdxc_root))
+		return;
+	if (!sdxc_root)
+		goto err;
+#endif
+		
 	root = debugfs_create_dir(mmc_card_id(card), host->debugfs_root);
 	if (IS_ERR(root))
 		/* Don't complain -- debugfs just isn't enabled */
@@ -703,6 +971,9 @@ void mmc_add_card_debugfs(struct mmc_card *card)
 		 * create the directory. */
 		goto err;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	card->debugfs_sdxc = sdxc_root;
+#endif
 	card->debugfs_root = root;
 
 	if (!debugfs_create_x32("state", S_IRUSR, root, &card->state))
@@ -729,16 +1000,52 @@ void mmc_add_card_debugfs(struct mmc_card *card)
 		if (!debugfs_create_file("bkops_stats", S_IRUSR, root, card,
 					 &mmc_dbg_bkops_stats_fops))
 			goto err;
+#ifdef CONFIG_HW_MMC_TOSHIBA_HEALTH_API
+    if(card->cid.manfid == CID_MANFID_TOSHIBA){
+        if(mmc_card_mmc(card))
+            if (!debugfs_create_file("health_st", S_IRUSR, root, card,
+                        &mmc_dbg_health_st_fops))
+                goto err;
+    }
+#endif
 
+#ifdef CONFIG_HW_MMC_TEST
+    if (mmc_card_mmc(card))
+        if (!debugfs_create_file("card_addr", S_IRUSR, root, card,
+                    &mmc_dbg_card_addr_fops))
+            goto err;
+
+    if (mmc_card_mmc(card))
+        if (!debugfs_create_file("test_st", S_IRUSR, root, card,
+                    &mmc_dbg_test_st_fops))
+            goto err;
+#endif
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	if (mmc_card_sd(card))
+		if (!debugfs_create_file("sdxc", S_IRUSR, sdxc_root, card,
+					&mmc_sdxc_fops))
+			goto err;
+#endif
 	return;
 
 err:
 	debugfs_remove_recursive(root);
+#ifdef CONFIG_HUAWEI_KERNEL
+	debugfs_remove_recursive(sdxc_root);
+#endif
 	card->debugfs_root = NULL;
+#ifdef CONFIG_HUAWEI_KERNEL
+	card->debugfs_sdxc = NULL;
+#endif
+	
 	dev_err(&card->dev, "failed to initialize debugfs\n");
 }
 
 void mmc_remove_card_debugfs(struct mmc_card *card)
 {
 	debugfs_remove_recursive(card->debugfs_root);
+#ifdef CONFIG_HUAWEI_KERNEL	
+	debugfs_remove_recursive(card->debugfs_sdxc);
+#endif
 }

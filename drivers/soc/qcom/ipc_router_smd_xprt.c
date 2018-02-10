@@ -27,6 +27,7 @@
 #include <soc/qcom/smd.h>
 #include <soc/qcom/smsm.h>
 #include <soc/qcom/subsystem_restart.h>
+#include <sound/hw_audio_info.h>
 
 static int msm_ipc_router_smd_xprt_debug_mask;
 module_param_named(debug_mask, msm_ipc_router_smd_xprt_debug_mask,
@@ -603,6 +604,7 @@ static void pil_vote_load_worker(struct work_struct *work)
 			IPC_RTR_ERR("%s: Failed to load %s\n",
 				__func__, peripheral);
 			vote_info->pil_handle = NULL;
+			audio_dsm_report_num(DSM_AUDIO_ADSP_SETUP_FAIL_ERROR_NO, DSM_AUDIO_MESG_FAILED_LOAD_MODEM);
 		}
 	} else {
 		vote_info->pil_handle = NULL;

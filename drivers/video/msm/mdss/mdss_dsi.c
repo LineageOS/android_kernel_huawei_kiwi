@@ -23,17 +23,52 @@
 #include <linux/regulator/consumer.h>
 #include <linux/leds-qpnp-wled.h>
 #include <linux/clk.h>
-
+/* optimize the screen wake up time*/
+#include <linux/pm_qos.h>
 #include "mdss.h"
 #include "mdss_panel.h"
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
-
+/* a requirement about the production line test the leaky current of LCD  */
+/* PT test control LDO power alone for LCD  */
+#ifdef CONFIG_HUAWEI_LCD
+bool enable_PT_test = 0;
+module_param_named(enable_PT_test, enable_PT_test, bool, S_IRUGO | S_IWUSR);
+bool enable_LDO_test = 0;
+module_param_named(enable_LDO_test, enable_LDO_test, bool, S_IRUGO | S_IWUSR);
+#endif
+#include <linux/hw_lcd_common.h>
 #define XO_CLK_RATE	19200000
-
+#define REGULATOR_DCDC_MODE 0
+#define REGULATOR_LDO_MODE  1
+static int g_mipi_regulator_mode = REGULATOR_DCDC_MODE;
 static int mdss_dsi_pinctrl_set_state(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 					bool active);
+/*delete cpuget() to avoid panic*/
+/* optimize the screen wake up time*/
+#define DSI_DISABLE_PC_LATENCY 100
+#define DSI_ENABLE_PC_LATENCY PM_QOS_DEFAULT_VALUE
 
+static struct pm_qos_request mdss_dsi_pm_qos_request;
+
+static void mdss_dsi_pm_qos_add_request(void)
+{
+	pr_debug("%s: add request",__func__);
+	pm_qos_add_request(&mdss_dsi_pm_qos_request, PM_QOS_CPU_DMA_LATENCY,
+			PM_QOS_DEFAULT_VALUE);
+}
+
+static void mdss_dsi_pm_qos_remove_request(void)
+{
+	pr_debug("%s: remove request",__func__);
+	pm_qos_remove_request(&mdss_dsi_pm_qos_request);
+}
+
+static void mdss_dsi_pm_qos_update_request(int val)
+{
+	pr_debug("%s: update request %d",__func__,val);
+	pm_qos_update_request(&mdss_dsi_pm_qos_request, val);
+}
 static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -70,6 +105,213 @@ static int mdss_dsi_regulator_init(struct platform_device *pdev)
 	return rc;
 }
 
+/*T2 10 LCD on*/
+/*Delete useless GPIO,change power on/off sequence*/
+static int hw_request_gpios(struct mdss_dsi_ctrl_pdata* ctrl_pdata)
+{
+	int ret = 0;
+
+	if (1 == ctrl_pdata->which_product_pad){
+		if (gpio_is_valid(ctrl_pdata->disp_vsn_gpio102)){
+			ret = gpio_request(ctrl_pdata->disp_vsn_gpio102, "disp_vsn_gpio102");
+			if (ret){
+				pr_err("request disp_vsn_gpio102 gpio failed,ret=%d\n", ret);
+				goto disp_vsn_gpio102_request_err;
+			}
+		}
+
+		if (gpio_is_valid(ctrl_pdata->disp_vsp_gpio100)){
+			ret = gpio_request(ctrl_pdata->disp_vsp_gpio100, "disp_vsp_gpio100");
+			if (ret){
+				pr_err("request disp_vsp_gpio100 gpio failed,ret=%d\n", ret);
+				goto disp_vsp_gpio100_request_err;
+			}
+		}
+
+		if (gpio_is_valid(ctrl_pdata->disp_reset_gpio32)){
+			ret = gpio_request(ctrl_pdata->disp_reset_gpio32, "disp_reset_gpio32");
+			if (ret){
+				pr_err("request disp_reset_gpio32 gpio failed,ret=%d\n", ret);
+				goto disp_reset_gpio32_request_err;
+			}
+		}
+
+		if (gpio_is_valid(ctrl_pdata->disp_vled_gpio97)){
+			ret = gpio_request(ctrl_pdata->disp_vled_gpio97, "disp_vled_gpio97");
+			if (ret){
+				pr_err("request disp_vled_gpio97 gpio failed,ret=%d\n", ret);
+				goto disp_vled_gpio97_request_err;
+			}
+		}
+
+		if (gpio_is_valid(ctrl_pdata->disp_bl_gpio109)){
+			ret = gpio_request(ctrl_pdata->disp_bl_gpio109, "disp_bl_gpio109");
+			if (ret){
+				pr_err("request disp_bl_gpio109 gpio failed,ret=%d\n", ret);
+				goto disp_bl_gpio109_request_err;
+			}
+		}
+	}
+	else{
+		if (gpio_is_valid(ctrl_pdata->disp_power_backlight)){
+			ret = gpio_request(ctrl_pdata->disp_power_backlight, "disp_power_backlight");
+			if (ret){
+				pr_err("request disp_power_backlight gpio failed,ret=%d\n", ret);
+				goto disp_power_backlight_gpio_err;
+			}
+		}
+
+		if (gpio_is_valid(ctrl_pdata->disp_power_panel)){
+			ret = gpio_request(ctrl_pdata->disp_power_panel, "disp_power_panel");
+			if (ret){
+				pr_err("request disp_power_panel gpio failed,ret=%d\n", ret);
+				goto disp_power_panel_gpio_err;
+			}
+		}
+
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio_vled)){
+			ret = gpio_request(ctrl_pdata->disp_en_gpio_vled, "disp_en_gpio_vled");
+			if (ret){
+				pr_err("request disp_en_gpio_vled gpio failed,ret=%d\n", ret);
+				goto disp_en_gpio_vled_gpio_request_err;
+			}
+		}
+	}
+
+	return ret;
+
+disp_bl_gpio109_request_err:
+	if (gpio_is_valid(ctrl_pdata->disp_bl_gpio109)){
+		gpio_free(ctrl_pdata->disp_bl_gpio109);
+	}
+
+disp_vled_gpio97_request_err:
+	if (gpio_is_valid(ctrl_pdata->disp_vled_gpio97)){
+		gpio_free(ctrl_pdata->disp_vled_gpio97);
+	}
+
+disp_reset_gpio32_request_err:
+	if (gpio_is_valid(ctrl_pdata->disp_reset_gpio32)){
+		gpio_free(ctrl_pdata->disp_reset_gpio32);
+	}
+
+disp_vsp_gpio100_request_err:
+	if (gpio_is_valid(ctrl_pdata->disp_vsp_gpio100)){
+		gpio_free(ctrl_pdata->disp_vsp_gpio100);
+	}
+
+disp_vsn_gpio102_request_err:
+	if (gpio_is_valid(ctrl_pdata->disp_vsn_gpio102)){
+		gpio_free(ctrl_pdata->disp_vsn_gpio102);
+	}
+
+	return ret;
+
+disp_en_gpio_vled_gpio_request_err:
+	if (gpio_is_valid(ctrl_pdata->disp_power_panel)){
+		gpio_free(ctrl_pdata->disp_power_panel);
+	}
+disp_power_panel_gpio_err:
+	if (gpio_is_valid(ctrl_pdata->disp_power_backlight)){
+		gpio_free(ctrl_pdata->disp_power_backlight);
+	}
+disp_power_backlight_gpio_err:
+	return ret;
+}
+
+static void hw_panel_power_en(struct mdss_panel_data* pdata, int enable)
+{
+	struct mdss_dsi_ctrl_pdata* ctrl_pdata = NULL;
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+
+	if (enable){
+		if (1 == ctrl_pdata->which_product_pad){
+			if (gpio_is_valid(ctrl_pdata->disp_bl_gpio109)){
+				gpio_set_value((ctrl_pdata->disp_bl_gpio109), enable);
+		       }
+		       mdelay(5);
+
+			if (gpio_is_valid(ctrl_pdata->disp_vsp_gpio100)){
+				gpio_set_value((ctrl_pdata->disp_vsp_gpio100), enable);
+			}
+			mdelay(1);
+			if (gpio_is_valid(ctrl_pdata->disp_vsn_gpio102)){
+				gpio_set_value((ctrl_pdata->disp_vsn_gpio102), enable);
+			}
+
+			mdelay(5);
+
+		        if (gpio_is_valid(ctrl_pdata->disp_reset_gpio32)){
+				gpio_set_value((ctrl_pdata->disp_reset_gpio32), enable);
+				pr_info("%s,%d set disp_reset_gpio32 = %d \n", __func__, __LINE__, enable);
+		        }
+		        mdelay(5);
+
+		        if (gpio_is_valid(ctrl_pdata->disp_vled_gpio97)){
+				gpio_set_value((ctrl_pdata->disp_vled_gpio97), enable);
+				pr_info("%s,%d set disp_vled_gpio97 = %d \n", __func__, __LINE__, enable);
+		        }
+		        mdelay(5);
+		}
+		else{
+			if (gpio_is_valid(ctrl_pdata->disp_power_panel)){
+				gpio_set_value((ctrl_pdata->disp_power_panel), enable);
+				pr_info("%s,%d set disp_power_panel = %d \n", __func__, __LINE__, enable);
+			}
+			if (gpio_is_valid(ctrl_pdata->disp_power_backlight)){
+				gpio_set_value((ctrl_pdata->disp_power_backlight), enable);
+				pr_info("%s,%d set disp_power_backlight = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(50);
+		}
+	} else {
+		if (1 == ctrl_pdata->which_product_pad){
+			if (gpio_is_valid(ctrl_pdata->disp_vled_gpio97)){
+				gpio_set_value((ctrl_pdata->disp_vled_gpio97), enable);
+				pr_info("%s,%d set disp_vled_gpio97 = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(5);
+
+			if (gpio_is_valid(ctrl_pdata->disp_vsn_gpio102)){
+				gpio_set_value((ctrl_pdata->disp_vsn_gpio102), enable);
+				pr_info("%s,%d set disp_vsn_gpio102 = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(5);
+
+			if (gpio_is_valid(ctrl_pdata->disp_vsp_gpio100)){
+				gpio_set_value((ctrl_pdata->disp_vsp_gpio100), enable);
+				pr_info("%s,%d set disp_vsp_gpio100 = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(5);
+
+			if (gpio_is_valid(ctrl_pdata->disp_reset_gpio32)){
+				gpio_set_value((ctrl_pdata->disp_reset_gpio32), enable);
+				pr_info("%s,%d set disp_reset_gpio32 = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(5);
+
+			if (gpio_is_valid(ctrl_pdata->disp_bl_gpio109)){
+				gpio_set_value((ctrl_pdata->disp_bl_gpio109), enable);
+				pr_info("%s,%d set disp_bl_gpio109 = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(5);
+
+		}
+		else{
+			if (gpio_is_valid(ctrl_pdata->disp_power_backlight)){
+				gpio_set_value((ctrl_pdata->disp_power_backlight), enable);
+				pr_info("%s,%d set disp_power_backlight = %d \n", __func__, __LINE__, enable);
+			}
+
+			if (gpio_is_valid(ctrl_pdata->disp_power_panel)){
+				gpio_set_value((ctrl_pdata->disp_power_panel), enable);
+				pr_info("%s,%d set disp_power_panel = %d \n", __func__, __LINE__, enable);
+			}
+			mdelay(500);
+		}
+	}
+}
+
 static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
@@ -91,8 +333,9 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 		ret = 0;
 	}
 
-	if (mdss_dsi_pinctrl_set_state(ctrl_pdata, false))
-		pr_debug("reset disable: pinctrl not enabled\n");
+
+		if (mdss_dsi_pinctrl_set_state(ctrl_pdata, false))
+			pr_debug("reset disable: pinctrl not enabled\n");
 
 	if (ctrl_pdata->panel_bias_vreg) {
 		pr_debug("%s: Disabling panel bias vreg. ndx = %d\n",
@@ -110,14 +353,66 @@ static int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 		 */
 		if (DSI_CORE_PM == i)
 			continue;
-		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data[i].vreg_config,
-			ctrl_pdata->power_data[i].num_vreg, 0);
+		/*
+		*merge qcom patch from 02098626: 08_20_patches.zip
+		*add delay time before vddio-incell enable  for ATH JDINT35695. if vddio-incell pull down time is smaller then 80ms.
+		*/
+		if(!strcmp(ctrl_pdata->panel_data.panel_info.panel_name, "JDI_NT35695_5P2_1080P_CMD"))
+		{
+			ret = msm_dss_enable_vreg_ath_jdi(
+				ctrl_pdata->power_data[i].vreg_config,
+				ctrl_pdata->power_data[i].num_vreg, 0); 
+		}
+		else
+		{
+			ret = msm_dss_enable_vreg(
+				ctrl_pdata->power_data[i].vreg_config,
+				ctrl_pdata->power_data[i].num_vreg, 0);
+		}
 		if (ret)
 			pr_err("%s: failed to disable vregs for %s\n",
 				__func__, __mdss_dsi_pm_name(i));
 	}
 
+end:
+	return ret;
+}
+
+/*T2 10 LCD on*/
+static int mdss_dsi_panel_power_off_pad(struct mdss_panel_data *pdata)
+{
+	int ret = 0;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		ret = -EINVAL;
+		goto end;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	ret = mdss_dsi_panel_reset(pdata, 0);
+	if (ret) {
+		pr_warn("%s: Panel reset failed. rc=%d\n", __func__, ret);
+		ret = 0;
+	}
+#ifndef CONFIG_HUAWEI_LCD
+	if (mdss_dsi_pinctrl_set_state(ctrl_pdata, false))
+		pr_debug("reset disable: pinctrl not enabled\n");
+#endif
+
+	{
+		hw_panel_power_en(pdata, 0);
+		ret = msm_dss_enable_vreg(
+			ctrl_pdata->power_data[DSI_PANEL_PM].vreg_config,
+			ctrl_pdata->power_data[DSI_PANEL_PM].num_vreg, 0);
+		if (ret)
+			pr_err("%s: failed to disable vregs for %s\n",
+				__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
+		mdelay(2);
+	}
 end:
 	return ret;
 }
@@ -143,9 +438,22 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 		 */
 		if (DSI_CORE_PM == i)
 			continue;
-		ret = msm_dss_enable_vreg(
-			ctrl_pdata->power_data[i].vreg_config,
-			ctrl_pdata->power_data[i].num_vreg, 1);
+		/*
+		*merge qcom patch from 02098626: 08_20_patches.zip
+		*add delay time before vddio-incell enable  for ATH JDINT35695. if vddio-incell pull down time is smaller then 80ms.
+		*/
+		if(!strcmp(ctrl_pdata->panel_data.panel_info.panel_name, "JDI_NT35695_5P2_1080P_CMD"))
+		{
+			ret = msm_dss_enable_vreg_ath_jdi(
+				ctrl_pdata->power_data[i].vreg_config,
+				ctrl_pdata->power_data[i].num_vreg, 1);
+		}
+		else
+		{
+			ret = msm_dss_enable_vreg(
+				ctrl_pdata->power_data[i].vreg_config,
+				ctrl_pdata->power_data[i].num_vreg, 1);
+		}
 		if (ret) {
 			pr_err("%s: failed to enable vregs for %s\n",
 				__func__, __mdss_dsi_pm_name(i));
@@ -190,6 +498,51 @@ error:
 	return ret;
 }
 
+
+/*T2 10 LCD on*/
+static int mdss_dsi_panel_power_on_pad(struct mdss_panel_data *pdata)
+{
+	int ret = 0;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+
+
+	{
+		ret = msm_dss_enable_vreg(
+			ctrl_pdata->power_data[DSI_PANEL_PM].vreg_config,
+			ctrl_pdata->power_data[DSI_PANEL_PM].num_vreg, 1);
+		if (ret){
+			pr_err("%s: failed to enable vregs for %s\n",
+				__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
+			goto error_enable;
+		}
+		mdelay(2);
+		hw_panel_power_en(pdata, 1);
+	}
+
+	if (pdata->panel_info.cont_splash_enabled ||
+		!pdata->panel_info.mipi.lp11_init) {
+		if (mdss_dsi_pinctrl_set_state(ctrl_pdata, true))
+			pr_debug("reset enable: pinctrl not enabled\n");
+
+		ret = mdss_dsi_panel_reset(pdata, 1);
+		if (ret)
+			pr_err("%s: Panel reset failed. rc=%d\n",
+					__func__, ret);
+	}
+	return ret;
+error_enable:
+	hw_panel_power_en(pdata, 0);
+	return ret;
+}
+
 static int mdss_dsi_panel_power_doze(struct mdss_panel_data *pdata, int enable)
 {
 	/* Panel power control when entering/exiting doze mode */
@@ -199,13 +552,19 @@ static int mdss_dsi_panel_power_doze(struct mdss_panel_data *pdata, int enable)
 static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 	int power_state)
 {
+/*open black screen gesture function,can't wake up screen*/
 	int ret;
 	struct mdss_panel_info *pinfo;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
 	}
+
+	/* Modify JDI tp/lcd power on/off to reduce power consumption */
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
 
 	pinfo = &pdata->panel_info;
 	pr_debug("%s: cur_power_state=%d req_power_state=%d\n", __func__,
@@ -225,13 +584,29 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 
 	switch (power_state) {
 	case MDSS_PANEL_POWER_OFF:
-		ret = mdss_dsi_panel_power_off(pdata);
+/*open black screen gesture function,can't wake up screen*/
+/*T2 10 LCD on*/
+			if (ctrl_pdata->hw_product_pad) {
+				ret = mdss_dsi_panel_power_off_pad(pdata);
+			} else {
+				ret = mdss_dsi_panel_power_off(pdata);
+			}
 		break;
 	case MDSS_PANEL_POWER_ON:
-		if (mdss_dsi_is_panel_on_lp(pdata))
-			ret = mdss_dsi_panel_power_doze(pdata, false);
-		else
-			ret = mdss_dsi_panel_power_on(pdata);
+			/* Modify JDI tp/lcd power on/off to reduce power consumption */
+			if(pinfo->lens_type == LENS_INCELL)
+			{
+				gpio_set_value(ctrl_pdata->tp_vci_gpio,1);
+				udelay(10);
+			}
+			if (ctrl_pdata->hw_product_pad) {
+				ret = mdss_dsi_panel_power_on_pad(pdata);
+			} else {
+				if (mdss_dsi_is_panel_on_lp(pdata))
+					ret = mdss_dsi_panel_power_doze(pdata, false);
+				else
+					ret = mdss_dsi_panel_power_on(pdata);
+			}
 		break;
 	case MDSS_PANEL_POWER_DOZE:
 		ret = mdss_dsi_panel_power_doze(pdata, true);
@@ -244,7 +619,10 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 
 	if (!ret)
 		pinfo->panel_power_state = power_state;
-
+#ifdef CONFIG_HUAWEI_LCD
+	if (!ret)
+		lcd_pwr_status.panel_power_on |= pinfo->panel_power_state;
+#endif
 	return ret;
 }
 
@@ -266,7 +644,7 @@ static void mdss_dsi_put_dt_vreg_data(struct device *dev,
 static int mdss_dsi_get_dt_vreg_data(struct device *dev,
 	struct dss_module_power *mp, enum dsi_pm_type module)
 {
-	int i = 0, rc = 0;
+	int i = 0, rc = 0, ret = 0;
 	u32 tmp = 0;
 	struct device_node *of_node = NULL, *supply_node = NULL;
 	const char *pm_supply_name = NULL;
@@ -288,8 +666,14 @@ static int mdss_dsi_get_dt_vreg_data(struct device *dev,
 		goto novreg;
 	}
 
+/*T2 10 LCD on*/
 	for_each_child_of_node(supply_root_node, supply_node) {
-		mp->num_vreg++;
+		const char *supply_name = NULL;
+		ret = of_property_read_string(supply_node,
+			"qcom,supply-name", &supply_name);
+		if (!ret) {/*vreg supply-name not null*/
+			mp->num_vreg++;
+		}
 	}
 
 	if (mp->num_vreg == 0) {
@@ -315,7 +699,9 @@ static int mdss_dsi_get_dt_vreg_data(struct device *dev,
 		if (rc) {
 			pr_err("%s: error reading name. rc=%d\n",
 				__func__, rc);
-			goto error;
+			//goto error;
+			rc = 0;/*if name is null we not return and find next one*/
+			break;
 		}
 		snprintf(mp->vreg_config[i].vreg_name,
 			ARRAY_SIZE((mp->vreg_config[i].vreg_name)), "%s", st);
@@ -503,7 +889,9 @@ panel_power_ctrl:
 		pr_err("%s: Panel power off failed\n", __func__);
 		goto end;
 	}
-
+#ifdef CONFIG_HUAWEI_LCD
+	lcd_pwr_status.panel_power_on = panel_info->panel_power_state;
+#endif
 	if (panel_info->dynamic_fps
 	    && (panel_info->dfps_update == DFPS_SUSPEND_RESUME_MODE)
 	    && (panel_info->new_fps != panel_info->mipi.frame_rate))
@@ -548,7 +936,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	int cur_power_state;
-
+	unsigned long timeout = jiffies;
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
@@ -558,6 +946,9 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 				panel_data);
 
 	cur_power_state = pdata->panel_info.panel_power_state;
+#ifdef CONFIG_HUAWEI_LCD
+		lcd_pwr_status.panel_power_on |= cur_power_state;
+#endif
 	pr_debug("%s+: ctrl=%p ndx=%d cur_power_state=%d\n", __func__,
 		ctrl_pdata, ctrl_pdata->ndx, cur_power_state);
 
@@ -565,7 +956,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	mipi = &pdata->panel_info.mipi;
 
 	if (mdss_dsi_is_panel_on_interactive(pdata)) {
-		pr_debug("%s: panel already on\n", __func__);
+		pr_err("%s: panel already on\n", __func__);
 		goto end;
 	}
 
@@ -604,6 +995,10 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_LINK_CLKS, 1);
 	mdss_dsi_sw_reset(ctrl_pdata, true);
 
+	/* add for timeout print log */
+	/*delete cpuget() to avoid panic*/
+	LCD_LOG_INFO("%s: dsi_on_time = %u\n",
+			__func__,jiffies_to_msecs(jiffies-timeout));
 	/*
 	 * Issue hardware reset line after enabling the DSI clocks and data
 	 * data lanes for LP11 init
@@ -701,7 +1096,8 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
-
+	/* optimize the screen wake up time*/
+	mdss_dsi_pm_qos_update_request(DSI_DISABLE_PC_LATENCY);
 	pr_debug("%s+: ctrl=%p ndx=%d cur_blank_state=%d\n", __func__,
 		ctrl_pdata, ctrl_pdata->ndx, pdata->panel_info.blank_state);
 
@@ -735,6 +1131,8 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 
 error:
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+	/* optimize the screen wake up time*/
+	mdss_dsi_pm_qos_update_request(DSI_ENABLE_PC_LATENCY);
 	pr_debug("%s-:\n", __func__);
 
 	return ret;
@@ -1201,6 +1599,32 @@ int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
 	mutex_unlock(&ctrl->mutex);
 	return 0;
 }
+/*rename gpio*/
+#ifdef CONFIG_HUAWEI_LCD
+static void hw_panel_bias_en(struct mdss_panel_data *pdata, int enable)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+	if (gpio_is_valid(ctrl_pdata->disp_en_gpio_vled))
+	{
+		gpio_set_value((ctrl_pdata->disp_en_gpio_vled), enable);
+		pr_debug("%s,%d set en disp_en_gpio_vled = %d \n",__func__,__LINE__,enable);
+	}
+
+	if(enable){
+		ctrl_pdata->hw_led_en_flag = 1;
+	}else {
+		ctrl_pdata->hw_led_en_flag = 0;
+	}
+
+}
+#endif
 
 static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 				  int event, void *arg)
@@ -1237,6 +1661,13 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		pdata->panel_info.esd_rdy = true;
 		break;
 	case MDSS_EVENT_BLANK:
+		if (ctrl_pdata->hw_product_pad)
+		{
+			if (1 != ctrl_pdata->which_product_pad){
+				hw_panel_bias_en(pdata,0);
+				mdelay(200);
+			}
+		}
 		power_state = (int) (unsigned long) arg;
 		if (ctrl_pdata->off_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_blank(pdata, power_state);
@@ -1311,7 +1742,16 @@ static struct device_node *mdss_dsi_pref_prim_panel(
 
 	return dsi_pan_node;
 }
-
+/* This function be used to change the dsi regulator mode.*/
+void set_mipi_regulator_mode(int mode)
+{
+	g_mipi_regulator_mode = mode;
+}
+/* Calling this function be get the dsi regulator mode.*/
+int get_mipi_regulator_mode(void)
+{
+	return g_mipi_regulator_mode;
+}
 /**
  * mdss_dsi_find_panel_of_node(): find device node of dsi panel
  * @pdev: platform_device of the dsi ctrl node
@@ -1333,6 +1773,7 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 	int ctrl_id = pdev->id - 1;
 	char panel_name[MDSS_MAX_PANEL_LEN];
 	char ctrl_id_stream[3] =  "0:";
+	char mipi_mode_stream[] =  ":lcd_mipi_regulator_mode:";
 	char *stream = NULL, *pan = NULL;
 	struct device_node *dsi_pan_node = NULL, *mdss_node = NULL;
 
@@ -1361,7 +1802,22 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 				panel_name[i] = *(stream + i);
 			panel_name[i] = 0;
 		}
-
+		/* Here to parse the cmdline of the dsi regulator mode.*/
+		stream = strnstr(panel_cfg, mipi_mode_stream, len);
+		if (!stream) {
+				pr_err("controller config is not present\n");
+				goto end;
+		}
+		stream += strlen(mipi_mode_stream);
+		if (*stream == '0')
+		{
+			set_mipi_regulator_mode(REGULATOR_DCDC_MODE);
+		}
+		else
+		{
+			set_mipi_regulator_mode(REGULATOR_LDO_MODE);
+		}
+		LCD_LOG_INFO("%s:dsi_regulator_mode = %c \n",__func__,*stream);
 		pr_debug("%s:%d:%s:%s\n", __func__, __LINE__,
 			 panel_cfg, panel_name);
 
@@ -1388,7 +1844,6 @@ end:
 
 	return dsi_pan_node;
 }
-
 static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 {
 	int rc = 0, i = 0;
@@ -1399,6 +1854,13 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	const char *ctrl_name;
 	bool cmd_cfg_cont_splash = true;
 	struct mdss_panel_cfg *pan_cfg = NULL;
+#ifdef CONFIG_HUAWEI_DSM
+	struct dsm_dev dsm_lcd = {
+		.name = "dsm_lcd",
+		.fops = NULL,
+		.buff_size = 1024,
+	};
+#endif
 	struct mdss_util_intf *util;
 
 	util = mdss_get_util_intf();
@@ -1523,6 +1985,15 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		goto error_pan_node;
 	}
 
+#ifdef CONFIG_HUAWEI_DSM
+	if (!lcd_dclient) {
+		lcd_dclient = dsm_register_client(&dsm_lcd);
+	}
+#endif
+/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
+	ctrl_pdata->cmd_clk_ln_recovery_en =
+		of_property_read_bool(pdev->dev.of_node,
+			"qcom,dsi-clk-ln-recovery");
 	if (mdss_dsi_is_te_based_esd(ctrl_pdata)) {
 		rc = devm_request_irq(&pdev->dev,
 			gpio_to_irq(ctrl_pdata->disp_te_gpio),
@@ -1534,6 +2005,8 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		}
 		disable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
 	}
+	/* optimize the screen wake up time*/
+	mdss_dsi_pm_qos_add_request();
 	pr_debug("%s: Dsi Ctrl->%d initialized\n", __func__, index);
 	return 0;
 
@@ -1560,7 +2033,8 @@ static int mdss_dsi_ctrl_remove(struct platform_device *pdev)
 		pr_err("%s: no driver data\n", __func__);
 		return -ENODEV;
 	}
-
+	/* optimize the screen wake up time*/
+	mdss_dsi_pm_qos_remove_request();
 	for (i = DSI_MAX_PM - 1; i >= 0; i--) {
 		if (msm_dss_config_vreg(&pdev->dev,
 				ctrl_pdata->power_data[i].vreg_config,
@@ -1718,9 +2192,19 @@ int dsi_panel_device_register(struct device_node *pan_node,
 
 	pinfo->mipi.dsi_phy_db.reg_ldo_mode = of_property_read_bool(
 		ctrl_pdev->dev.of_node, "qcom,regulator-ldo-mode");
-
-	data = of_get_property(ctrl_pdev->dev.of_node,
-		"qcom,platform-regulator-settings", &len);
+	/*Here to prase the dtsi and get the parameter setting.*/
+	if(get_mipi_regulator_mode() == REGULATOR_DCDC_MODE)
+	{
+        pinfo->mipi.dsi_phy_db.reg_ldo_mode = 0;
+		data = of_get_property(ctrl_pdev->dev.of_node,
+			"qcom,platform-regulator-settings-dcdc", &len);
+	}
+	else
+	{
+		data = of_get_property(ctrl_pdev->dev.of_node,
+			"qcom,platform-regulator-settings", &len);
+	}
+	LCD_LOG_INFO("%s:pinfo->mipi.dsi_phy_db.reg_ldo_mode=%d \n",__func__,pinfo->mipi.dsi_phy_db.reg_ldo_mode);
 	if ((!data) || (len != 7)) {
 		pr_err("%s:%d, Unable to read Phy regulator settings\n",
 			__func__, __LINE__);
@@ -1812,6 +2296,87 @@ int dsi_panel_device_register(struct device_node *pan_node,
 			 "qcom,platform-reset-gpio", 0);
 	if (!gpio_is_valid(ctrl_pdata->rst_gpio))
 		pr_err("%s:%d, reset gpio not specified\n",
+						__func__, __LINE__);
+	/* Modify JDI tp/lcd power on/off to reduce power consumption */
+
+/*T2 10 LCD on*/
+#ifdef CONFIG_HUAWEI_LCD
+
+	pr_info("%s: which_product_pad = %d  \n", __func__, ctrl_pdata->which_product_pad);
+	pr_info("%s: hw_product_pad = %d  \n", __func__, ctrl_pdata->hw_product_pad);
+	if (1 == ctrl_pdata->hw_product_pad) {
+		if (1 == ctrl_pdata->which_product_pad){
+			ctrl_pdata->disp_vsn_gpio102 = of_get_named_gpio(ctrl_pdev->dev.of_node,
+				"qcom,platform-vsn-gpio102", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_vsn_gpio102))
+				pr_err("%s: qcom,platform-vsn-gpio102 not specified\n", __func__);
+
+			ctrl_pdata->disp_vsp_gpio100 = of_get_named_gpio(ctrl_pdev->dev.of_node,
+				"qcom,platform-vsp-gpio100", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_vsp_gpio100))
+				pr_err("%s: qcom,platform-vsp-gpio100 not specified\n", __func__);
+
+			ctrl_pdata->disp_reset_gpio32 = of_get_named_gpio(ctrl_pdev->dev.of_node,
+				"qcom,platform-reset-gpio32", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_reset_gpio32))
+				pr_err("%s: qcom,platform-reset-gpio32 not specified\n", __func__);
+
+			ctrl_pdata->disp_vled_gpio97 = of_get_named_gpio(ctrl_pdev->dev.of_node,
+				"qcom,platform-vled-gpio97", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_vled_gpio97))
+				pr_err("%s: qcom,platform-vled-gpio97 not specified\n", __func__);
+
+			ctrl_pdata->disp_bl_gpio109 = of_get_named_gpio(ctrl_pdev->dev.of_node,
+				"qcom,platform-bl-gpio109", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_bl_gpio109))
+				pr_err("%s: qcom,platform-bl-gpio109 not specified\n", __func__);
+		}
+		else{
+			ctrl_pdata->disp_power_backlight = of_get_named_gpio(ctrl_pdev->dev.of_node,
+				"huawei,platform-power-blk", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_power_backlight)) {
+				pr_err("%s:%d, disp_power_backlight  not specified\n",
+					__func__, __LINE__);
+			}
+			ctrl_pdata->disp_power_panel = of_get_named_gpio(ctrl_pdev->dev.of_node,
+					"huawei,platform-power-panel", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_power_panel)) {
+				pr_err("%s:%d, disp_power_panel  not specified\n",
+					__func__, __LINE__);
+			}
+			ctrl_pdata->disp_en_gpio_vled = of_get_named_gpio(ctrl_pdev->dev.of_node,
+					 "huawei,platform-enable-vled", 0);
+			if (!gpio_is_valid(ctrl_pdata->disp_en_gpio_vled)) {
+				pr_err("%s:%d, vled enable gpio not specified\n",
+					__func__, __LINE__);
+			}
+
+			pr_info("%s:rst_gpio:%d, disp_en_gpio_vled:%d, disp_power_panel:%d, disp_power_backlight:%d\n",
+						__func__, ctrl_pdata->rst_gpio,
+						ctrl_pdata->disp_en_gpio_vled,ctrl_pdata->disp_power_panel,
+						ctrl_pdata->disp_power_backlight);
+		}
+		rc =  hw_request_gpios(ctrl_pdata);
+		if (rc){
+			pr_err("gpio request failed\n");
+		}
+	}else{
+		ctrl_pdata->disp_power_backlight = -1;
+		ctrl_pdata->disp_power_panel = -1;
+		ctrl_pdata->disp_en_gpio_vled = -1;
+
+		ctrl_pdata->disp_vsn_gpio102 = -1;
+		ctrl_pdata->disp_vsp_gpio100 = -1;
+		ctrl_pdata->disp_reset_gpio32 = -1;
+		ctrl_pdata->disp_vled_gpio97 = -1;
+		ctrl_pdata->disp_bl_gpio109 = -1;
+	}
+
+#endif
+	ctrl_pdata->tp_vci_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
+			 "qcom,platform-tp-vci-gpio", 0);
+	if (!gpio_is_valid(ctrl_pdata->tp_vci_gpio))
+		pr_err("%s:%d, tp vci gpio not specified\n",
 						__func__, __LINE__);
 
 	if (pinfo->mode_gpio_state != MODE_GPIO_NOT_VALID) {
@@ -1927,6 +2492,9 @@ int dsi_panel_device_register(struct device_node *pan_node,
 			(CTRL_STATE_PANEL_INIT | CTRL_STATE_MDP_ACTIVE);
 	} else {
 		pinfo->panel_power_state = MDSS_PANEL_POWER_OFF;
+#ifdef CONFIG_HUAWEI_LCD
+		lcd_pwr_status.panel_power_on |= pinfo->panel_power_state;
+#endif
 	}
 
 	rc = mdss_register_panel(ctrl_pdev, &(ctrl_pdata->panel_data));

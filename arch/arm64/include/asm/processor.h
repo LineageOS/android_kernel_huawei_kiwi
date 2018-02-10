@@ -49,6 +49,12 @@
 
 extern unsigned int boot_reason;
 extern unsigned int cold_boot;
+//Declare the external valuable
+#ifdef CONFIG_HUAWEI_KERNEL
+#ifndef HIDE_PRODUCT_INFO_KERNEL
+	extern unsigned int hide_info;
+#endif
+#endif
 
 struct debug_info {
 	/* Have we suspended stepping by a debugger? */
