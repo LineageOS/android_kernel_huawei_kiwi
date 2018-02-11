@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9ae65621_372f22e3",
+        "filename": "Kconfig",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-11T14:41:35Z",
+      "side": 1,
+      "message": "Remove this and any associated code in kernel? It\u0027s disabled by default",
+      "revId": "fe73416465c7ccd320d7277e4f21aaf41c29245e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2f02eac1_4b3dd100",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-11T14:41:35Z",
+      "side": 1,
+      "message": "Remove those 2 and any associated code, looks useless",
+      "revId": "fe73416465c7ccd320d7277e4f21aaf41c29245e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
