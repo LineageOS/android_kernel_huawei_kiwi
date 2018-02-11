@@ -1231,6 +1231,8 @@ static int msm_ispif_init(struct ispif_device *ispif,
 		goto end;
 	}
 
+	ispif->ispif_sof_debug = 0;
+
 error_ahb:
 	free_irq(ispif->irq->start, ispif);
 error_irq:
@@ -1339,8 +1341,6 @@ static long msm_ispif_subdev_ioctl(struct v4l2_subdev *sd,
 		return 0;
 	}
 	case MSM_SD_SHUTDOWN: {
-		struct ispif_device *ispif =
-			(struct ispif_device *)v4l2_get_subdevdata(sd);
 		if (ispif && ispif->base)
 			msm_ispif_release(ispif);
 		return 0;
