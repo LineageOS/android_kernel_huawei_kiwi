@@ -274,6 +274,16 @@ LIST_HEAD(vmap_area_list);
 static DEFINE_SPINLOCK(vmap_area_lock);
 static struct rb_root vmap_area_root = RB_ROOT;
 
+#ifdef CONFIG_DUMP_SYS_INFO
+#ifdef CONFIG_MMU
+unsigned long get_vmap_area_lock(void)
+{
+    return (unsigned long)&vmap_area_lock;
+}
+EXPORT_SYMBOL(get_vmap_area_lock);
+#endif
+#endif
+
 /* The vmap cache globals are protected by vmap_area_lock */
 static struct rb_node *free_vmap_cache;
 static unsigned long cached_hole_size;
