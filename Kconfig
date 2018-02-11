@@ -8,4 +8,17 @@ config SRCARCH
 	string
 	option env="SRCARCH"
 
+config HUAWEI_KERNEL
+	bool "Use huawei code"
+	default y
+	help
+	use huawei code
+
+config HUAWEI_KERNEL_DEBUG
+	bool "Use Huawei kernel debug mode"
+	depends on HUAWEI_KERNEL
+	default n
+	help
+	  Enable sysrq, dump mode and some debug masks by default.
+
 source "arch/$SRCARCH/Kconfig"
