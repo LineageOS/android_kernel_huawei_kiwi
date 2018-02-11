@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bf923807_ea13f986",
+        "filename": "scripts/mkcompile_h",
+        "patchSetId": 1
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-11T14:40:23Z",
+      "side": 1,
+      "message": "Remove",
+      "revId": "043bbe95fbba3ea232e8e487b72b8ebf3051387a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
