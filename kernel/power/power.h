@@ -285,7 +285,10 @@ static inline void pm_autosleep_unlock(void) {}
 static inline suspend_state_t pm_autosleep_state(void) { return PM_SUSPEND_ON; }
 
 #endif /* !CONFIG_PM_AUTOSLEEP */
-
+#ifdef CONFIG_HUAWEI_KERNEL
+extern int suspend_sys_sync_wait(void);
+extern void suspend_sys_sync_queue(void);
+#endif
 #ifdef CONFIG_PM_WAKELOCKS
 
 /* kernel/power/wakelock.c */
