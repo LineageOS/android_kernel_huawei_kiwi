@@ -14,3 +14,4 @@ obj-$(CONFIG_MSM_VIDC_V4L2) := 	msm_v4l2_vidc.o \
 				venus_boot.o
 
 obj-$(CONFIG_MSM_VIDC_VMEM) += vmem/
+obj-$(CONFIG_HUAWEI_DSM) += msm_camera_vid_dsm.o \
