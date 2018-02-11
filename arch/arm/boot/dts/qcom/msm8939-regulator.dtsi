@@ -13,14 +13,15 @@
 /* External I2C controlled buck regulators */
 
 &i2c_4 {
-	ncp6335d: ncp6335d-regulator@1c {
-		compatible = "onnn,ncp6335d-regulator";
+	ncp6335d: ncp6335d-a1x@1c {
+		compatible = "onnn,ncp6335d-a1c";
 		reg = <0x1c>;
 		onnn,vsel = <0>;
 		onnn,slew-ns = <3333>;
 		onnn,step-size = <6250>;
 		onnn,min-slew-ns = <416>;
 		onnn,max-slew-ns = <3333>;
+		onnn,en-delay-ms = <0>;
 		regulator-min-microvolt = <1050000>;
 		regulator-max-microvolt = <1350000>;
 		onnn,min-setpoint = <600000>;
@@ -29,7 +30,50 @@
 		onnn,vsel-gpio = <&msm_gpio 111 1>;
 		onnn,discharge-enable;
 		onnn,restore-reg;
+		monitor_reg_work_flag=<1>;
 	};
+
+	ncp6335d_a18: ncp6335d-a1x@18 {
+		compatible = "onnn,ncp6335d-a18";
+		reg = <0x18>;
+		onnn,vsel = <0>;
+		onnn,slew-ns = <3333>;
+		onnn,step-size = <6250>;
+		onnn,min-slew-ns = <416>;
+		onnn,max-slew-ns = <3333>;
+		onnn,en-delay-ms = <0>;
+		regulator-min-microvolt = <1050000>;
+		regulator-max-microvolt = <1350000>;
+		onnn,min-setpoint = <600000>;
+		pintrl-names = "default";
+		pinctrl-0 = <&ext_buck_vsel_default>;
+		onnn,vsel-gpio = <&msm_gpio 111 1>;
+		onnn,discharge-enable;
+		onnn,restore-reg;
+		monitor_reg_work_flag=<1>;
+	};
+
+	ncp6335d_a10: ncp6335d-a1x@10 {
+		compatible = "onnn,ncp6335d-a10";
+		reg = <0x10>;
+		onnn,vsel = <0>;
+		onnn,slew-ns = <3333>;
+		onnn,step-size = <6250>;
+		onnn,min-slew-ns = <416>;
+		onnn,max-slew-ns = <3333>;
+		onnn,en-delay-ms = <0>;
+		regulator-min-microvolt = <1050000>;
+		regulator-max-microvolt = <1350000>;
+		onnn,min-setpoint = <600000>;
+		pintrl-names = "default";
+		pinctrl-0 = <&ext_buck_vsel_default>;
+		onnn,vsel-gpio = <&msm_gpio 111 1>;
+		onnn,discharge-enable;
+		onnn,restore-reg;
+		monitor_reg_work_flag=<1>;
+	};	
+	
+	/*just can support 3 devices, delete this one*/
 
 	fan53555: fan53555-regulator@60 {
 		compatible = "fairchild,fan53555-regulator";
@@ -43,20 +87,14 @@
 		fairchild,vsel-gpio = <&msm_gpio 111 1>;
 		fairchild,restore-reg;
 		fairchild,disable-suspend;
+		monitor_reg_work_flag=<1>;
 	};
 };
 
 /* Memory accelerator and CPR controlled regulators */
 
 &soc {
-	spk_vreg: regulator_spk {
-		compatible = "regulator-fixed";
-		regulator-name = "spk_vreg";
-		startup-delay-us = <0>;
-		enable-active-high;
-		gpio = <&msm_gpio 121 0>;
-	};
-
+	/*delete spk_vreg: regulator_spk  */
 	mem_acc_vreg_corner: regulator@1942130 {
 		compatible = "qcom,mem-acc-regulator";
 		reg = <0x1942130 0x4>, <0x58000 0x1000>, <0x1942124 0x4>;
@@ -85,8 +123,11 @@
 
 		qcom,cpr-fuse-corners = <3>;
 		qcom,cpr-voltage-ceiling = <1050000 1150000 1350000>;
-		qcom,cpr-voltage-floor = <1050000 1050000 1137500>;
+		qcom,cpr-voltage-floor = <1050000 1150000 1137500>;
+                /* we support ncp(0x1c , 0x18) & fan */
 		vdd-apc-supply = <&ncp6335d>;
+		vdd-apc-optional-prim-supply = <&fan53555>;
+		vdd-apc-optional-sec-supply = <&ncp6335d_a18>;
 
 		qcom,vdd-mx-corner-map = <4 5 7>;
 		qcom,vdd-mx-vmin-method = <4>;
@@ -317,9 +358,9 @@
 			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>,
 			<0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0     0 0 0 0 0>;
 		qcom,cpr-voltage-floor-override =
-			<0xffffffff 0xffffffff 1050000 1050000 1050000 1050000
-			1050000 1050000 1050000 1050000 1050000 1050000 1050000
-			1050000 1050000 1100000 1137500 1137500 1137500 1137500
+			<0xffffffff 0xffffffff 1050000 1050000 1050000 1150000
+			1150000 1150000 1150000 1150000 1150000 1150000 1150000
+			1150000 1150000 1150000 1137500 1137500 1137500 1137500
 			1137500 1137500 1137500 1137500 1137500 1137500 1137500
 			1137500 1137500 1137500>;
 		qcom,cpr-enable;
@@ -477,7 +518,6 @@
 			status = "okay";
 		};
 	};
-
 	rpm-regulator-ldoa6 {
 		status = "okay";
 		pm8916_l6: regulator-l6 {
@@ -485,6 +525,8 @@
 			regulator-max-microvolt = <1800000>;
 			qcom,init-voltage = <1800000>;
 			status = "okay";
+			regulator-boot-on;
+			regulator-always-on;
 		};
 	};
 
@@ -506,17 +548,15 @@
 			qcom,init-voltage = <1800000>;
 		};
 	};
-
 	rpm-regulator-ldoa8 {
 		status = "okay";
 		pm8916_l8: regulator-l8 {
-			regulator-min-microvolt = <2850000>;
-			regulator-max-microvolt = <2900000>;
-			qcom,init-voltage = <2850000>;
+			regulator-min-microvolt = <2950000>;
+			regulator-max-microvolt = <2950000>;
+			qcom,init-voltage = <2950000>;
 			status = "okay";
 		};
 	};
-
 	rpm-regulator-ldoa9 {
 		status = "okay";
 		pm8916_l9: regulator-l9 {
@@ -586,7 +626,8 @@
 			status = "okay";
 		};
 	};
-
+	
+	/* Modify JDI tp/lcd power on/off to reduce power consumption */
 	rpm-regulator-ldoa16 {
 		status = "okay";
 		pm8916_l16: regulator-l16 {
@@ -594,9 +635,9 @@
 			regulator-max-microvolt = <3300000>;
 			qcom,init-voltage = <1800000>;
 			status = "okay";
+			regulator-boot-on;
 		};
 	};
-
 	rpm-regulator-ldoa17 {
 		status = "okay";
 		pm8916_l17: regulator-l17 {
@@ -604,6 +645,8 @@
 			regulator-max-microvolt = <2850000>;
 			qcom,init-voltage = <2850000>;
 			status = "okay";
+			regulator-boot-on;
+			regulator-always-on;
 		};
 	};
 

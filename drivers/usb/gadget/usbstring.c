@@ -19,6 +19,9 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
 
+#ifdef CONFIG_HUAWEI_USB_DSM
+#include <linux/usb/dsm_usb.h>
+#endif
 
 /**
  * usb_gadget_get_string - fill out a string descriptor 
@@ -63,8 +66,18 @@ usb_gadget_get_string (struct usb_gadget_strings *table, int id, u8 *buf)
 	len = min ((size_t) 126, strlen (s->s));
 	len = utf8s_to_utf16s(s->s, len, UTF16_LITTLE_ENDIAN,
 			(wchar_t *) &buf[2], 126);
+#ifndef CONFIG_HUAWEI_USB_DSM
 	if (len < 0)
 		return -EINVAL;
+#else
+	if (len < 0)
+	{
+		DSM_USB_LOG(DSM_USB_DEVICE, NULL, DSM_USB_DEVICE_EMU__ERR,
+					"usb_gadget_get_string: failed: return %d\n",
+					len);
+		return -EINVAL;
+	}
+#endif
 	buf [0] = (len + 1) * 2;
 	buf [1] = USB_DT_STRING;
 	return buf [0];

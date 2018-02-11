@@ -33,10 +33,20 @@
 
 #include <asm/ioctls.h>
 
+#ifdef CONFIG_LOG_JANK
+#include <linux/log_jank.h>
+#endif
+
 #ifndef CONFIG_LOGCAT_SIZE
 #define CONFIG_LOGCAT_SIZE 256
 #endif
 
+#ifdef CONFIG_LOG_JANK
+#define   MAX_TAG_SIZE     128
+#define   MAX_MSG_SIZE     256
+#endif
+
+#ifndef CONFIG_HUAWEI_LOG_PARSER
 /**
  * struct logger_log - represents a specific log, such as 'main' or 'radio'
  * @buffer:	The actual ring buffer
@@ -64,6 +74,19 @@ struct logger_log {
 	size_t			size;
 	struct list_head	logs;
 };
+#endif
+#ifdef CONFIG_HUAWEI_LOG_PARSER
+extern struct logger_info_list *log_info_list;
+
+extern void save_head_off_in_logger_info(struct logger_log *);
+
+extern int populate_logger_info_list(char* log_name,
+	unsigned int buffer_phy_addr, int size);
+
+extern void save_logger_info_in_IMEM(void);
+
+extern void populate_kmsg_info_into_logger_info_list(void);
+#endif
 
 static LIST_HEAD(log_list);
 
@@ -405,8 +428,12 @@ static void fix_up_readers(struct logger_log *log, size_t len)
 	size_t new = logger_offset(log, old + len);
 	struct logger_reader *reader;
 
-	if (is_between(old, new, log->head))
+	if (is_between(old, new, log->head)) {
 		log->head = get_next_entry(log, log->head, len);
+#ifdef CONFIG_HUAWEI_LOG_PARSER
+		save_head_off_in_logger_info(log);
+#endif
+	}
 
 	list_for_each_entry(reader, &log->readers, list)
 		if (is_between(old, new, reader->r_off))
@@ -533,6 +560,99 @@ static ssize_t logger_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	return ret;
 }
 
+static struct logger_log *get_log_from_name(const char* name)
+{
+	struct logger_log *log;
+
+	list_for_each_entry(log, &log_list, logs)
+		if (!strncmp(log->misc.name, name, strlen(log->misc.name)))
+			return log;
+	return NULL;
+}
+
+static int calc_iovc_ki_left(struct iovec *iov, int nr_segs)
+{
+	int ret = 0;
+	int seg;
+	for (seg = 0; seg < nr_segs; seg++) {
+		ssize_t len = (ssize_t)iov[seg].iov_len;
+		ret += len;
+	}
+	return ret;
+}
+
+ssize_t write_log_to_exception(const char* category, char level, const char* msg)
+{
+	struct logger_log *log = get_log_from_name(LOGGER_LOG_EXCEPTION);
+
+	struct logger_entry header;
+	struct timespec now;
+	ssize_t ret = 0;
+	struct iovec vec[4];
+	struct iovec *iov = vec;
+	int nr_segs = sizeof(vec)/sizeof(vec[0]);
+
+	pr_info("%s:%s\n",__func__,msg);
+	/*according to the arguments, fill the iovec struct  */
+	vec[0].iov_base   = (unsigned char *) &level;
+	vec[0].iov_len    = 1;
+
+	vec[1].iov_base   = "message";
+	vec[1].iov_len    = strlen("message");  //here won't add \0
+
+	vec[2].iov_base   = (void *) category;
+	vec[2].iov_len    = strlen(category) + 1;
+
+	vec[3].iov_base   = (void *) msg;
+	vec[3].iov_len    = strlen(msg) + 1;
+
+	now = current_kernel_time();
+	header.pid = 0;
+	header.tid = 0;
+	header.sec = now.tv_sec;
+	header.nsec = now.tv_nsec;
+	header.euid = 0;
+	header.len = min(calc_iovc_ki_left(vec,nr_segs),LOGGER_ENTRY_MAX_PAYLOAD);
+	header.hdr_size = sizeof(struct logger_entry);
+
+	/* null writes succeed, return zero */
+	if (unlikely(!header.len))
+		return 0;
+
+	mutex_lock(&log->mutex);
+
+	/*
+	 * Fix up any readers, pulling them forward to the first readable
+	 * entry after (what will be) the new write offset. We do this now
+	 * because if we partially fail, we can end up with clobbered log
+	 * entries that encroach on readable buffer.
+	 */
+	fix_up_readers(log, sizeof(struct logger_entry) + header.len);
+
+	do_write_log(log, &header, sizeof(struct logger_entry));
+
+	while (nr_segs-- > 0) {
+		size_t len;
+		ssize_t nr;
+
+		/* figure out how much of this vector we can keep */
+		len = min_t(size_t, iov->iov_len, header.len - ret);
+
+		/* write out this segment's payload */
+		do_write_log(log, iov->iov_base, len);
+
+		iov++;
+		ret += nr;
+	}
+
+	mutex_unlock(&log->mutex);
+
+	/* wake up any blocked readers */
+	wake_up_interruptible(&log->wq);
+
+	return ret;
+}
+EXPORT_SYMBOL(write_log_to_exception);
 static struct logger_log *get_log_from_minor(int minor)
 {
 	struct logger_log *log;
@@ -710,6 +830,9 @@ static long logger_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		list_for_each_entry(reader, &log->readers, list)
 			reader->r_off = log->w_off;
 		log->head = log->w_off;
+#ifdef CONFIG_HUAWEI_LOG_PARSER
+		save_head_off_in_logger_info(log);
+#endif
 		ret = 0;
 		break;
 	case LOGGER_GET_VERSION:
@@ -755,8 +878,14 @@ static int __init create_log(char *log_name, int size)
 	int ret = 0;
 	struct logger_log *log;
 	unsigned char *buffer;
-
+#ifdef CONFIG_HUAWEI_LOG_PARSER
+	unsigned int buffer_phy_addr;
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+	buffer = kzalloc((unsigned int)size, GFP_KERNEL);
+#else
 	buffer = vmalloc(size);
+#endif
 	if (buffer == NULL)
 		return -ENOMEM;
 
@@ -765,6 +894,14 @@ static int __init create_log(char *log_name, int size)
 		ret = -ENOMEM;
 		goto out_free_buffer;
 	}
+
+#ifdef CONFIG_HUAWEI_LOG_PARSER
+	buffer_phy_addr = virt_to_phys(buffer);
+	pr_info("HUAWEI_LOGGER, name:%s size=%d virt:0x%p, phy:0x%x\n",
+		log_name, size, (void *)buffer, buffer_phy_addr);
+	populate_logger_info_list(log_name, buffer_phy_addr, size);
+#endif
+
 	log->buffer = buffer;
 
 	log->misc.minor = MISC_DYNAMIC_MINOR;
@@ -782,6 +919,11 @@ static int __init create_log(char *log_name, int size)
 	mutex_init(&log->mutex);
 	log->w_off = 0;
 	log->head = 0;
+
+#ifdef CONFIG_HUAWEI_LOG_PARSER
+	save_head_off_in_logger_info(log);
+#endif
+
 	log->size = size;
 
 	INIT_LIST_HEAD(&log->logs);
@@ -807,12 +949,115 @@ out_free_buffer:
 	vfree(buffer);
 	return ret;
 }
+#ifdef CONFIG_LOG_JANK
+int log_to_jank(int tag, int prio, const char* fmt, ...)
+{
+	struct logger_log *log = get_log_from_name(LOGGER_LOG_JANK);
+	struct logger_entry header;
+
+	char  msg[MAX_MSG_SIZE];
+	struct timespec now;
+	va_list args;
+	ssize_t ret = 0;
+	struct timespec         upts, realts;
+	u64  uptime;
+	u64  realtime;
+	struct iovec vec[5];
+	struct iovec *iov = vec;
+
+	int nr_segs = sizeof(vec)/sizeof(vec[0]);
+	if (unlikely(!tag || !fmt)) {
+        pr_err("jank_log: invalid arguments\n");
+        return 0;
+    }
+	do_posix_clock_monotonic_gettime(&upts);
+	realts = upts;
+	monotonic_to_bootbased(&realts);
+	uptime = (u64)upts.tv_sec*1000 + upts.tv_nsec/1000000;
+	realtime = (u64)realts.tv_sec*1000 + realts.tv_nsec/1000000;
+
+    memset(msg,0,sizeof(msg));
+    va_start(args, fmt);
+	vscnprintf(msg, sizeof(msg), fmt, args);
+	va_end(args);
+
+	/*according to the arguments, fill the iovec struct  */
+	vec[0].iov_base   =  &prio;
+	vec[0].iov_len    = 2;
+
+	vec[1].iov_base   = &tag;
+	vec[1].iov_len    =  2;
+
+	vec[2].iov_base = &uptime;
+	vec[2].iov_len  = sizeof(uptime);
+
+	vec[3].iov_base = &realtime;
+	vec[3].iov_len  = sizeof(realtime);
+
+	vec[4].iov_base   = (void *) msg;
+	vec[4].iov_len    = strlen(msg) + 1;
+
+	now = current_kernel_time();
+	header.pid = current->tgid;;
+	header.tid = current->pid;;
+	header.sec = now.tv_sec;
+	header.nsec = now.tv_nsec;
+	header.euid = current_euid();
+	header.len = min(calc_iovc_ki_left(vec,nr_segs),LOGGER_ENTRY_MAX_PAYLOAD);
+	header.hdr_size = sizeof(struct logger_entry);
+
+	/* null writes succeed, return zero */
+	if (unlikely(!header.len))
+		return 0;
+
+	mutex_lock(&log->mutex);
+
+	/*
+	 * Fix up any readers, pulling them forward to the first readable
+	 * entry after (what will be) the new write offset. We do this now
+	 * because if we partially fail, we can end up with clobbered log
+	 * entries that encroach on readable buffer.
+	 */
+	fix_up_readers(log,  sizeof(struct logger_entry) + header.len);
+	do_write_log(log, &header, sizeof(struct logger_entry));
+	while (nr_segs-- > 0) {
+		size_t len;
+		/* figure out how much of this vector we can keep */
+		len = min_t(size_t, iov->iov_len, header.len - ret);
+		/* write out this segment's payload */
+		do_write_log(log, iov->iov_base, len);
+
+		iov++;
+		ret += len;
+
+	}
+
+	mutex_unlock(&log->mutex);
+
+	/* wake up any blocked readers */
+	wake_up_interruptible(&log->wq);
+
+	return ret;
+}
+EXPORT_SYMBOL(log_to_jank);
+#endif
+
+#ifdef CONFIG_HUAWEI_KERNEL_DEBUG
+#define CONFIG_HUAWEI_LOGCAT_SIZE	(1024)
+#else
+#define CONFIG_HUAWEI_LOGCAT_SIZE	(256)
+#endif
 
 static int __init logger_init(void)
 {
 	int ret;
 
-	ret = create_log(LOGGER_LOG_MAIN, CONFIG_LOGCAT_SIZE*1024);
+#ifdef CONFIG_HUAWEI_LOG_PARSER
+	save_logger_info_in_IMEM();
+	populate_kmsg_info_into_logger_info_list();
+#endif
+
+	ret = create_log(LOGGER_LOG_MAIN, CONFIG_HUAWEI_LOGCAT_SIZE*1024);
 	if (unlikely(ret))
 		goto out;
 
@@ -824,9 +1069,18 @@ static int __init logger_init(void)
 	if (unlikely(ret))
 		goto out;
 
-	ret = create_log(LOGGER_LOG_SYSTEM, CONFIG_LOGCAT_SIZE*1024);
+	ret = create_log(LOGGER_LOG_SYSTEM, CONFIG_HUAWEI_LOGCAT_SIZE*1024);
 	if (unlikely(ret))
 		goto out;
+	ret = create_log(LOGGER_LOG_EXCEPTION, CONFIG_LOGCAT_SIZE*1024);
+	if (unlikely(ret))
+		goto out;
+
+#ifdef CONFIG_LOG_JANK
+	ret = create_log(LOGGER_LOG_JANK, CONFIG_LOGCAT_SIZE*1024);
+	if (unlikely(ret))
+		goto out;
+#endif
 
 out:
 	return ret;
@@ -843,6 +1097,9 @@ static void __exit logger_exit(void)
 		kfree(current_log->misc.name);
 		list_del(&current_log->logs);
 		kfree(current_log);
+#ifdef CONFIG_HUAWEI_LOG_PARSER
+		kfree(log_info_list);
+#endif
 	}
 }
 

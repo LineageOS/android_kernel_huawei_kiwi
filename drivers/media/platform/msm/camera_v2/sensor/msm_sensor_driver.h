@@ -18,4 +18,6 @@
 int32_t msm_sensor_driver_probe(void *setting,
 	struct msm_sensor_info_t *probed_info, char *entity_name);
 
+/*use dtsi get sensor name instead of board id string*/
+int32_t msm_get_probe_sensor_codes(void *sensor_codos_info);
 #endif

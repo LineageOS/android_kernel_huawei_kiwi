@@ -26,7 +26,12 @@
 #include <linux/workqueue.h>
 #include <linux/freezer.h>
 
+/* wakeup system 60 seconds before real clock time for huawei solution */
+#ifdef CONFIG_HUAWEI_KERNEL
+#define ALARM_DELTA 60
+#else
 #define ALARM_DELTA 120
+#endif
 
 /**
  * struct alarm_base - Alarm timer bases

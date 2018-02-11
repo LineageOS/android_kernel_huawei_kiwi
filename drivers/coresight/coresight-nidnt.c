@@ -309,7 +309,8 @@ static bool coresight_nidnt_is_boot_from_sd(struct nidnt_drvdata *nidnt_drvdata)
 {
 	uint16_t nidnt_boot_config;
 	bool ret;
-
+	nidnt_writel(nidnt_drvdata, 0x03, TLMM_QDSD_BOOT_CTL); 
+	mb(); 
 	nidnt_boot_config = nidnt_readl(nidnt_drvdata, TLMM_QDSD_BOOT_CTL);
 
 	pr_info("nidnt boot config: %x\n",

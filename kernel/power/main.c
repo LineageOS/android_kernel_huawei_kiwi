@@ -623,12 +623,24 @@ static int __init pm_start_workqueue(void)
 #else
 static inline int pm_start_workqueue(void) { return 0; }
 #endif
-
+#ifdef CONFIG_HUAWEI_KERNEL
+extern struct completion suspend_sys_sync_comp;
+extern struct workqueue_struct *suspend_sys_sync_work_queue;
+#endif
 static int __init pm_init(void)
 {
 	int error = pm_start_workqueue();
 	if (error)
 		return error;
+#ifdef CONFIG_HUAWEI_KERNEL	
+	init_completion(&suspend_sys_sync_comp);
+	suspend_sys_sync_work_queue =
+		create_singlethread_workqueue("suspend_sys_sync");
+	if (suspend_sys_sync_work_queue == NULL) {
+		error = -ENOMEM;
+		return error;
+	}	
+#endif
 	hibernate_image_size_init();
 	hibernate_reserved_size_init();
 	power_kobj = kobject_create_and_add("power", NULL);

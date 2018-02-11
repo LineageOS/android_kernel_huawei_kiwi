@@ -334,7 +334,33 @@ static ssize_t regulator_uV_show(struct device *dev,
 
 	return ret;
 }
+
+#ifdef CONFIG_HUAWEI_KERNEL
+extern char *saved_command_line;
+//regulator voltage write interface
+static ssize_t regulator_uV_store(struct device *dev, struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct regulator_dev *rdev = dev_get_drvdata(dev);
+	int min_uV = 0;
+	int max_uV = 0;
+
+	//check if it is factory mode
+	if(strstr(saved_command_line,"androidboot.huawei_swtype=factory")!=NULL)
+	{
+		mutex_lock(&rdev->mutex);
+		sscanf(buf, "%d,%d", &min_uV,&max_uV);
+		pr_info("regulator_uV_store:%d, %d\n", max_uV, min_uV);
+		_regulator_do_set_voltage(rdev,min_uV,max_uV);
+		mutex_unlock(&rdev->mutex);
+	}
+
+	return count;
+}
+static DEVICE_ATTR(microvolts, 0644, regulator_uV_show, regulator_uV_store);
+#else
 static DEVICE_ATTR(microvolts, 0444, regulator_uV_show, NULL);
+#endif
 
 static ssize_t regulator_uA_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -3808,6 +3834,80 @@ static const struct file_operations reg_consumers_fops = {
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
+
+#ifdef  CONFIG_HUAWEI_KERNEL
+#define  STR_PAD	3
+#define  MAX_LEN    80
+
+static int regulator_check_str(struct regulator *reg,
+	unsigned int *slen, char *snames)
+{
+	if (reg->enabled && reg->supply_name) {
+		if (*slen + strlen(reg->supply_name) + STR_PAD > MAX_LEN)
+			return -ENOMEM;
+		*slen += snprintf(snames + *slen,
+				strlen(reg->supply_name) + STR_PAD,
+				", %s", reg->supply_name);
+	}
+	return 0;
+}
+
+static void showall_enabled(void)
+{
+	struct regulator_dev *rdev;
+	unsigned int cnt = 0;
+
+	unsigned int slen;
+	struct regulator *reg;
+	char snames[80];
+
+	pr_info("Enabled regulators:\n");
+	if (!mutex_trylock(&regulator_list_mutex)) {
+		pr_err("regulator-debug: Cannot get regulator_list_mutex now.\n");
+		return;
+	}
+	list_for_each_entry(rdev, &regulator_list, list) {
+		if (!mutex_trylock(&rdev->mutex)) {
+			pr_err("regulator-debug: Cannot get rdev->mutex now.\n");
+			break;
+		}
+		if (_regulator_is_enabled(rdev)) {
+			slen = 0;
+			list_for_each_entry(reg,
+					&rdev->consumer_list, list) {
+				if (regulator_check_str(reg,&slen, snames))
+					break;
+			}
+
+			if (rdev->desc->ops) {
+				printk(KERN_INFO "\t%s, %d uV%s\n",
+						rdev_get_name(rdev),
+						_regulator_get_voltage(rdev),
+						slen ? snames : ", null");
+			}
+			else {
+				printk(KERN_INFO "\t%s\n", rdev_get_name(rdev));
+			}
+			cnt++;
+		}
+		mutex_unlock(&rdev->mutex);
+	}
+	mutex_unlock(&regulator_list_mutex);
+
+	if (cnt) {
+		pr_info("Enabled regulator count: %d\n", cnt);
+	}
+	else {
+		pr_info("No regulators enabled.");
+	}
+}
+
+void regulator_debug_print_enabled(void)
+{
+	showall_enabled();
+}
+EXPORT_SYMBOL(regulator_debug_print_enabled);
+#endif
 
 static void rdev_init_debugfs(struct regulator_dev *rdev)
 {

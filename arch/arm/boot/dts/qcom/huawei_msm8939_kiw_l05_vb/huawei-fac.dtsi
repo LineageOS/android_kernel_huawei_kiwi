@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI KII-L05";
+                  fac,hardware_ver = "HL3KIWMBF";
+                  fac,software_ver = "MSM8939_KII_L05_VB";
+                  status = "ok";
+        };
+};

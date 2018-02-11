@@ -27,10 +27,15 @@
 #include <linux/iommu.h>
 #include <linux/platform_device.h>
 #include <media/v4l2-fh.h>
+#include "hw_camera_log.h"
+#include <linux/wakelock.h>
 
 #include "camera.h"
 #include "msm.h"
 #include "msm_vb2.h"
+#ifdef CONFIG_HUAWEI_DSM
+#include "msm_camera_dsm.h"
+#endif
 
 #define fh_to_private(__fh) \
 	container_of(__fh, struct camera_v4l2_private, fh)
@@ -41,6 +46,8 @@ struct camera_v4l2_private {
 	unsigned int is_vb2_valid; /*0 if no vb2 buffers on stream, else 1*/
 	struct vb2_queue vb2_q;
 };
+static struct wake_lock cam_wakelock;
+static int cam_wakelock_init = 0;
 
 static void camera_pack_event(struct file *filep, int evt_id,
 	int command, int value, struct v4l2_event *event)
@@ -650,8 +657,23 @@ static int camera_v4l2_close(struct file *filep)
 	opn_idx &= ~mask;
 	atomic_set(&pvdev->opened, opn_idx);
 
+#ifdef CONFIG_HUAWEI_DSM
+	camera_is_closing = 1;
+#endif
 	if (atomic_read(&pvdev->opened) == 0) {
 
+        if(1 == cam_wakelock_init && !wake_lock_active(&cam_wakelock))
+        {
+            hw_camera_log_info("%s: start camera wake_lock_timeout!\n",__func__);
+            //wake lock 500ms for camera exit
+            wake_lock_timeout(&cam_wakelock, HZ/2);
+        }
+        else
+        {
+            hw_camera_log_info("%s: do not need wake_lock now, cam_wakelock_init = %d\n",
+				__func__, cam_wakelock_init);
+        }
+        
 		camera_pack_event(filep, MSM_CAMERA_SET_PARM,
 			MSM_CAMERA_PRIV_DEL_STREAM, -1, &event);
 
@@ -778,6 +800,11 @@ int camera_init_v4l2(struct device *dev, unsigned int *session)
 	atomic_set(&pvdev->opened, 0);
 	video_set_drvdata(pvdev->vdev, pvdev);
 	device_init_wakeup(&pvdev->vdev->dev, 1);
+    if(!cam_wakelock_init)
+    {
+        cam_wakelock_init = 1;
+        wake_lock_init(&cam_wakelock, WAKE_LOCK_SUSPEND, "cam_wakelock");
+    }
 	goto init_end;
 
 video_register_fail:

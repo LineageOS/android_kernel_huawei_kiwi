@@ -4,8 +4,7 @@
 #include <linux/v4l2-mediabus.h>
 
 #define KVERSION 0x1
-
-#define MAX_POWER_CONFIG      12
+#define MAX_POWER_CONFIG      15 
 #define GPIO_OUT_LOW          (0 << 1)
 #define GPIO_OUT_HIGH         (1 << 1)
 #define CSI_EMBED_DATA        0x12
@@ -93,6 +92,11 @@ enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_FL_EN,
 	SENSOR_GPIO_FL_NOW,
 	SENSOR_GPIO_FL_RESET,
+	SENSOR_GPIO_CAM_ID,	
+	SENSOR_GPIO_MISP_VDD,
+	SENSOR_GPIO_DVDD_SEL,
+	SENSOR_GPIO_AF_EN,
+	SENSOR_GPIO_OIS_EN,
 	SENSOR_GPIO_CUSTOM1,
 	SENSOR_GPIO_CUSTOM2,
 	SENSOR_GPIO_MAX,
@@ -107,13 +111,13 @@ enum msm_camera_vreg_name_t {
 	CAM_V_CUSTOM2,
 	CAM_VREG_MAX,
 };
-
 enum msm_sensor_clk_type_t {
 	SENSOR_CAM_MCLK,
 	SENSOR_CAM_CLK,
+	SENSOR_MINIISP_MCLK,
+	SENSOR_MINIISP_CLK,
 	SENSOR_CAM_CLK_MAX,
 };
-
 enum camerab_mode_t {
 	CAMERA_MODE_2D_B = (1<<0),
 	CAMERA_MODE_3D_B = (1<<1),
@@ -194,9 +198,34 @@ struct msm_sensor_init_params {
 
 struct msm_sensor_id_info_t {
 	uint16_t sensor_id_reg_addr;
+    enum msm_camera_i2c_data_type sensor_id_data_type;
 	uint16_t sensor_id;
 };
 
+struct msm_sensor_cam_id_t
+{
+	uint8_t cam_excepted_id;
+	uint32_t vendor_id;
+};
+
+enum dump_reg_operation {
+	DUMP_REG_READ = 0,
+	DUMP_REG_WRITE,
+};
+
+struct dump_reg_info_t {
+	uint16_t addr;
+	uint16_t value;
+	enum dump_reg_operation reg_type;
+	enum msm_camera_i2c_data_type data_type;
+};
+struct msm_cam_otp_vendor_info_t{
+	uint32_t i2c_addr;
+	uint16_t reg_addr;
+	uint16_t expect_vendor_id;
+	enum msm_camera_i2c_reg_addr_type addr_type;
+	enum msm_camera_i2c_data_type data_type;
+};
 struct msm_camera_sensor_slave_info {
 	char sensor_name[32];
 	char eeprom_name[32];
@@ -212,12 +241,22 @@ struct msm_camera_sensor_slave_info {
 	uint8_t  is_init_params_valid;
 	struct msm_sensor_init_params sensor_init_params;
 	uint8_t is_flash_supported;
+	struct msm_sensor_cam_id_t *sensor_cam_id;
+	struct dump_reg_info_t *dump_reg_info;
+	uint16_t dump_reg_num;
+	struct msm_cam_otp_vendor_info_t *otp_vendor_info;
 };
-
+struct msm_camera_spi_reg_setting {
+       uint8_t *param;
+       uint16_t size;
+       uint16_t opcode;
+       uint16_t delay;
+};
 struct msm_camera_i2c_reg_array {
 	uint16_t reg_addr;
 	uint16_t reg_data;
 	uint32_t delay;
+	enum msm_camera_i2c_data_type data_type;
 };
 
 struct msm_camera_i2c_reg_setting {

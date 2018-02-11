@@ -35,6 +35,7 @@
 #include <linux/qdsp6v2/apr_tal.h>
 #include <linux/qdsp6v2/dsp_debug.h>
 
+#include <sound/hw_audio_info.h>
 #define SCM_Q6_NMI_CMD 0x1
 
 static struct apr_q6 q6;
@@ -285,6 +286,7 @@ int apr_send_pkt(void *handle, uint32_t *buf)
 	} else if ((svc->dest_id == APR_DEST_MODEM) &&
 		   (apr_get_modem_state() == APR_SUBSYS_DOWN)) {
 		pr_err("apr: Still Modem is not Up\n");
+		audio_dsm_report_num(DSM_AUDIO_MODEM_CRASH_ERROR_NO, DSM_AUDIO_MESG_MODEM_STILL_NOTUP);
 		return -ENETRESET;
 	}
 
