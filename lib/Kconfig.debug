@@ -25,6 +25,17 @@ config DEFAULT_MESSAGE_LOGLEVEL
 	  that are auditing their logs closely may want to set it to a lower
 	  priority.
 
+
+config DEBUG_HUAWEI_FLOW_LOGLEVEL
+	int "Default message log level (0-1)"
+	depends on PRINTK && HUAWEI_KERNEL
+	range 0 1
+	default "0"
+	help
+	 Select this option to allow print some extra
+	 huawei debug log
+
+
 config ENABLE_WARN_DEPRECATED
 	bool "Enable __deprecated logic"
 	default y
