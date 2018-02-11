@@ -67,6 +67,7 @@ source "fs/quota/Kconfig"
 
 source "fs/autofs4/Kconfig"
 source "fs/fuse/Kconfig"
+source "fs/sdcardfs/Kconfig"
 
 config GENERIC_ACL
 	bool
@@ -271,5 +272,5 @@ endif # NETWORK_FILESYSTEMS
 
 source "fs/nls/Kconfig"
 source "fs/dlm/Kconfig"
-
+source "fs/exfat/Kconfig"
 endmenu
