@@ -48,3 +48,13 @@ const char linux_proc_banner[] =
 	"%s version %s"
 	" (" LINUX_COMPILE_BY "@" LINUX_COMPILE_HOST ")"
 	" (" LINUX_COMPILER ") %s\n";
+
+#ifdef CONFIG_HUAWEI_KERNEL
+#ifndef HIDE_PRODUCT_INFO_KERNEL
+//Define the struct to mask the machine version
+const char hide_version[] =
+	"%s version %s"
+	"(android@localhost)"
+	"("LINUX_COMPILER")%s\n";
+#endif
+#endif
