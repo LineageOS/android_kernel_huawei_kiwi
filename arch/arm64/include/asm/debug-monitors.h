@@ -17,6 +17,14 @@
 #define __ASM_DEBUG_MONITORS_H
 
 #ifdef __KERNEL__
+/* Low-level stepping controls. */
+#define DBG_MDSCR_SS		(1 << 0)
+#define DBG_SPSR_SS		(1 << 21)
+
+/* MDSCR_EL1 enabling bits */
+#define DBG_MDSCR_KDE		(1 << 13)
+#define DBG_MDSCR_MDE		(1 << 15)
+#define DBG_MDSCR_MASK		~(DBG_MDSCR_KDE | DBG_MDSCR_MDE)
 
 #define	DBG_ESR_EVT(x)		(((x) >> 27) & 0x7)
 
@@ -39,18 +47,29 @@
 /*
  * #imm16 values used for BRK instruction generation
  * Allowed values for kgbd are 0x400 - 0x7ff
+ * 0x100: for triggering a fault on purpose (reserved)
  * 0x400: for dynamic BRK instruction
  * 0x401: for compile time BRK instruction
  */
+#define FAULT_BRK_IMM			0x100
 #define KGDB_DYN_DGB_BRK_IMM		0x400
 #define KDBG_COMPILED_DBG_BRK_IMM	0x401
-
 /*
  * BRK instruction encoding
  * The #imm16 value should be placed at bits[20:5] within BRK ins
  */
 #define AARCH64_BREAK_MON	0xd4200000
 
+/*
+ * BRK instruction for provoking a fault on purpose
+ * Unlike kgdb, #imm16 value with unallocated handler is used for faulting.
+ */
+#define AARCH64_BREAK_FAULT	(AARCH64_BREAK_MON | (FAULT_BRK_IMM << 5))
+
+/* kprobes BRK opcodes with ESR encoding  */
+#define BRK64_ESR_MASK		0xFFFF
+#define BRK64_ESR_KPROBES	0x0004
+#define BRK64_OPCODE_KPROBES	(AARCH64_BREAK_MON | (BRK64_ESR_KPROBES << 5))
 /*
  * Extract byte from BRK instruction
  */
