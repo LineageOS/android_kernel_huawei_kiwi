@@ -22,6 +22,7 @@
 #include <sound/apr_audio-v2.h>
 #include <sound/q6afe-v2.h>
 #include <sound/q6audio-v2.h>
+#include <sound/hw_audio_info.h>
 #include "msm-pcm-routing-v2.h"
 #include <sound/audio_cal_utils.h>
 
@@ -3672,6 +3673,10 @@ int afe_set_digital_codec_core_clock(u16 port_id,
 			(atomic_read(&this_afe.state) == 0),
 			msecs_to_jiffies(TIMEOUT_MS));
 	if (!ret) {
+		audio_dsm_report_info(DSM_AUDIO_CFG_CODEC_CLK_FAIL_ERROR,
+			 "%s ret = %d, freq = %d MHz, root = %d",
+			 __func__, ret, clk_cfg.clk_cfg.clk_val, clk_cfg.clk_cfg.clk_root);
+		//audio_dsm_report_num(DSM_AUDIO_ADSP_SETUP_FAIL_ERROR_NO, DSM_AUDIO_MESG_SET_CODECCLK_FAIL);
 		pr_err("%s: wait_event timeout\n", __func__);
 		ret = -EINVAL;
 		goto fail_cmd;
@@ -3754,6 +3759,7 @@ int afe_set_lpass_clock(u16 port_id, struct afe_clk_cfg *cfg)
 			(atomic_read(&this_afe.state) == 0),
 			msecs_to_jiffies(TIMEOUT_MS));
 	if (!ret) {
+		audio_dsm_report_num(DSM_AUDIO_ADSP_SETUP_FAIL_ERROR_NO, DSM_AUDIO_MESG_SET_LPASSCLK_FAIL);
 		pr_err("%s: wait_event timeout\n", __func__);
 		ret = -EINVAL;
 		goto fail_cmd;

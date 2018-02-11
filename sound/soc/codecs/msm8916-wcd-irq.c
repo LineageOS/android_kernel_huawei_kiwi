@@ -27,10 +27,11 @@
 #include "msm8x16-wcd.h"
 #include "msm8916-wcd-irq.h"
 #include "msm8x16_wcd_registers.h"
+#include <sound/hw_audio_info.h>
 
 #define MAX_NUM_IRQS 14
 #define NUM_IRQ_REGS 2
-#define WCD9XXX_SYSTEM_RESUME_TIMEOUT_MS 300
+#define WCD9XXX_SYSTEM_RESUME_TIMEOUT_MS 2000
 
 #define BYTE_BIT_MASK(nr) (1UL << ((nr) % BITS_PER_BYTE))
 #define BIT_BYTE(nr) ((nr) / BITS_PER_BYTE)
@@ -158,14 +159,24 @@ int wcd9xxx_spmi_request_irq(int irq, irq_handler_t handler,
 			const char *name, void *priv)
 {
 	int rc;
+	unsigned long irq_flags;
+
 	map.linuxirq[irq] =
 		spmi_get_irq_byname(map.spmi[BIT_BYTE(irq)], NULL,
 				    irq_names[irq]);
+
+	if (strcmp(name, "mbhc sw intr"))
+		irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING |
+			IRQF_ONESHOT;
+	else
+		irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING |
+			IRQF_ONESHOT | IRQF_NO_SUSPEND;
+	pr_debug("%s: %s irq_flags = %lx\n", __func__, name, irq_flags);
+
 	rc = devm_request_threaded_irq(&map.spmi[BIT_BYTE(irq)]->dev,
 				map.linuxirq[irq], NULL,
 				wcd9xxx_spmi_irq_handler,
-				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING
-				| IRQF_ONESHOT,
+				irq_flags,
 				name, priv);
 		if (rc < 0) {
 			dev_err(&map.spmi[BIT_BYTE(irq)]->dev,
@@ -220,6 +231,7 @@ static irqreturn_t wcd9xxx_spmi_irq_handler(int linux_irq, void *data)
 		return IRQ_HANDLED;
 
 	status[BIT_BYTE(irq)] |= BYTE_BIT_MASK(irq);
+
 	for (i = 0; i < MAX_NUM_IRQS; i++) {
 		j = get_order_irq(i);
 		if ((status[BIT_BYTE(j)] & BYTE_BIT_MASK(j)) &&
@@ -362,6 +374,9 @@ bool wcd9xxx_spmi_lock_sleep()
 			__func__,
 			WCD9XXX_SYSTEM_RESUME_TIMEOUT_MS, map.pm_state,
 			map.wlock_holders);
+		audio_dsm_report_info(DSM_AUDIO_CODEC_RESUME_FAIL_ERROR,
+			 "%s pm_state = %d, wlock_holders = %d\n",
+			 __func__, map.pm_state,map.wlock_holders);
 		wcd9xxx_spmi_unlock_sleep();
 		return false;
 	}
