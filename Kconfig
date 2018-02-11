@@ -8,4 +8,10 @@ config SRCARCH
 	string
 	option env="SRCARCH"
 
+config HUAWEI_KERNEL
+	bool "Use huawei code"
+	default y
+	help
+	use huawei code
+
 source "arch/$SRCARCH/Kconfig"
