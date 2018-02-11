@@ -47,9 +47,6 @@
 #include <linux/mmc/sd.h>
 
 #include <asm/uaccess.h>
-#ifdef CONFIG_HW_FEATURE_STORAGE_DIAGNOSE_LOG
-#include <linux/store_log.h>
-#endif
 #ifdef CONFIG_MMC_SWRM
 #include <linux/mmc/swrm.h>
 #endif
@@ -1200,12 +1197,6 @@ static int get_card_status(struct mmc_card *card, u32 *status, int retries)
 static int mmc_blk_cmd_error(struct request *req, const char *name, int error,
 	bool status_valid, u32 status)
 {
-#ifdef CONFIG_HW_FEATURE_STORAGE_DIAGNOSE_LOG
-	if (!is_log_partition_by_addr((unsigned long)blk_rq_pos(req)))
-		MSG_WRAPPER(STORAGE_ERROR_BASE|MMC_ERROR_BASE|MMC_ERROR_CMD,
-				"%s %s %#x %#x",
-				req->rq_disk->disk_name, name, error, status);
-#endif
 	switch (error) {
 	case -EILSEQ:
 		/* response crc error, retry the r/w cmd */
@@ -1770,15 +1761,6 @@ static int mmc_blk_err_check(struct mmc_card *card,
 	}
 
 	if (brq->data.error) {
-#ifdef CONFIG_HW_FEATURE_STORAGE_DIAGNOSE_LOG
-		if (!is_log_partition_by_addr((unsigned long)blk_rq_pos(req)))
-			MSG_WRAPPER(STORAGE_ERROR_BASE|MMC_ERROR_BASE|MMC_ERROR_DATA,
-					"%s %#x %#x %#x %#x %#x",
-					req->rq_disk->disk_name, brq->data.error,
-					(unsigned)blk_rq_pos(req),
-					(unsigned)blk_rq_sectors(req),
-					brq->cmd.resp[0], brq->stop.resp[0]);
-#endif
 		pr_err("%s: error %d transferring data, sector %u, nr %u, cmd response %#x, card status %#x\n",
 		       req->rq_disk->disk_name, brq->data.error,
 		       (unsigned)blk_rq_pos(req),
