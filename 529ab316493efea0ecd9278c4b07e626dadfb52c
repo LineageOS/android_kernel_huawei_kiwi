@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1bc0c047_cc97f961",
+        "filename": "mm/Kconfig",
+        "patchSetId": 1
+      },
+      "lineNbr": 550,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-11T14:38:41Z",
+      "side": 1,
+      "message": "Remove + any related code changes",
+      "revId": "529ab316493efea0ecd9278c4b07e626dadfb52c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
