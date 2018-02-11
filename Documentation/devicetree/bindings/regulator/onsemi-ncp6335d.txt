@@ -49,6 +49,9 @@ Optional Properties:
 				Supported values are "pwm" and "auto". PWM mode is more
 				robust, but draws more current than auto mode. If this propery
 				is not specified, then the regulator will be in the hardware default mode.
+- onnn,en-delay-ms:		Delay in ms applied upon enabling. Supported values
+				are 0 to 14 with 2ms steps.
+
 
 Example:
 	i2c_0 {
