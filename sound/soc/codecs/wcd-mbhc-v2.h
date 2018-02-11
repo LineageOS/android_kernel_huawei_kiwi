@@ -163,6 +163,7 @@ struct wcd_mbhc {
 	bool is_btn_press;
 	u8 current_plug;
 	bool in_swch_irq_handler;
+	bool ignore_btn_press;
 	bool hphl_swh; /*track HPHL switch NC / NO */
 	bool gnd_swh; /*track GND switch NC / NO */
 	u8 micbias1_cap_mode; /* track ext cap setting */
@@ -171,6 +172,9 @@ struct wcd_mbhc {
 	bool micbias_enable;
 	bool btn_press_intr;
 	bool is_hs_recording;
+
+	bool is_extn_cable;
+	bool in_mech_irq_handler;
 
 	struct snd_soc_codec *codec;
 	/* Work to perform MBHC Firmware Read */
