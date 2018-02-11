@@ -352,7 +352,14 @@ LDFLAGS_MODULE  =
 CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
+#Define macro to control the compile
+ifeq ($(HIDE_PRODUCT_INFO),true)
+	CFLAGS_KERNEL += -DHIDE_PRODUCT_INFO_KERNEL
+endif
 
+ifeq ($(PRODUCTION_NAME),PRODUCTION_ALE)
+	CFLAGS_KERNEL += -DPRODUCTION_ALE_KERNEL
+endif
 
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE    := \
