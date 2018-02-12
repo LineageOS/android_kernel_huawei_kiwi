@@ -18,7 +18,12 @@
 #include <linux/types.h>
 
 /* Enable/disable SYSRQ support by default (0==no, 1==yes). */
+#ifndef CONFIG_HUAWEI_KERNEL_DEBUG
+/* disable sysrq support by default */
+#define SYSRQ_DEFAULT_ENABLE	0
+#else
 #define SYSRQ_DEFAULT_ENABLE	1
+#endif
 
 /* Possible values of bitmask for enabling sysrq functions */
 /* 0x0001 is reserved for enable everything */
