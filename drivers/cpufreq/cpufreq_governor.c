@@ -22,6 +22,10 @@
 
 #include "cpufreq_governor.h"
 
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+#include <power/msgnotify.h>
+#endif
+
 static struct attribute_group *get_sysfs_attr(struct dbs_data *dbs_data)
 {
 	if (have_governor_per_policy())
@@ -39,6 +43,10 @@ void dbs_check_cpu(struct dbs_data *dbs_data, int cpu)
 	unsigned int max_load = 0;
 	unsigned int ignore_nice;
 	unsigned int j;
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+	u64 now_msg_timestamp;
+	unsigned int active_time;
+#endif
 
 	if (dbs_data->cdata->governor == GOV_ONDEMAND)
 		ignore_nice = od_tuners->ignore_nice_load;
@@ -96,7 +104,15 @@ void dbs_check_cpu(struct dbs_data *dbs_data, int cpu)
 		if (unlikely(!wall_time || wall_time < idle_time))
 			continue;
 
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+		now_msg_timestamp = kcpustat_cpu(j).cpustat[CPUTIME_MESSAGE];
+		active_time = (unsigned int)adjust_active_time_by_msg(j, (wall_time - idle_time),
+			wall_time, (now_msg_timestamp - j_cdbs->cputime_msg_timestamp));
+		load = 100 * active_time / wall_time;
+		j_cdbs->cputime_msg_timestamp = now_msg_timestamp;
+#else
 		load = 100 * (wall_time - idle_time) / wall_time;
+#endif
 
 		if (load > max_load)
 			max_load = load;
@@ -322,6 +338,10 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			if (ignore_nice)
 				j_cdbs->prev_cpu_nice =
 					kcpustat_cpu(j).cpustat[CPUTIME_NICE];
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+			j_cdbs->cputime_msg_timestamp =
+				kcpustat_cpu(cpu).cpustat[CPUTIME_MESSAGE];
+#endif
 
 			mutex_init(&j_cdbs->timer_mutex);
 			INIT_DEFERRABLE_WORK(&j_cdbs->work,
@@ -362,6 +382,11 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		break;
 
 	case CPUFREQ_GOV_LIMITS:
+        mutex_lock(&dbs_data->mutex);
+        if (!cpu_cdbs->cur_policy) {
+            mutex_unlock(&dbs_data->mutex);
+            break;
+        }
 		mutex_lock(&cpu_cdbs->timer_mutex);
 		if (policy->max < cpu_cdbs->cur_policy->cur)
 			__cpufreq_driver_target(cpu_cdbs->cur_policy,
@@ -371,6 +396,7 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 					policy->min, CPUFREQ_RELATION_L);
 		dbs_check_cpu(dbs_data, cpu);
 		mutex_unlock(&cpu_cdbs->timer_mutex);
+        mutex_unlock(&dbs_data->mutex);
 		break;
 	}
 	return 0;

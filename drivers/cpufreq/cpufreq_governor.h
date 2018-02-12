@@ -143,6 +143,9 @@ struct cpu_dbs_common_info {
 	 */
 	struct mutex timer_mutex;
 	ktime_t time_stamp;
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+	u64 cputime_msg_timestamp;
+#endif
 };
 
 struct od_cpu_dbs_info_s {
