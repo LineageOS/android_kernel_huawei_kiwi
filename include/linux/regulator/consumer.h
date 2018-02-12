@@ -150,6 +150,9 @@ struct regulator *__must_check regulator_get_exclusive(struct device *dev,
 						       const char *id);
 void regulator_put(struct regulator *regulator);
 void devm_regulator_put(struct regulator *regulator);
+#ifdef  CONFIG_HUAWEI_KERNEL
+void regulator_debug_print_enabled(void);
+#endif
 
 /* regulator output control and status */
 int __must_check regulator_enable(struct regulator *regulator);
