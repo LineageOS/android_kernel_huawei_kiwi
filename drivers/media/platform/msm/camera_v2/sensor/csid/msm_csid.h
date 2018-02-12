@@ -85,6 +85,11 @@ struct csid_device {
 	struct csid_ctrl_t *ctrl_reg;
 	uint32_t num_clk;
 	uint32_t num_clk_src_info;
+	/*add a delay work for read mipi packet number when stream on*/
+	/*add NULL point check and remove packet_num_work in msm_csid.h*/
+	/* optimize camera print mipi packet and frame count log*/
+	//struct delayed_work packet_num_work;
+	uint32_t (*csid_read_mipi_pkg)(struct csid_device *);
 	struct regulator *reg_ptr;
 	struct clk *csid_clk[CSID_NUM_CLK_MAX];
 	uint32_t csid_clk_index;
