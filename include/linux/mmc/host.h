@@ -20,6 +20,10 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/pm.h>
 
+#ifdef CONFIG_HW_MMC_TEST
+#define CARD_ADDR_MAGIC 0xA5A55A5AA5A55A5ALL
+#endif
+
 struct mmc_ios {
 	unsigned int	clock;			/* clock rate */
 	unsigned int	old_rate;       /* saved clock rate */
@@ -415,7 +419,9 @@ struct mmc_host {
 	unsigned int		actual_clock;	/* Actual HC clock rate */
 
 	unsigned int		slotno;	/* used for sdio acpi binding */
-
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	bool		slot_detect_change_flag;
+#endif
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	struct {
 		struct sdio_cis			*cis;
@@ -436,6 +442,11 @@ struct mmc_host {
 	} perf;
 	bool perf_enable;
 #endif
+
+#ifdef CONFIG_HW_MMC_TEST
+    int test_status;            /* save mmc_test status */
+#endif
+
 	struct {
 		unsigned long	busy_time_us;
 		unsigned long	window_time;
