@@ -1,0 +1,34 @@
+/*
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&cci {
+	qcom,camera@0 {
+		gpios = <&msm_gpio 26 0>,
+				<&msm_gpio 35 0>,
+				<&msm_gpio 121 0>,//core vreg
+				<&msm_gpio 110 0>,
+				<&msm_gpio 114 0>,
+				<&msm_gpio 120 0>,
+				<&msm_gpio 51 0>;
+		qcom,gpio-cam-id = <6>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4 5 6>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0 0 1>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+				"CAM_RESET1",
+				"CAM_VDIG",
+				"CAM_VANA",
+				"CAM_VIO",
+				"CAM_AF_PWDM",
+				"CAM_CAM_ID";
+	};
+};
