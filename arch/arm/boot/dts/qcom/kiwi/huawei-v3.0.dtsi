@@ -1,0 +1,2 @@
+#include "huawei.dtsi"
+#include "msm8939-v3.0.dtsi"
