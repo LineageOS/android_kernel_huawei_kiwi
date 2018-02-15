@@ -35,6 +35,7 @@
 #include <linux/qdsp6v2/apr_tal.h>
 #include <linux/qdsp6v2/dsp_debug.h>
 
+#include <sound/hw_audio_info.h>
 #define SCM_Q6_NMI_CMD 0x1
 
 static struct apr_q6 q6;

@@ -186,6 +186,15 @@ source "drivers/phy/Kconfig"
 
 source "drivers/soc/Kconfig"
 
+source "drivers/devdetect/Kconfig"
+source "drivers/hw_fac_info/Kconfig"
+
+source "drivers/huawei/Kconfig"
+
 source "drivers/firmware/Kconfig"
 
+source "drivers/goldeneye/Kconfig"
+
+source "drivers/srecorder/Kconfig"
+source "drivers/huawei_platform/Kconfig"
 endmenu

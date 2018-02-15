@@ -262,7 +262,7 @@ config NWFLASH
 	  If you're not sure, say N.
 
 source "drivers/char/hw_random/Kconfig"
-
+source "drivers/char/pppoesta/Kconfig"
 config NVRAM
 	tristate "/dev/nvram support"
 	depends on ATARI || X86 || (ARM && RTC_DRV_CMOS) || GENERIC_NVRAM
