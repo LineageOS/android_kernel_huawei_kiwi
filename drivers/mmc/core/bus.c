@@ -21,6 +21,8 @@
 #include <linux/mmc/card.h>
 #include <linux/mmc/host.h>
 
+#include <linux/hw_sd_common.h>
+
 #include "core.h"
 #include "sdio_cis.h"
 #include "bus.h"
@@ -398,7 +400,7 @@ int mmc_add_card(struct mmc_card *card)
 			mmc_card_ddr_mode(card) ? "DDR " : "",
 			type);
 	} else {
-		pr_info("%s: new %s%s%s%s%s%s card at address %04x\n",
+		EMMCSD_LOG_INFO("%s: new %s%s%s%s%s%s card at address %04x\n",
 			mmc_hostname(card->host),
 			mmc_card_uhs(card) ? "ultra high speed " :
 			(mmc_card_highspeed(card) ? "high speed " : ""),

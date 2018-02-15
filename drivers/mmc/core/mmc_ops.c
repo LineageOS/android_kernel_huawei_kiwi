@@ -18,6 +18,8 @@
 #include <linux/mmc/card.h>
 #include <linux/mmc/mmc.h>
 
+#include <linux/hw_sd_common.h>
+
 #include "core.h"
 #include "mmc_ops.h"
 
@@ -27,7 +29,6 @@ static int _mmc_select_card(struct mmc_host *host, struct mmc_card *card)
 {
 	int err;
 	struct mmc_command cmd = {0};
-
 	BUG_ON(!host);
 
 	cmd.opcode = MMC_SELECT_CARD;
@@ -43,7 +44,6 @@ static int _mmc_select_card(struct mmc_host *host, struct mmc_card *card)
 	err = mmc_wait_for_cmd(host, &cmd, MMC_CMD_RETRIES);
 	if (err)
 		return err;
-
 	return 0;
 }
 
@@ -174,7 +174,6 @@ int mmc_all_send_cid(struct mmc_host *host, u32 *cid)
 {
 	int err;
 	struct mmc_command cmd = {0};
-
 	BUG_ON(!host);
 	BUG_ON(!cid);
 
@@ -183,8 +182,6 @@ int mmc_all_send_cid(struct mmc_host *host, u32 *cid)
 	cmd.flags = MMC_RSP_R2 | MMC_CMD_BCR;
 
 	err = mmc_wait_for_cmd(host, &cmd, MMC_CMD_RETRIES);
-	if (err)
-		return err;
 
 	memcpy(cid, cmd.resp, sizeof(u32) * 4);
 
