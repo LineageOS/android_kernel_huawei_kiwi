@@ -36,6 +36,8 @@
 #define CHANNEL_STATUS_MASK_INIT 0x0
 #define CHANNEL_STATUS_MASK 0x4
 
+extern int msm_quat_mi2s_clk;
+
 static const struct afe_clk_cfg lpass_clk_cfg_default = {
 	AFE_API_VERSION_I2S_CONFIG,
 	Q6AFE_LPASS_OSR_CLK_2_P048_MHZ,
@@ -2634,8 +2636,20 @@ static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 	dev_dbg(dai->dev, "%s: closing afe port id = 0x%x\n",
 			__func__, port_id);
 
-	if (test_bit(STATUS_PORT_STARTED, dai_data->status_mask)) {
-		rc = afe_close(port_id);
+	if (test_bit(STATUS_PORT_STARTED, dai_data->status_mask))
+	{
+	    // if pord id is quat(only used for smart pa), close the port in msm_external_pa_put, otherwise close here
+        if((AFE_PORT_ID_QUATERNARY_MI2S_RX == port_id) || (AFE_PORT_ID_QUATERNARY_MI2S_TX == port_id))
+        {
+            if(0 == msm_quat_mi2s_clk)
+            {
+                rc = afe_close(port_id);
+            }
+        }
+        else
+        {
+		    rc = afe_close(port_id);
+		}
 		if (IS_ERR_VALUE(rc))
 			dev_err(dai->dev, "fail to close AFE port\n");
 		clear_bit(STATUS_PORT_STARTED, dai_data->status_mask);

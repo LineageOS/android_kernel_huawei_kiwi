@@ -64,6 +64,15 @@
 #define DEFAULT_MCLK_RATE 9600000
 
 #define WCD_MBHC_DEF_RLOADS 5
+/* device use diff gpio for hac , need do it adapt */
+static int hac_en_gpio = 0;
+#define DEFAULT_HAC_NONEED       0
+#define DEFUALT_HAC_SWITCH_VALUE 0x0
+#define HAC_ENABLE               1
+#define GPIO_PULL_UP             1
+#define GPIO_PULL_DOWN           0
+
+static int msm8916_hac_switch = DEFUALT_HAC_SWITCH_VALUE;
 
 #define LPASS_CSR_GP_LPAIF_PRI_PCM_PRI_MODE_MUXSEL 0x07702008
 
@@ -83,10 +92,38 @@ static int pri_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int mi2s_tx_sample_rate = SAMPLING_RATE_48KHZ;
 
 static int msm_proxy_rx_ch = 2;
+
+#ifndef CONFIG_HUAWEI_KERNEL
 static int msm8909_auxpcm_rate = 8000;
+#endif
 
 static atomic_t quat_mi2s_clk_ref;
 static atomic_t auxpcm_mi2s_clk_ref;
+
+/* these var for enable and disable smartPA with QUAT_I2S */
+static struct afe_clk_cfg lpass_mi2s_enable = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_CLK1_VALID,
+	0,
+};
+
+static struct afe_clk_cfg lpass_mi2s_disable = {
+        AFE_API_VERSION_I2S_CONFIG,
+        0,
+        0,
+        Q6AFE_LPASS_CLK_SRC_INTERNAL,
+        Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+        Q6AFE_LPASS_MODE_BOTH_VALID,
+        0,
+};
+int msm_quat_mi2s_clk = 0;
+extern bool get_tfa9895_flag(void);
+
+static atomic_t quat_mi2s_clk_ref;
 
 static int msm8x16_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm);
@@ -417,6 +454,7 @@ static char const *mi2s_tx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
 					"KHZ_192", "KHZ_8",
 					"KHZ_16", "KHZ_32"};
 
+#ifndef CONFIG_HUAWEI_KERNEL
 static int msm_auxpcm_be_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
 {
@@ -431,6 +469,7 @@ static int msm_auxpcm_be_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
+#endif
 
 static int msm8x16_get_clk_id(int port_id)
 {
@@ -496,6 +535,46 @@ static int enable_spk_ext_pa(struct snd_soc_codec *codec, int enable)
 	return 0;
 }
 
+static int msm8x16_spk_pa_ctrl(int gpio_num,int enable)
+{
+    int ret = 0;
+    if (!gpio_is_valid(gpio_num))
+    {
+       pr_err("%s: Invalid gpio: %d\n", __func__,gpio_num);
+       return -EINVAL;
+    }
+    ret = pinctrl_select_state(pinctrl_info.pinctrl,pinctrl_info.cdc_lines_act);
+    if (ret < 0) {
+        pr_err("%s: failed to active cdc gpio's\n", __func__);
+        return -EINVAL;
+    }
+    gpio_direction_output(gpio_num, enable);
+    return 0;
+}
+int spk_pa_boost(struct snd_soc_codec *codec,int enable)
+{
+    struct snd_soc_card *card = codec->card;
+    struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+    return msm8x16_spk_pa_ctrl(pdata->spk_ext_pa_boost_gpio,enable);
+}
+int spk_pa_enable(struct snd_soc_codec *codec,int enable)
+{
+    struct snd_soc_card *card = codec->card;
+    struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+    return msm8x16_spk_pa_ctrl(pdata->spk_ext_pa_enable_gpio,enable);
+}
+int spk_pa_switch_vdd(struct snd_soc_codec *codec,int enable)
+{
+    struct snd_soc_card *card = codec->card;
+    struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+    return msm8x16_spk_pa_ctrl(pdata->spk_ext_pa_switch_vdd_gpio,enable);
+}
+int spk_pa_switch_in(struct snd_soc_codec *codec,int enable)
+{
+    struct snd_soc_card *card = codec->card;
+    struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+    return msm8x16_spk_pa_ctrl(pdata->spk_ext_pa_switch_in_gpio,enable);
+}
 static int msm_pri_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
 {
@@ -747,6 +826,7 @@ static int msm_btsco_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+#ifndef CONFIG_HUAWEI_KERNEL
 static int msm_bta2dp_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
 {
@@ -761,6 +841,7 @@ static int msm_bta2dp_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
+#endif
 
 static int msm_proxy_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
@@ -974,6 +1055,49 @@ static int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 		 substream->name, substream->stream);
 	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT, mi2s_rx_bit_format);
 	return 0;
+}
+
+static int quat_mi2s_sclk_ctl(struct snd_pcm_substream *substream, bool enable)
+{
+	int ret = 0;
+
+	if (enable) {
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			if (mi2s_rx_bit_format == SNDRV_PCM_FORMAT_S24_LE)
+				mi2s_rx_clk_v1.clk_val1 =
+					Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
+			else
+				mi2s_rx_clk_v1.clk_val1 =
+					Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+			ret = afe_set_lpass_clock(
+					AFE_PORT_ID_QUATERNARY_MI2S_RX,
+					&mi2s_rx_clk_v1);
+		} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+			mi2s_rx_clk_v1.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+			ret = afe_set_lpass_clock(
+					AFE_PORT_ID_QUATERNARY_MI2S_TX,
+					&mi2s_tx_clk_v1);
+		} else {
+			pr_err("%s:Not valid substream.\n", __func__);
+		}
+
+		if (ret < 0)
+			pr_err("%s:afe_set_lpass_clock failed\n", __func__);
+
+	} else {
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			mi2s_rx_clk_v1.clk_val1 = Q6AFE_LPASS_IBIT_CLK_DISABLE;
+			ret = afe_set_lpass_clock(
+					AFE_PORT_ID_QUATERNARY_MI2S_RX,
+					&mi2s_rx_clk_v1);
+		} else {
+			pr_err("%s:Not valid substream.\n", __func__);
+		}
+
+		if (ret < 0)
+			pr_err("%s:afe_set_lpass_clock failed\n", __func__);
+	}
+	return ret;
 }
 
 static uint32_t get_mi2s_rx_clk_val(void)
@@ -1234,6 +1358,157 @@ static int msm_btsco_rate_put(struct snd_kcontrol *kcontrol,
 	pr_debug("%s: msm_btsco_rate = %d\n", __func__, msm_btsco_rate);
 	return 0;
 }
+static int conf_int_codec_mux_quat(struct msm8916_asoc_mach_data *pdata);
+static int msm_q6_enable_mi2s_clocks(bool enable)
+{
+    union afe_port_config port_config;
+	int rc = 0;
+	pr_debug("%s:start enable =%d\n",__func__,enable);
+	if(enable)
+	{
+	     port_config.i2s.channel_mode = AFE_PORT_I2S_SD0;
+	     port_config.i2s.mono_stereo = MSM_AFE_CH_STEREO;
+	     port_config.i2s.data_format= 0;
+	     port_config.i2s.bit_width = 16;
+	     port_config.i2s.reserved = 0;
+	     port_config.i2s.i2s_cfg_minor_version = AFE_API_VERSION_I2S_CONFIG;
+	     port_config.i2s.sample_rate = 48000;
+	     port_config.i2s.ws_src = 1;
+
+	     rc = afe_port_start(AFE_PORT_ID_QUATERNARY_MI2S_RX, &port_config, 48000);
+	     if(IS_ERR_VALUE(rc))
+	     {
+            pr_err("%s:fail to open AFE port\n",__func__);
+	        return -EINVAL;
+	     }
+         pr_debug("<%s> <%d>: Config AFE_PORT_ID_QUATERNARY_MI2S_RX success.\n", __func__, __LINE__);
+         pr_debug("<%s> <%d>: port_config.i2s.sample_rate =%d.\n", __func__, __LINE__,port_config.i2s.sample_rate);
+	}
+	else
+	{
+	    pr_debug("%s:afe_port_stop_nowait\n",__func__);
+        rc = afe_port_stop_nowait(AFE_PORT_ID_QUATERNARY_MI2S_RX);
+        if (IS_ERR_VALUE(rc))
+        {
+            pr_err(KERN_ERR"fail to stop AFE port\n");
+            return -EINVAL;
+        }
+        pr_debug("<%s> <%d>: Stop AFE_PORT_ID_QUATERNARY_MI2S_RX success.\n", __func__, __LINE__);
+        pr_debug("%s:afe_port_stop_nowait\n",__func__);
+        rc = afe_port_stop_nowait(AFE_PORT_ID_QUATERNARY_MI2S_TX);
+        if (IS_ERR_VALUE(rc))
+        {
+            pr_err(KERN_ERR"fail to stop AFE port\n");
+            return -EINVAL;
+        }
+        pr_debug("<%s> <%d>: Stop AFE_PORT_ID_QUATERNARY_MI2S_TX success.\n", __func__, __LINE__);
+    }
+	return rc;
+}
+
+static const char *const external_pa_text[] = {"disable", "enable"};
+static const struct soc_enum msm_external_pa_enum[] = {
+	SOC_ENUM_SINGLE_EXT(2, external_pa_text),
+};
+
+static int msm_external_pa_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    pr_err("%s: msm_quat_mi2s_clk = %d\n", __func__, msm_quat_mi2s_clk);
+	ucontrol->value.integer.value[0] = msm_quat_mi2s_clk;
+	return 0;
+}
+
+static int msm_external_pa_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	int ret = -EINVAL;
+    struct msm8916_asoc_mach_data *pdata = NULL;
+    struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+    pr_debug("%s:test start \n", __func__);
+	pdata = snd_soc_card_get_drvdata(codec->card);
+    msm_quat_mi2s_clk = ucontrol->value.integer.value[0];
+
+	if(msm_quat_mi2s_clk)
+	{
+       pr_debug("%s: enable_mi2s_clocks enter\n", __func__);
+       ret = conf_int_codec_mux_quat(pdata);
+		if (ret < 0)
+		{
+			pr_err("%s: failed to conf internal codec mux\n", __func__);
+			return ret;
+		}
+
+		ret = msm8x16_enable_codec_ext_clk(codec, 1, true);
+		if (ret < 0)
+		{
+			pr_err("failed to enable mclk\n");
+			return ret;
+		}
+
+        ret = pinctrl_select_state(pinctrl_info.pinctrl, pinctrl_info.cdc_lines_act);
+		if (ret < 0)
+		{
+			pr_err("failed to enable codec gpios\n");
+			return ret;
+		}
+
+        //lpass_mi2s_enable.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+        pr_debug("%s: afe_set_lpass_clock = %d \n", __func__, lpass_mi2s_enable.clk_val1);
+        ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_RX, &lpass_mi2s_enable);
+        if (ret < 0)
+        {
+           pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+           return ret;
+        }
+
+        pr_debug("%s: msm_q6_enable_mi2s_clocks \n", __func__);
+        ret = msm_q6_enable_mi2s_clocks(1);
+        if (ret < 0)
+        {
+           pr_err("%s: enable_mi2s_clocks failed\n", __func__);
+           return ret;
+        }
+    }
+    else
+    {
+        pr_debug("%s: disable_mi2s_clocks enter\n", __func__);
+        ret = msm_q6_enable_mi2s_clocks(0);
+        if (ret < 0)
+        {
+            pr_err("%s: disable_mi2s_clocks failed\n", __func__);
+            //return ret;
+        }
+
+        ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_RX, &lpass_mi2s_disable);
+        if (ret < 0)
+        {
+            pr_err("%s: afe_set_lpass_clock QUATERNARY_MI2S_RX failed\n", __func__);
+            //return ret;
+        }
+
+        ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_TX, &lpass_mi2s_disable);
+        if (ret < 0)
+        {
+            pr_err("%s: afe_set_lpass_clock QUATERNARY_MI2S_TX failed\n", __func__);
+            //return ret;
+        }
+
+        if (atomic_read(&pdata->mclk_rsc_ref) > 0)
+        {
+			atomic_dec(&pdata->mclk_rsc_ref);
+			pr_debug("%s: mclk_rsc_ref %d\n", __func__, atomic_read(&pdata->mclk_rsc_ref));
+		}
+
+		if ((atomic_read(&quat_mi2s_clk_ref) == 0) && (atomic_read(&pdata->mclk_rsc_ref) == 0))
+	    {
+			msm8x16_enable_codec_ext_clk(codec, 0, true);
+			ret = pinctrl_select_state(pinctrl_info.pinctrl, pinctrl_info.cdc_lines_sus);
+			if (ret < 0)
+				pr_err("%s: error at pinctrl state select\n", __func__);
+		}
+
+	}
+	return ret;
+}
 
 static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, rx_bit_format_text),
@@ -1249,7 +1524,84 @@ static const char *const btsco_rate_text[] = {"BTSCO_RATE_8KHZ",
 static const struct soc_enum msm_btsco_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, btsco_rate_text),
 };
+/* The function to pull up GPIO 151 to enable HAC*/
+/* device use diff gpio for hac , need do it adapt */
+static void hac_gpio_on(void)
+{
+    if (DEFAULT_HAC_NONEED == hac_en_gpio)
+    {
+        pr_err("%s: Failed to get the hac gpio",__func__);
+        return;
+    }
 
+    pr_err("%s: Enable hac enable gpio %u\n",
+            __func__, hac_en_gpio);
+    gpio_direction_output(hac_en_gpio, GPIO_PULL_UP);
+}
+
+/* The function to pull down GPIO 151 to disable HAC*/
+static void hac_gpio_off(void)
+{
+    if (DEFAULT_HAC_NONEED == hac_en_gpio)
+    {
+        pr_err("%s: Failed to get the hac gpio",__func__);
+        return;
+    }
+    pr_err("%s: Pull down and free hac enable gpio %u\n",
+            __func__, hac_en_gpio);
+    gpio_direction_output(hac_en_gpio, GPIO_PULL_DOWN);
+}
+static const char *hac_switch_text[] = {"OFF","ON"};
+
+static const struct soc_enum msm8916_hac_switch_enum[] = {
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(hac_switch_text),
+                        hac_switch_text),
+};
+
+/* The function to get hac status */
+static int msm8916_hac_switch_get(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+    if(NULL == ucontrol)
+    {
+        pr_err("%s: ucontrol pointer is null\n", __func__);
+        return 0;
+    }
+    else
+    {
+        pr_debug("%s: msm8916_hac_switch = %d\n", __func__,
+                 msm8916_hac_switch);
+        ucontrol->value.integer.value[0] = msm8916_hac_switch;
+    }
+	return 0;
+}
+
+/* The function to set hac status */
+static int msm8916_hac_switch_put(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+    int ret = 0;
+    if(NULL == ucontrol)
+    {
+        pr_err("%s: ucontrol pointer is null\n", __func__);
+        return ret;
+    }
+    else
+    {
+        msm8916_hac_switch = ucontrol->value.integer.value[0];
+        pr_debug("%s: msm8916_hac_switch = %d\n", __func__,msm8916_hac_switch);
+        if(HAC_ENABLE == msm8916_hac_switch)
+        {
+            hac_gpio_on();
+            ret = HAC_ENABLE;
+        }
+        else
+        {
+            hac_gpio_off();
+        }
+    }
+    return ret;
+}
 static const struct snd_kcontrol_new msm_snd_controls[] = {
 	SOC_ENUM_EXT("MI2S_RX Format", msm_snd_enum[0],
 			mi2s_rx_bit_format_get, mi2s_rx_bit_format_put),
@@ -1267,6 +1619,11 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			mi2s_tx_sample_rate_get, mi2s_tx_sample_rate_put),
 	SOC_ENUM_EXT("MI2S_RX SampleRate", msm_snd_enum[3],
 			mi2s_rx_sample_rate_get, mi2s_rx_sample_rate_put),
+	/* to add HAC structure in ALSA */
+	SOC_ENUM_EXT("HAC", msm8916_hac_switch_enum[0],
+			msm8916_hac_switch_get, msm8916_hac_switch_put),
+	SOC_ENUM_EXT("Initial external PA", msm_external_pa_enum[0],
+	     msm_external_pa_get, msm_external_pa_put),
 };
 
 static int msm8x16_mclk_event(struct snd_soc_dapm_widget *w,
@@ -1359,6 +1716,7 @@ static int conf_int_codec_mux_sec(struct msm8916_asoc_mach_data *pdata)
 	return 0;
 }
 
+#ifndef CONFIG_HUAWEI_KERNEL
 static int msm_prim_auxpcm_startup(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -1418,6 +1776,7 @@ static void msm_prim_auxpcm_shutdown(struct snd_pcm_substream *substream)
 				__func__);
 	}
 }
+#endif
 
 static int msm_sec_mi2s_snd_startup(struct snd_pcm_substream *substream)
 {
@@ -1539,10 +1898,17 @@ static int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	struct msm8916_asoc_mach_data *pdata =
 			snd_soc_card_get_drvdata(card);
 	int ret = 0;
+#ifndef CONFIG_HUAWEI_KERNEL
 	int val = 0;
 	void __iomem *vaddr = NULL;
+#endif
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 				substream->name, substream->stream);
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		pr_info("%s: Quaternary Mi2s does not support capture\n",
+					__func__);
+		goto set_fmt;
+	}
 	if (!pdata->codec_type &&
 			((pdata->ext_pa & QUAT_MI2S_ID) == QUAT_MI2S_ID)) {
 
@@ -1557,7 +1923,11 @@ static int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 			pr_err("failed to enable mclk\n");
 			return ret;
 		}
+#ifdef CONFIG_HUAWEI_KERNEL
+		ret = quat_mi2s_sclk_ctl(substream, true);
+#else
 		ret = ext_mi2s_clk_ctl(substream, true);
+#endif
 		if (ret < 0) {
 			pr_err("failed to enable sclk\n");
 			goto err;
@@ -1569,6 +1939,9 @@ static int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 			goto err1;
 		}
 	} else {
+#ifdef CONFIG_HUAWEI_KERNEL
+			pr_err("%s: error codec type\n", __func__);
+#else
 		pr_debug("%s: External codec \n", __func__);
 		vaddr = pdata->vaddr_gpio_mux_spkr_ctl;
 		val = ioread32(vaddr);
@@ -1589,7 +1962,9 @@ static int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 			pr_err("%s: failed to enable sclk\n", __func__);
 			return ret;
 		}
+#endif
 	}
+set_fmt:
 	if (atomic_inc_return(&quat_mi2s_clk_ref) == 1) {
 		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
 		if (ret < 0)
@@ -1597,7 +1972,11 @@ static int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	}
 	return ret;
 err1:
+#ifdef CONFIG_HUAWEI_KERNEL
+	ret = quat_mi2s_sclk_ctl(substream, false);
+#else
 	ret = ext_mi2s_clk_ctl(substream, false);
+#endif
 	if (ret < 0)
 		pr_err("failed to disable sclk\n");
 err:
@@ -1620,9 +1999,18 @@ static void msm_quat_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 				substream->name, substream->stream);
 	if ((!pdata->codec_type) &&
 			((pdata->ext_pa & QUAT_MI2S_ID) == QUAT_MI2S_ID)) {
+#ifdef CONFIG_HUAWEI_KERNEL
+		if(0 == msm_quat_mi2s_clk)
+		{
+			ret = quat_mi2s_sclk_ctl(substream, false);
+			if (ret < 0)
+				pr_err("%s:clock disable failed\n", __func__);
+		}
+#else
 		ret = ext_mi2s_clk_ctl(substream, false);
 		if (ret < 0)
 			pr_err("%s:clock disable failed\n", __func__);
+#endif
 		if (atomic_read(&pdata->mclk_rsc_ref) > 0) {
 			atomic_dec(&pdata->mclk_rsc_ref);
 			pr_debug("%s: decrementing mclk_res_ref %d\n",
@@ -1641,6 +2029,7 @@ static void msm_quat_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 					__func__);
 		}
 	} else {
+#ifndef CONFIG_HUAWEI_KERNEL
 		ret = msm_gpioset_suspend(CLIENT_WCD_EXT, "quat_i2s");
 		if (ret < 0) {
 			pr_err("%s: gpio set cannot be de-activated %sd",
@@ -1653,6 +2042,7 @@ static void msm_quat_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 
 		if (atomic_read(&quat_mi2s_clk_ref) > 0)
 			atomic_dec(&quat_mi2s_clk_ref);
+#endif
 	}
 }
 
@@ -1793,16 +2183,17 @@ static void *def_msm8x16_wcd_mbhc_cal(void)
 	 * 210-290 == Button 2
 	 * 360-680 == Button 3
 	 */
-	btn_low[0] = 75;
-	btn_high[0] = 75;
-	btn_low[1] = 150;
-	btn_high[1] = 150;
-	btn_low[2] = 237;
-	btn_high[2] = 237;
+	 /* modify button value region for new baseline of android L version*/
+	btn_low[0] = 87;
+	btn_high[0] = 100;
+	btn_low[1] = 212;
+	btn_high[1] = 237;
+	btn_low[2] = 350;
+	btn_high[2] = 400;
 	btn_low[3] = 450;
-	btn_high[3] = 450;
-	btn_low[4] = 500;
-	btn_high[4] = 500;
+	btn_high[3] = 575;
+	btn_low[4] = 537;
+	btn_high[4] = 675;
 
 	return msm8x16_wcd_cal;
 }
@@ -1839,6 +2230,10 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "DMIC2");
 
 	snd_soc_dapm_sync(dapm);
+    msm8x16_wcd_spk_pa_boost_set_cb(spk_pa_boost,codec);
+    msm8x16_wcd_spk_pa_enable_set_cb(spk_pa_enable,codec);
+    msm8x16_wcd_spk_pa_switch_vdd_set_cb(spk_pa_switch_vdd,codec);
+    msm8x16_wcd_spk_pa_switch_in_set_cb(spk_pa_switch_in,codec);
 
 	msm8x16_wcd_spk_ext_pa_cb(enable_spk_ext_pa, codec);
 
@@ -1932,10 +2327,12 @@ static struct snd_soc_ops msm8x16_mi2s_be_ops = {
 	.shutdown = msm_mi2s_snd_shutdown,
 };
 
+#ifndef CONFIG_HUAWEI_KERNEL
 static struct snd_soc_ops msm_pri_auxpcm_be_ops = {
 	.startup = msm_prim_auxpcm_startup,
 	.shutdown = msm_prim_auxpcm_shutdown,
 };
+#endif
 
 static struct snd_soc_dai_link msm8x16_9326_dai[] = {
 	/* Backend DAI Links */
@@ -2034,33 +2431,6 @@ static struct snd_soc_codec_conf msm8909_codec_conf[] = {
 static struct snd_soc_dai_link msm8x16_wcd_dai[] = {
 	/* Backend DAI Links */
 	{
-		.name = LPASS_BE_QUAT_MI2S_RX,
-		.stream_name = "Quaternary MI2S Playback",
-		.cpu_dai_name = "msm-dai-q6-mi2s.3",
-		.platform_name = "msm-pcm-routing",
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.no_pcm = 1,
-		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
-		.be_hw_params_fixup = msm_be_hw_params_fixup,
-		.ops = &msm8x16_quat_mi2s_be_ops,
-		.ignore_pmdown_time = 1, /* dai link has playback support */
-		.ignore_suspend = 1,
-	},
-	{
-		.name = LPASS_BE_QUAT_MI2S_TX,
-		.stream_name = "Quaternary MI2S Capture",
-		.cpu_dai_name = "msm-dai-q6-mi2s.3",
-		.platform_name = "msm-pcm-routing",
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.no_pcm = 1,
-		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
-		.be_hw_params_fixup = msm_be_hw_params_fixup,
-		.ops = &msm8x16_quat_mi2s_be_ops,
-		.ignore_suspend = 1,
-	},
-	{
 		.name = LPASS_BE_PRI_MI2S_RX,
 		.stream_name = "Primary MI2S Playback",
 		.cpu_dai_name = "msm-dai-q6-mi2s.0",
@@ -2102,6 +2472,34 @@ static struct snd_soc_dai_link msm8x16_wcd_dai[] = {
 		.ignore_suspend = 1,
 	},
 	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8x16_quat_mi2s_be_ops,
+		.ignore_pmdown_time = 1, /* dai link has playback support */
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_QUAT_MI2S_TX,
+		.stream_name = "Quaternary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8x16_quat_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
+#ifndef CONFIG_HUAWEI_KERNEL
+	{
 		.name = LPASS_BE_INT_BT_A2DP_RX,
 		.stream_name = "Internal BT-A2DP Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.12290",
@@ -2113,6 +2511,7 @@ static struct snd_soc_dai_link msm8x16_wcd_dai[] = {
 		.be_hw_params_fixup = msm_bta2dp_be_hw_params_fixup,
 		.ignore_suspend = 1,
 	},
+#endif
 };
 
 /* Digital audio interface glue - connects codec <---> CPU */
@@ -2595,6 +2994,7 @@ static struct snd_soc_dai_link msm8x16_dai[] = {
 		 /* this dai link has playback support */
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA19,
 	},
+#ifndef CONFIG_HUAWEI_KERNEL
 	/* Primary AUX PCM Backend DAI Links */
 	{
 		.name = LPASS_BE_AUXPCM_RX,
@@ -2623,6 +3023,7 @@ static struct snd_soc_dai_link msm8x16_dai[] = {
 		.ops = &msm_pri_auxpcm_be_ops,
 		.ignore_suspend = 1,
 	},
+#endif
 	{
 		.name = LPASS_BE_INT_BT_SCO_RX,
 		.stream_name = "Internal BT-SCO Playback",
@@ -3232,11 +3633,18 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	const char *ext_pa = "qcom,msm-ext-pa";
 	const char *mclk = "qcom,msm-mclk-freq";
 	const char *spk_ext_pa = "qcom,msm-spk-ext-pa";
+	const char *spk_ext_pa_boost_gpio = "qcom,spk-ext-pa-boost-gpio";
+	const char *spk_ext_pa_enable_gpio = "qcom,spk-ext-pa-enable-gpio";
+	const char *spk_ext_pa_switch_vdd_gpio = "qcom,spk-ext-pa-switch-vdd-gpio";
+	const char *spk_ext_pa_switch_in_gpio = "qcom,spk-ext-pa-switch-in-gpio";
+	const char *pa_enable_gpio_on_delayms = "qcom,pa-enable-gpio-on-delayms";
 	const char *ptr = NULL;
 	const char *type = NULL;
 	const char *ext_pa_str = NULL;
 	int num_strings;
 	int ret, id, i;
+	/* device use diff gpio for hac , need do it adapt */
+	struct device_node *of_audio_node = NULL ;
 
 	pdata = devm_kzalloc(&pdev->dev,
 			sizeof(struct msm8916_asoc_mach_data), GFP_KERNEL);
@@ -3467,6 +3875,99 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+	/* device use diff gpio for hac , need do it adapt */
+	/*search hw_audio_info */
+	if( NULL == of_audio_node ){
+		of_audio_node = of_find_compatible_node(NULL, NULL, "huawei,hw_audio_info");
+		if( !of_audio_node ) {
+			pr_err("Can not find dev node: \"hw_audio_info\"\n");
+			goto err;
+		}
+	}
+	pdata->spk_ext_pa_boost_gpio=of_get_named_gpio(pdev->dev.of_node,spk_ext_pa_boost_gpio,0);
+	if (pdata->spk_ext_pa_boost_gpio < 0) {
+		pr_err("%s: missing %s in dt node\n", __func__, spk_ext_pa_boost_gpio);
+	} else {
+		if (!gpio_is_valid(pdata->spk_ext_pa_boost_gpio)) {
+			pr_err("%s: Invalid external speaker gpio: %d",__func__, pdata->spk_ext_pa_boost_gpio);
+		}else{
+			ret = gpio_request(pdata->spk_ext_pa_boost_gpio, "spk_ext_pa_boost_gpio");
+			if(ret < 0)
+			{
+				pr_err("%s: gpio_request spk_ext_pa_boost_gpio failed",__func__);
+			}else{
+			   gpio_direction_output(pdata->spk_ext_pa_boost_gpio, 0);
+			}
+		}
+	}
+	pdata->spk_ext_pa_enable_gpio=of_get_named_gpio(pdev->dev.of_node,spk_ext_pa_enable_gpio,0);
+	if (pdata->spk_ext_pa_enable_gpio < 0) {
+		pr_err("%s: missing %s in dt node\n", __func__, spk_ext_pa_enable_gpio);
+	} else {
+		if (!gpio_is_valid(pdata->spk_ext_pa_enable_gpio)) {
+			pr_err("%s: Invalid external speaker gpio: %d",__func__, pdata->spk_ext_pa_enable_gpio);
+		} else {
+			ret = gpio_request(pdata->spk_ext_pa_enable_gpio, "spk_ext_pa_enable_gpio");
+			if(ret < 0) {
+				pr_err("%s: gpio_request spk_ext_pa_enable_gpio failed",__func__);
+			}else{
+				gpio_direction_output(pdata->spk_ext_pa_enable_gpio, 0);
+			}
+		}
+	}
+	pdata->spk_ext_pa_switch_vdd_gpio=of_get_named_gpio(pdev->dev.of_node,spk_ext_pa_switch_vdd_gpio,0);
+	if (pdata->spk_ext_pa_switch_vdd_gpio < 0) {
+		pr_err("%s: missing %s in dt node\n", __func__, spk_ext_pa_switch_vdd_gpio);
+	} else {
+		if (!gpio_is_valid(pdata->spk_ext_pa_switch_vdd_gpio)) {
+			pr_err("%s: Invalid external speaker gpio: %d",__func__, pdata->spk_ext_pa_switch_vdd_gpio);
+		} else {
+			ret = gpio_request(pdata->spk_ext_pa_switch_vdd_gpio, "spk_ext_pa_switch_vdd_gpio");
+			if (ret < 0) {
+				pr_err("%s: gpio_request spk_ext_pa_switch_vdd_gpio failed",__func__);
+			} else {
+				gpio_direction_output(pdata->spk_ext_pa_switch_vdd_gpio, 0);
+			}
+		}
+	}
+	pdata->spk_ext_pa_switch_in_gpio=of_get_named_gpio(pdev->dev.of_node,spk_ext_pa_switch_in_gpio,0);
+	if (pdata->spk_ext_pa_switch_in_gpio < 0) {
+		pr_err("%s: missing %s in dt node\n", __func__, spk_ext_pa_switch_in_gpio);
+	} else {
+		if (!gpio_is_valid(pdata->spk_ext_pa_switch_in_gpio)) {
+			pr_err("%s: Invalid external speaker gpio: %d",__func__, pdata->spk_ext_pa_switch_in_gpio);
+		} else {
+			ret = gpio_request(pdata->spk_ext_pa_switch_in_gpio, "spk_ext_pa_switch_in_gpio");
+			if(ret < 0) {
+				pr_err("%s: gpio_request spk_ext_pa_switch_in_gpio failed",__func__);
+			}else{
+			   gpio_direction_output(pdata->spk_ext_pa_switch_in_gpio, 0);
+			}
+	  }
+	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, pa_enable_gpio_on_delayms, &pdata->spk_pa_enable_delaytime);
+	if (ret) {
+		pr_err("%s: missing %s in dt node, then delay 0ms\n", __func__, pa_enable_gpio_on_delayms);
+		pdata->spk_pa_enable_delaytime = 0;
+	}
+
+	INIT_DELAYED_WORK(&pdata->spk_pa_enable_dwork, spk_pa_enable_set_fn);
+
+	ret = of_get_named_gpio_flags(of_audio_node, "huawei,hac_gpio", 0, NULL);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Unable to read gpio pin number\n");
+		hac_en_gpio = DEFAULT_HAC_NONEED;
+	} else {
+		dev_err(&pdev->dev, "read hac gpio  %d\n", ret);
+		hac_en_gpio = ret;
+	}
+
+	ret = gpio_request(hac_en_gpio, "HAC_EN_GPIO");
+	if (ret) {
+		pr_err("%s: Failed to configure hac enable "
+				"gpio %u\n", __func__, hac_en_gpio);
+	}
 	return 0;
 err:
 	if (pdata->vaddr_gpio_mux_spkr_ctl)
@@ -3492,6 +3993,16 @@ static int msm8x16_asoc_machine_remove(struct platform_device *pdev)
 	if (pdata->vaddr_gpio_mux_pcm_ctl)
 		iounmap(pdata->vaddr_gpio_mux_pcm_ctl);
 	snd_soc_unregister_card(card);
+	gpio_free(hac_en_gpio);
+	cancel_delayed_work_sync(&pdata->spk_pa_enable_dwork);
+	if((pdata->spk_ext_pa_boost_gpio) >= 0)
+		gpio_free(pdata->spk_ext_pa_boost_gpio);
+	if((pdata->spk_ext_pa_enable_gpio) >= 0)
+		gpio_free(pdata->spk_ext_pa_enable_gpio);
+	if((pdata->spk_ext_pa_switch_vdd_gpio)>= 0)
+		gpio_free(pdata->spk_ext_pa_switch_vdd_gpio);
+	if((pdata->spk_ext_pa_switch_in_gpio)>= 0)
+		gpio_free(pdata->spk_ext_pa_switch_in_gpio);
 	mutex_destroy(&pdata->cdc_mclk_mutex);
 	return 0;
 }
