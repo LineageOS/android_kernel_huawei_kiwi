@@ -610,3 +610,54 @@ static int __init msm8994_check_tlbi_workaround(void)
 	return 0;
 }
 arch_initcall_sync(msm8994_check_tlbi_workaround);
+
+#ifdef CONFIG_HUAWEI_KERNEL
+
+typedef enum
+{
+    RUNMODE_FLAG_NORMAL,
+    RUNMODE_FLAG_FACTORY,
+    RUNMODE_FLAG_UNKNOW
+}hw_runmode_t;
+
+#define RUNMODE_FLAG_NORMAL_KEY     "normal"
+#define RUNMODE_FLAG_FACTORY_KEY    "factory"
+
+static hw_runmode_t runmode_factory = RUNMODE_FLAG_UNKNOW;
+
+static int __init init_runmode(char *str)
+{
+    if(!str || !(*str))
+    {
+        printk(KERN_CRIT"%s:get run mode fail\n",__func__);
+        return 0;
+    }
+
+    if(!strncmp(str, RUNMODE_FLAG_FACTORY_KEY, sizeof(RUNMODE_FLAG_FACTORY_KEY)-1))
+    {
+        runmode_factory = RUNMODE_FLAG_FACTORY;
+        printk(KERN_NOTICE "%s:run mode is factory\n", __func__);
+    }
+    else
+    {
+        runmode_factory = RUNMODE_FLAG_NORMAL;
+        printk(KERN_NOTICE "%s:run mode is normal\n", __func__);
+    }
+    return 1;
+}
+
+__setup("androidboot.huawei_swtype=", init_runmode);
+
+
+/* the function interface to check factory/normal mode in kernel */
+bool is_runmode_factory(void)
+{
+    if (RUNMODE_FLAG_FACTORY == runmode_factory)
+        return true;
+    else
+        return false;
+}
+
+EXPORT_SYMBOL(is_runmode_factory);
+
+#endif
