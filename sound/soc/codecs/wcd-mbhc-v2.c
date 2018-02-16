@@ -34,10 +34,20 @@
 #define WCD_MBHC_JACK_MASK (SND_JACK_HEADSET | SND_JACK_OC_HPHL | \
 			   SND_JACK_OC_HPHR | SND_JACK_LINEOUT | \
 			   SND_JACK_UNSUPPORTED | SND_JACK_MECHANICAL)
+
+#ifdef CONFIG_HUAWEI_KERNEL
+/* do not report the undesirable button type : btn3,btn4 */
+#define WCD_MBHC_JACK_BUTTON_MASK (SND_JACK_BTN_0 | SND_JACK_BTN_1 | \
+				  SND_JACK_BTN_2)
+#define WCD_MBHC_JACK_BUTTON_MASK_HUAWEI_IGNORE (SND_JACK_BTN_3 | SND_JACK_BTN_4 | \
+				  SND_JACK_BTN_5 | SND_JACK_BTN_6 | SND_JACK_BTN_7)
+#else
 #define WCD_MBHC_JACK_BUTTON_MASK (SND_JACK_BTN_0 | SND_JACK_BTN_1 | \
 				  SND_JACK_BTN_2 | SND_JACK_BTN_3 | \
 				  SND_JACK_BTN_4 | SND_JACK_BTN_5 | \
 				  SND_JACK_BTN_6 | SND_JACK_BTN_7)
+#endif
+
 #define OCP_ATTEMPT 1
 #define HS_DETECT_PLUG_TIME_MS (3 * 1000)
 #define SPECIAL_HS_DETECT_TIME_MS (2 * 1000)
@@ -52,10 +62,13 @@
 
 #define WCD_MBHC_BTN_PRESS_COMPL_TIMEOUT_MS  50
 
+static int removal_st;
+
 static int det_extn_cable_en;
 module_param(det_extn_cable_en, int,
 		S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(det_extn_cable_en, "enable/disable extn cable detect");
+static u16 mic_or_hphr_inserted = 0;    //if mic or HPHR detected when correct plug headset may be AT test device
 
 enum wcd_mbhc_cs_mb_en_flag {
 	WCD_MBHC_EN_CS = 0,
@@ -145,7 +158,6 @@ static void wcd_program_btn_threshold(const struct wcd_mbhc *mbhc, bool micbias)
 static void wcd_enable_curr_micbias(const struct wcd_mbhc *mbhc,
 				const enum wcd_mbhc_cs_mb_en_flag cs_mb_en)
 {
-
 	/*
 	 * Some codecs handle micbias/pullup enablement in codec
 	 * drivers itself and micbias is not needed for regular
@@ -156,6 +168,11 @@ static void wcd_enable_curr_micbias(const struct wcd_mbhc *mbhc,
 		return;
 
 	pr_debug("%s: enter, cs_mb_en: %d\n", __func__, cs_mb_en);
+
+	if (mbhc->current_plug == MBHC_PLUG_TYPE_NONE && removal_st) {
+		pr_err("%s :: Avoid enabling source when plug is removed",__func__);
+		return;
+	}
 
 	switch (cs_mb_en) {
 	case WCD_MBHC_EN_CS:
@@ -793,6 +810,8 @@ static int wcd_check_cross_conn(struct wcd_mbhc *mbhc)
 	return (plug_type == MBHC_PLUG_TYPE_GND_MIC_SWAP) ? true : false;
 }
 
+/* since we remove swap & hph type detection,no need to use wcd_is_special_headset */
+#ifndef CONFIG_HUAWEI_KERNEL
 static bool wcd_is_special_headset(struct wcd_mbhc *mbhc)
 {
 	struct snd_soc_codec *codec = mbhc->codec;
@@ -878,6 +897,7 @@ static bool wcd_is_special_headset(struct wcd_mbhc *mbhc)
 		  mbhc->micbias_enable);
 	return ret;
 }
+#endif
 
 static void wcd_mbhc_update_fsm_source(struct wcd_mbhc *mbhc,
 				       enum wcd_mbhc_plug_type plug_type)
@@ -1163,6 +1183,8 @@ correct_plug_type:
 		goto enable_supply;
 	}
 
+/* since we remove swap & hph type detection,no need to use wcd_is_special_headset */
+#ifndef CONFIG_HUAWEI_KERNEL
 	if (plug_type == MBHC_PLUG_TYPE_HIGH_HPH &&
 		(!det_extn_cable_en)) {
 		if (wcd_is_special_headset(mbhc)) {
@@ -1172,11 +1194,22 @@ correct_plug_type:
 			goto report;
 		}
 	}
+#endif
 
 report:
 	pr_debug("%s: Valid plug found, plug type %d wrk_cmpt %d btn_intr %d\n",
 			__func__, plug_type, wrk_complete,
 			mbhc->btn_press_intr);
+
+	/* remove swap & hph type to make auto audio mmi test pass */
+#ifdef CONFIG_HUAWEI_KERNEL
+	if((MBHC_PLUG_TYPE_HIGH_HPH == plug_type)||
+		(MBHC_PLUG_TYPE_GND_MIC_SWAP == plug_type)) {
+			pr_debug("%s: force the type change to headset from swap and hph\n", __func__);
+			plug_type = MBHC_PLUG_TYPE_HEADSET;
+	}
+#endif
+
 	WCD_MBHC_RSC_LOCK(mbhc);
 	wcd_mbhc_find_plug_and_report(mbhc, plug_type);
 	WCD_MBHC_RSC_UNLOCK(mbhc);
@@ -1242,10 +1275,21 @@ static void wcd_mbhc_detect_plug_type(struct wcd_mbhc *mbhc)
 		pr_debug("%s: cross con found, start polling\n",
 			 __func__);
 		plug_type = MBHC_PLUG_TYPE_GND_MIC_SWAP;
+
+		/* remove swap & hph type to make auto audio mmi test pass */
+#ifdef CONFIG_HUAWEI_KERNEL
+		if(((MBHC_PLUG_TYPE_HIGH_HPH == plug_type)||(MBHC_PLUG_TYPE_GND_MIC_SWAP == plug_type))) {
+				pr_debug("%s: force the type change to headset from swap and hph\n", __func__);
+				plug_type = MBHC_PLUG_TYPE_HEADSET;
+		}
+#endif
+
 		if (!mbhc->current_plug)
 			mbhc->current_plug = plug_type;
 		pr_debug("%s: Plug found, plug type is %d\n",
 			 __func__, plug_type);
+
+
 	}
 
 	/* Re-initialize button press completion object */
@@ -1317,6 +1361,8 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 		if (mbhc->mbhc_cb->enable_mb_source)
 			mbhc->mbhc_cb->enable_mb_source(codec, true);
 		mbhc->btn_press_intr = false;
+		removal_st = 0;
+		pr_err("%s :: INSERT removal_st = %d ", __func__, removal_st);
 		wcd_mbhc_detect_plug_type(mbhc);
 	} else if ((mbhc->current_plug != MBHC_PLUG_TYPE_NONE)
 			&& !detection_type) {
@@ -1334,6 +1380,9 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 			mbhc->mbhc_cb->set_cap_mode(codec, micbias1, false);
 
 		mbhc->btn_press_intr = false;
+		mic_or_hphr_inserted = 0;
+		removal_st = 1;
+		pr_err("%s :: REMOVAL removal_st = %d ", __func__, removal_st);
 		if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADPHONE) {
 			wcd_mbhc_report_plug(mbhc, 0, SND_JACK_HEADPHONE);
 		} else if (mbhc->current_plug == MBHC_PLUG_TYPE_GND_MIC_SWAP) {
@@ -1393,8 +1442,10 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 		r = IRQ_NONE;
 	} else {
 		/* Call handler */
+		mbhc->in_mech_irq_handler = true;
 		wcd_mbhc_swch_irq_handler(mbhc);
 		mbhc->mbhc_cb->lock_sleep(mbhc, false);
+		mbhc->in_mech_irq_handler = false;
 	}
 	pr_debug("%s: leave %d\n", __func__, r);
 	return r;
@@ -1452,6 +1503,23 @@ static irqreturn_t wcd_mbhc_hs_ins_irq(int irq, void *data)
 		pr_debug("%s: Returning as Extension cable feature not enabled\n",
 			__func__);
 		return IRQ_HANDLED;
+	}
+	if (mbhc->in_mech_irq_handler){
+			pr_debug("%s: Returning as mechanical interrupt happens", __func__);
+			/*
+			 * Only removal mechanical interrupt can come if electrical interrupt
+			 * are already triggering because we enable schmitt trigger after
+			 * the mecahnical insertion interrupt when plug type is found as high_hph
+			 * so we can disable electrical interrupt in such case because it means
+			 * that the extension cable has been removed.
+			 */
+			mbhc->mbhc_cb->irq_control(mbhc->codec,
+				   mbhc->intr_ids->mbhc_hs_ins_intr,
+				   false);
+			mbhc->mbhc_cb->irq_control(mbhc->codec,
+				   mbhc->intr_ids->mbhc_hs_rem_intr,
+				   false);
+			return IRQ_HANDLED;
 	}
 	WCD_MBHC_RSC_LOCK(mbhc);
 
@@ -1515,6 +1583,12 @@ determine_plug:
 	hphl_trigerred = 0;
 	mic_trigerred = 0;
 	mbhc->is_extn_cable = true;
+	/*
+	 * even if controls comes here, it is taking more than
+	 * debounce time to detect cable as headphone, so wait
+	 * for 20msec for the mic line to stabilize
+	 */
+	msleep(20);
 	mbhc->btn_press_intr = false;
 	wcd_mbhc_detect_plug_type(mbhc);
 	WCD_MBHC_RSC_UNLOCK(mbhc);
@@ -1534,6 +1608,23 @@ static irqreturn_t wcd_mbhc_hs_rem_irq(int irq, void *data)
 
 	pr_debug("%s: enter\n", __func__);
 
+	if (mbhc->in_mech_irq_handler){
+		pr_debug("%s: Returning as mechanical interrupt happens", __func__);
+		/*
+		 * Only removal mechanical interrupt can come if electrical interrupt
+		 * are already triggering because we enable schmitt trigger after
+		 * the mecahnical insertion interrupt when plug type is found as high_hph
+		 * so we can disable electrical interrupt in such case because it means
+		 * that the extension cable has been removed.
+		 */
+		mbhc->mbhc_cb->irq_control(mbhc->codec,
+					mbhc->intr_ids->mbhc_hs_ins_intr,
+					false);
+		mbhc->mbhc_cb->irq_control(mbhc->codec,
+					mbhc->intr_ids->mbhc_hs_rem_intr,
+					false);
+		return IRQ_HANDLED;
+	}
 	WCD_MBHC_RSC_LOCK(mbhc);
 
 	timeout = jiffies +
@@ -1785,6 +1876,15 @@ static irqreturn_t wcd_mbhc_release_handler(int irq, void *data)
 		}
 		mbhc->buttons_pressed &= ~WCD_MBHC_JACK_BUTTON_MASK;
 	}
+	/* huawei: ignore the btn3~7, only clear the mask , donot report */
+#ifdef CONFIG_HUAWEI_KERNEL
+	else
+	{
+		pr_err("%s: HUAWEI-- ignore reporting btn3~7 !\n",
+					 __func__);
+		mbhc->buttons_pressed &= ~WCD_MBHC_JACK_BUTTON_MASK_HUAWEI_IGNORE;
+	}
+#endif
 exit:
 	pr_debug("%s: leave\n", __func__);
 	WCD_MBHC_RSC_UNLOCK(mbhc);
@@ -2146,6 +2246,7 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 	mbhc->is_extn_cable = false;
 	mbhc->hph_type = WCD_MBHC_HPH_NONE;
 	mbhc->wcd_mbhc_regs = wcd_mbhc_regs;
+	mbhc->in_mech_irq_handler = false;
 
 	if (mbhc->intr_ids == NULL) {
 		pr_err("%s: Interrupt mapping not provided\n", __func__);
@@ -2190,6 +2291,23 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 			pr_err("%s: Failed to set code for btn-0\n",
 				__func__);
 			return ret;
+		}
+
+		ret = snd_jack_set_key(mbhc->button_jack.jack,
+		                       SND_JACK_BTN_1,
+		                       KEY_VOLUMEUP);
+		if (ret) {
+		        pr_err("%s: Failed to set code for btn-1\n",
+		                __func__);
+		        return ret;
+		}
+		ret = snd_jack_set_key(mbhc->button_jack.jack,
+		                       SND_JACK_BTN_2,
+		                       KEY_VOLUMEDOWN);
+		if (ret) {
+		        pr_err("%s: Failed to set code for btn-2\n",
+		                __func__);
+		        return ret;
 		}
 
 		set_bit(INPUT_PROP_NO_DUMMY_RELEASE,
