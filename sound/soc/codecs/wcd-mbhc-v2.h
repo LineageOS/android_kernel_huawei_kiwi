@@ -380,6 +380,8 @@ struct wcd_mbhc {
 	bool skip_imped_detection;
 	bool is_btn_already_regd;
 
+	bool in_mech_irq_handler;
+
 	struct snd_soc_codec *codec;
 	/* Work to perform MBHC Firmware Read */
 	struct delayed_work mbhc_firmware_dwork;
