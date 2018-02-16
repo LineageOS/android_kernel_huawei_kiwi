@@ -610,3 +610,37 @@ static int __init msm8994_check_tlbi_workaround(void)
 	return 0;
 }
 arch_initcall_sync(msm8994_check_tlbi_workaround);
+
+#ifdef CONFIG_HUAWEI_KERNEL
+typedef enum {
+	RUNMODE_FLAG_NORMAL,
+	RUNMODE_FLAG_FACTORY,
+	RUNMODE_FLAG_UNKNOWN
+} hw_runmode_t;
+
+#define RUNMODE_FLAG_NORMAL_KEY     "normal"
+#define RUNMODE_FLAG_FACTORY_KEY    "factory"
+
+static hw_runmode_t runmode_factory = RUNMODE_FLAG_UNKNOWN;
+
+static int __init init_runmode(char *str)
+{
+	if (!str || !(*str)) {
+		pr_err("%s: get run mode fail\n",__func__);
+		return 0;
+	}
+
+	if (!strncmp(str, RUNMODE_FLAG_FACTORY_KEY,
+			sizeof(RUNMODE_FLAG_FACTORY_KEY) - 1)) {
+		runmode_factory = RUNMODE_FLAG_FACTORY;
+		pr_info("%s: run mode is factory\n", __func__);
+	} else {
+		runmode_factory = RUNMODE_FLAG_NORMAL;
+		pr_info("%s: run mode is normal\n", __func__);
+	}
+
+	return 1;
+}
+
+__setup("androidboot.huawei_swtype=", init_runmode);
+#endif
