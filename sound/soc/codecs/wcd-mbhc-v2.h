@@ -172,6 +172,9 @@ struct wcd_mbhc {
 	bool btn_press_intr;
 	bool is_hs_recording;
 
+	bool is_extn_cable;
+	bool in_mech_irq_handler;
+
 	struct snd_soc_codec *codec;
 	/* Work to perform MBHC Firmware Read */
 	struct delayed_work mbhc_firmware_dwork;
