@@ -45,6 +45,7 @@
 #include "wcd-mbhc-v2.h"
 #include "msm8916-wcd-irq.h"
 #include "msm8x16_wcd_registers.h"
+#include "../../../drivers/base/base.h"
 
 #define MSM8X16_WCD_RATES (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |\
 			SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000)
@@ -89,6 +90,10 @@ enum {
 	BOOST_ALWAYS,
 	BYPASS_ALWAYS,
 	BOOST_ON_FOREVER,
+};
+enum {
+	OFF = 0,
+	ON,
 };
 
 #define EAR_PMD 0
@@ -194,6 +199,10 @@ static const struct wcd_mbhc_intr intr_ids = {
 	.hph_left_ocp = MSM8X16_WCD_IRQ_HPHL_OCP,
 	.hph_right_ocp = MSM8X16_WCD_IRQ_HPHR_OCP,
 };
+static int spk_ext_pa_boost_gpio;
+static int spk_ext_pa_enable_gpio;
+static int spk_ext_pa_switch_vdd_gpio;
+static int spk_ext_pa_switch_in_gpio;
 
 static int msm8x16_wcd_dt_parse_vreg_info(struct device *dev,
 	struct msm8x16_wcd_regulator *vreg,
@@ -214,6 +223,26 @@ static void *modem_state_notifier;
 
 static struct snd_soc_codec *registered_codec;
 
+void msm8x16_wcd_spk_pa_boost_set_cb(int (*codec_spk_ext_pa)(struct snd_soc_codec *codec,int enable),struct snd_soc_codec *codec)
+{
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+	msm8x16_wcd->spk_pa_boost_set_cb = codec_spk_ext_pa;
+}
+void msm8x16_wcd_spk_pa_enable_set_cb(int (*codec_spk_ext_pa)(struct snd_soc_codec *codec,int enable),struct snd_soc_codec *codec)
+{
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+	msm8x16_wcd->spk_pa_enable_set_cb = codec_spk_ext_pa;
+}
+void msm8x16_wcd_spk_pa_switch_vdd_set_cb(int (*codec_spk_ext_pa)(struct snd_soc_codec *codec,int enable),struct snd_soc_codec *codec)
+{
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+	msm8x16_wcd->spk_pa_switch_vdd_set_cb = codec_spk_ext_pa;
+}
+void msm8x16_wcd_spk_pa_switch_in_set_cb(int (*codec_spk_ext_pa)(struct snd_soc_codec *codec,int enable),struct snd_soc_codec *codec)
+{
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+	msm8x16_wcd->spk_pa_switch_in_set_cb = codec_spk_ext_pa;
+}
 static void msm8x16_wcd_compute_impedance(s16 l, s16 r, uint32_t *zl,
 				uint32_t *zr, bool high)
 {
@@ -1392,6 +1421,151 @@ static int msm8x16_wcd_ext_spk_boost_set(struct snd_kcontrol *kcontrol,
 		__func__, msm8x16_wcd->spk_boost_set);
 	return 0;
 }
+static int spk_pa_boost_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = spk_ext_pa_boost_gpio;
+	return 0;
+}
+static int spk_pa_boost_set(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+	switch (ucontrol->value.integer.value[0]) {
+	case OFF:
+        spk_ext_pa_boost_gpio = OFF;
+		if (msm8x16_wcd->spk_pa_boost_set_cb)
+            msm8x16_wcd->spk_pa_boost_set_cb(codec, OFF);
+		break;
+	case ON:
+        spk_ext_pa_boost_gpio = ON;
+		if (msm8x16_wcd->spk_pa_boost_set_cb)
+            msm8x16_wcd->spk_pa_boost_set_cb(codec, ON);
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+static int spk_pa_enable_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = spk_ext_pa_enable_gpio;
+	return 0;
+}
+
+void spk_pa_enable_set_fn(struct work_struct *work)
+{
+	struct delayed_work *spk_pa_enable_work;
+	struct msm8916_asoc_mach_data *pdata;
+	struct snd_soc_codec *codec;
+	struct msm8x16_wcd_priv *msm8x16_wcd;
+
+	spk_pa_enable_work = to_delayed_work(work);
+	if(NULL == spk_pa_enable_work)
+	{
+		pr_err("%s: The speaker pa enable's delay work is NULL!\n", __func__);
+		return;
+	}
+	pdata = container_of(spk_pa_enable_work, struct msm8916_asoc_mach_data, spk_pa_enable_dwork);
+	if(NULL == pdata)
+	{
+		pr_err("%s: The pdata is NULL!\n", __func__);
+		return;
+	}
+	codec = pdata->codec;
+	msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+
+	if((ON==spk_ext_pa_enable_gpio) && (msm8x16_wcd->spk_pa_enable_set_cb)){
+		msm8x16_wcd->spk_pa_enable_set_cb(codec, spk_ext_pa_enable_gpio);
+		pr_debug("%s: Set speaker pa enable ON\n", __func__);
+	}
+
+	return;
+}
+static int spk_pa_enable_set(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_card *card = codec->card;
+	struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+
+	switch (ucontrol->value.integer.value[0]) {
+	case OFF:
+		spk_ext_pa_enable_gpio = OFF;
+		if (msm8x16_wcd->spk_pa_enable_set_cb)
+			msm8x16_wcd->spk_pa_enable_set_cb(codec, OFF);
+		break;
+	case ON:
+		spk_ext_pa_enable_gpio = ON;
+		pdata->codec = codec;
+		schedule_delayed_work(&pdata->spk_pa_enable_dwork,
+				 msecs_to_jiffies(pdata->spk_pa_enable_delaytime));
+		pr_debug("%s: Speaker pa enable delay time: %dms\n",
+				__func__, pdata->spk_pa_enable_delaytime);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+static int spk_pa_switch_vdd_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = spk_ext_pa_switch_vdd_gpio;
+	return 0;
+}
+static int spk_pa_switch_vdd_set(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+	switch (ucontrol->value.integer.value[0]) {
+	case OFF:
+        spk_ext_pa_switch_vdd_gpio = OFF;
+		if (msm8x16_wcd->spk_pa_switch_vdd_set_cb)
+            msm8x16_wcd->spk_pa_switch_vdd_set_cb(codec, OFF);
+		break;
+	case ON:
+        spk_ext_pa_switch_vdd_gpio = ON;
+		if (msm8x16_wcd->spk_pa_switch_vdd_set_cb)
+            msm8x16_wcd->spk_pa_switch_vdd_set_cb(codec, ON);
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+static int spk_pa_switch_in_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = spk_ext_pa_switch_in_gpio;
+	return 0;
+}
+static int spk_pa_switch_in_set(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct msm8x16_wcd_priv *msm8x16_wcd = snd_soc_codec_get_drvdata(codec);
+	switch (ucontrol->value.integer.value[0]) {
+	case OFF:
+        spk_ext_pa_switch_in_gpio = OFF;
+		if (msm8x16_wcd->spk_pa_switch_in_set_cb)
+            msm8x16_wcd->spk_pa_switch_in_set_cb(codec, OFF);
+		break;
+	case ON:
+        spk_ext_pa_switch_in_gpio = ON;
+		if (msm8x16_wcd->spk_pa_switch_in_set_cb)
+            msm8x16_wcd->spk_pa_switch_in_set_cb(codec, ON);
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
 static int msm8x16_wcd_get_iir_enable_audio_mixer(
 					struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
@@ -1625,6 +1799,11 @@ static const struct soc_enum msm8x16_wcd_ext_spk_boost_ctl_enum[] = {
 		SOC_ENUM_SINGLE_EXT(2, msm8x16_wcd_ext_spk_boost_ctrl_text),
 };
 
+static const char * const ext_spk_gpio_ctrl_text[] = {
+		"OFF", "ON"};
+static const struct soc_enum ext_spk_gpio_ctrl_enum[] = {
+		SOC_ENUM_SINGLE_EXT(2, ext_spk_gpio_ctrl_text),
+};
 /*cut of frequency for high pass filter*/
 static const char * const cf_text[] = {
 	"MIN_3DB_4Hz", "MIN_3DB_75Hz", "MIN_3DB_150Hz"
@@ -1661,6 +1840,14 @@ static const struct snd_kcontrol_new msm8x16_wcd_snd_controls[] = {
 
 	SOC_ENUM_EXT("Ext Spk Boost", msm8x16_wcd_ext_spk_boost_ctl_enum[0],
 		msm8x16_wcd_ext_spk_boost_get, msm8x16_wcd_ext_spk_boost_set),
+	SOC_ENUM_EXT("SPK PA Boost", ext_spk_gpio_ctrl_enum[0],
+		spk_pa_boost_get, spk_pa_boost_set),
+	SOC_ENUM_EXT("SPK PA Enable", ext_spk_gpio_ctrl_enum[0],
+		spk_pa_enable_get, spk_pa_enable_set),
+	SOC_ENUM_EXT("SPK PA Switch VDD", ext_spk_gpio_ctrl_enum[0],
+		spk_pa_switch_vdd_get, spk_pa_switch_vdd_set),
+	SOC_ENUM_EXT("SPK PA Switch IN", ext_spk_gpio_ctrl_enum[0],
+		spk_pa_switch_in_get, spk_pa_switch_in_set),
 
 	SOC_ENUM_EXT("LOOPBACK Mode", msm8x16_wcd_loopback_mode_ctl_enum[0],
 		msm8x16_wcd_loopback_mode_get, msm8x16_wcd_loopback_mode_put),
@@ -2582,7 +2769,26 @@ static void tx_hpf_corner_freq_callback(struct work_struct *work)
 #define  CF_MIN_3DB_4HZ			0x0
 #define  CF_MIN_3DB_75HZ		0x1
 #define  CF_MIN_3DB_150HZ		0x2
+static int msm8x16_wcd_codec_set_iir_gain(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	int value = 0, reg;
 
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		if (w->shift == 0)
+			reg = MSM8X16_WCD_A_CDC_IIR1_GAIN_B1_CTL;
+		else if (w->shift == 1)
+			reg = MSM8X16_WCD_A_CDC_IIR2_GAIN_B1_CTL;
+		value = snd_soc_read(codec, reg);
+		snd_soc_write(codec, reg, value);
+		break;
+	default:
+		dev_err(codec->dev,"%s: event = %d not expected\n", __func__, event);
+	}
+	return 0;
+}
 static int msm8x16_wcd_codec_enable_dec(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
@@ -3817,13 +4023,12 @@ static const struct snd_soc_dapm_widget msm8x16_wcd_dapm_widgets[] = {
 
 	/* Sidetone */
 	SND_SOC_DAPM_MUX("IIR1 INP1 MUX", SND_SOC_NOPM, 0, 0, &iir1_inp1_mux),
-	SND_SOC_DAPM_PGA("IIR1",
-		MSM8X16_WCD_A_CDC_CLK_SD_CTL, 0, 0, NULL, 0),
+	SND_SOC_DAPM_PGA_E("IIR1", MSM8X16_WCD_A_CDC_CLK_SD_CTL, 0, 0, NULL, 0,
+		msm8x16_wcd_codec_set_iir_gain, SND_SOC_DAPM_POST_PMU),
 
 	SND_SOC_DAPM_MUX("IIR2 INP1 MUX", SND_SOC_NOPM, 0, 0, &iir2_inp1_mux),
-	SND_SOC_DAPM_PGA("IIR2",
-		MSM8X16_WCD_A_CDC_CLK_SD_CTL, 1, 0, NULL, 0),
-
+	SND_SOC_DAPM_PGA_E("IIR2", MSM8X16_WCD_A_CDC_CLK_SD_CTL, 1, 0, NULL, 0,
+		msm8x16_wcd_codec_set_iir_gain, SND_SOC_DAPM_POST_PMU),
 	SND_SOC_DAPM_SUPPLY("RX_I2S_CLK",
 		MSM8X16_WCD_A_CDC_CLK_RX_I2S_CTL,	4, 0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("TX_I2S_CLK",
@@ -3897,7 +4102,7 @@ static const struct msm8x16_wcd_reg_mask_val
 	/* Initialize current threshold to 350MA
 	 * number of wait and run cycles to 4096
 	 */
-	{MSM8X16_WCD_A_ANALOG_RX_COM_OCP_CTL, 0xFF, 0xD1},
+	{MSM8X16_WCD_A_ANALOG_RX_COM_OCP_CTL, 0xFF, 0xDF},
 	{MSM8X16_WCD_A_ANALOG_RX_COM_OCP_COUNT, 0xFF, 0xFF},
 };
 

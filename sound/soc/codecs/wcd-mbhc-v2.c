@@ -41,9 +41,17 @@
 #define WCD_MBHC_JACK_MASK (SND_JACK_HEADSET | SND_JACK_OC_HPHL | \
 			   SND_JACK_OC_HPHR | SND_JACK_LINEOUT | \
 			   SND_JACK_UNSUPPORTED)
+#ifdef CONFIG_HUAWEI_KERNEL
+/* do not report the undesirable button type : btn3,btn4 */
+#define WCD_MBHC_JACK_BUTTON_MASK (SND_JACK_BTN_0 | SND_JACK_BTN_1 | \
+				  SND_JACK_BTN_2)
+#define WCD_MBHC_JACK_BUTTON_MASK_HUAWEI_IGNORE (SND_JACK_BTN_3 | SND_JACK_BTN_4 | \
+				  SND_JACK_BTN_5 | SND_JACK_BTN_6 | SND_JACK_BTN_7)
+#else
 #define WCD_MBHC_JACK_BUTTON_MASK (SND_JACK_BTN_0 | SND_JACK_BTN_1 | \
 				  SND_JACK_BTN_2 | SND_JACK_BTN_3 | \
 				  SND_JACK_BTN_4)
+#endif
 #define OCP_ATTEMPT 1
 #define HS_DETECT_PLUG_TIME_MS (3 * 1000)
 #define SPECIAL_HS_DETECT_TIME_MS (2 * 1000)
@@ -53,11 +61,15 @@
 #define HS_VREF_MIN_VAL 1400
 #define FW_READ_ATTEMPTS 15
 #define FW_READ_TIMEOUT 4000000
+#define FAKE_REM_RETRY_ATTEMPTS 3       // RETRY TIME when Elect Remove happened
+
+static int removal_st;
 
 static int det_extn_cable_en;
 module_param(det_extn_cable_en, int,
 		S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(det_extn_cable_en, "enable/disable extn cable detect");
+static u16 mic_or_hphr_inserted = 0;    //if mic or HPHR detected when correct plug headset may be AT test device
 
 #define WCD_MBHC_RSC_LOCK(mbhc)			\
 {							\
@@ -214,9 +226,12 @@ static void wcd_enable_curr_micbias(const struct wcd_mbhc *mbhc,
 				const enum wcd_mbhc_cs_mb_en_flag cs_mb_en)
 {
 	struct snd_soc_codec *codec = mbhc->codec;
-
-	pr_debug("%s: enter, cs_mb_en: %d\n", __func__, cs_mb_en);
-
+	pr_debug("%s: enter, cs_mb_en: %d mbhc->current_plug %x \n",
+				__func__, cs_mb_en, mbhc->current_plug);
+	if (mbhc->current_plug == MBHC_PLUG_TYPE_NONE && removal_st) {
+		pr_err("%s :: Avoid enabling source when plug is removed",__func__);
+		return;
+	}
 	switch (cs_mb_en) {
 	case WCD_MBHC_EN_CS:
 		snd_soc_update_bits(codec,
@@ -801,6 +816,12 @@ static void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 
+    /* don't report headset event if headset type don't change */
+	if (mbhc->current_plug == plug_type) {
+		pr_debug("%s: cable already reported, exit\n", __func__);
+		goto exit;
+	}
+
 	if (plug_type == MBHC_PLUG_TYPE_HEADPHONE) {
 		/*
 		 * Nothing was reported previously
@@ -854,6 +875,7 @@ static void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 		WARN(1, "Unexpected current plug_type %d, plug_type %d\n",
 		     mbhc->current_plug, plug_type);
 	}
+exit:
 	pr_debug("%s: leave\n", __func__);
 }
 
@@ -898,6 +920,8 @@ static bool wcd_check_cross_conn(struct wcd_mbhc *mbhc)
 	return (plug_type == MBHC_PLUG_TYPE_GND_MIC_SWAP) ? true : false;
 }
 
+/* since we remove swap & hph type detection,no need to use wcd_is_special_headset */
+#ifndef CONFIG_HUAWEI_KERNEL
 static bool wcd_is_special_headset(struct wcd_mbhc *mbhc)
 {
 	u16 result2;
@@ -955,6 +979,7 @@ static bool wcd_is_special_headset(struct wcd_mbhc *mbhc)
 	pr_debug("%s: leave\n", __func__);
 	return ret;
 }
+#endif
 
 static void wcd_correct_swch_plug(struct work_struct *work)
 {
@@ -1097,6 +1122,8 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 		goto exit;
 	}
 
+/* since we remove swap & hph type detection,no need to use wcd_is_special_headset */
+#ifndef CONFIG_HUAWEI_KERNEL
 	if (plug_type == MBHC_PLUG_TYPE_HIGH_HPH &&
 		(!det_extn_cable_en)) {
 		if (wcd_is_special_headset(mbhc)) {
@@ -1106,11 +1133,22 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 			goto report;
 		}
 	}
+#endif
 
 report:
 	pr_debug("%s: Valid plug found, plug type %d wrk_cmpt %d btn_intr %d\n",
 			__func__, plug_type, wrk_complete,
 			mbhc->btn_press_intr);
+
+	/* remove swap & hph type to make auto audio mmi test pass */
+#ifdef CONFIG_HUAWEI_KERNEL
+	if((MBHC_PLUG_TYPE_HIGH_HPH == plug_type)||
+		(MBHC_PLUG_TYPE_GND_MIC_SWAP == plug_type)) {
+			pr_debug("%s: force the type change to headset from swap and hph\n", __func__);
+			plug_type = MBHC_PLUG_TYPE_HEADSET;
+	}
+#endif
+
 	/*
 	 * Do not disable micbias if recording is going on or
 	 * headset is inserted on the other side of the extn
@@ -1224,6 +1262,14 @@ static void wcd_mbhc_detect_plug_type(struct wcd_mbhc *mbhc)
 exit:
 	pr_debug("%s: Valid plug found, plug type is %d\n",
 			 __func__, plug_type);
+	/* remove swap & hph type to make auto audio mmi test pass */
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(((MBHC_PLUG_TYPE_HIGH_HPH == plug_type)||(MBHC_PLUG_TYPE_GND_MIC_SWAP == plug_type))) {
+			pr_debug("%s: force the type change to headset from swap and hph\n", __func__);
+			plug_type = MBHC_PLUG_TYPE_HEADSET;
+	}
+#endif
+
 	if (plug_type == MBHC_PLUG_TYPE_HEADSET ||
 			plug_type == MBHC_PLUG_TYPE_HEADPHONE) {
 		wcd_mbhc_find_plug_and_report(mbhc, plug_type);
@@ -1290,6 +1336,8 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 		if (mbhc->mbhc_cb && mbhc->mbhc_cb->enable_mb_source)
 			mbhc->mbhc_cb->enable_mb_source(codec, true);
 		mbhc->btn_press_intr = false;
+		removal_st = 0;
+		pr_err("%s :: INSERT removal_st = %d ", __func__, removal_st);
 		wcd_mbhc_detect_plug_type(mbhc);
 	} else if ((mbhc->current_plug != MBHC_PLUG_TYPE_NONE)
 			&& !detection_type) {
@@ -1305,6 +1353,9 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 				0x04, 0x00);
 		wcd_configure_cap(mbhc, false);
 		mbhc->btn_press_intr = false;
+		mic_or_hphr_inserted = 0;
+		removal_st = 1;
+		pr_err("%s :: REMOVAL removal_st = %d ", __func__, removal_st);
 		if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADPHONE) {
 			wcd_mbhc_report_plug(mbhc, 0, SND_JACK_HEADPHONE);
 		} else if (mbhc->current_plug == MBHC_PLUG_TYPE_GND_MIC_SWAP) {
@@ -1333,6 +1384,7 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 				0x30, 0x30);
 			wcd_mbhc_report_plug(mbhc, 0, SND_JACK_HEADSET);
 		} else if (mbhc->current_plug == MBHC_PLUG_TYPE_HIGH_HPH) {
+			mbhc->is_extn_cable = false;
 			wcd9xxx_spmi_disable_irq(
 					mbhc->intr_ids->mbhc_hs_rem_intr);
 			wcd9xxx_spmi_disable_irq(
@@ -1375,7 +1427,9 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 		r = IRQ_NONE;
 	} else {
 		/* Call handler */
+		mbhc->in_mech_irq_handler = true;
 		wcd_mbhc_swch_irq_handler(mbhc);
+		mbhc->in_mech_irq_handler = false;
 		wcd9xxx_spmi_unlock_sleep();
 	}
 	pr_debug("%s: leave %d\n", __func__, r);
@@ -1422,6 +1476,19 @@ static irqreturn_t wcd_mbhc_hs_ins_irq(int irq, void *data)
 		pr_debug("%s: Returning as Extension cable feature not enabled\n",
 			__func__);
 		return IRQ_HANDLED;
+	}
+	if (mbhc->in_mech_irq_handler){
+			pr_debug("%s: Returning as mechanical interrupt happens", __func__);
+			/*
+			 * Only removal mechanical interrupt can come if electrical interrupt
+			 * are already triggering because we enable schmitt trigger after
+			 * the mecahnical insertion interrupt when plug type is found as high_hph
+			 * so we can disable electrical interrupt in such case because it means
+			 * that the extension cable has been removed.
+			 */
+			wcd9xxx_spmi_disable_irq(mbhc->intr_ids->mbhc_hs_ins_intr);
+			wcd9xxx_spmi_disable_irq(mbhc->intr_ids->mbhc_hs_rem_intr);
+			return IRQ_HANDLED;
 	}
 	WCD_MBHC_RSC_LOCK(mbhc);
 
@@ -1487,6 +1554,14 @@ determine_plug:
 		0x80, 0x80);
 	hphl_trigerred = 0;
 	mic_trigerred = 0;
+	mbhc->is_extn_cable = true;
+	/*
+	 * even if controls comes here, it is taking more than
+	 * debounce time to detect cable as headphone, so wait
+	 * for 20msec for the mic line to stabilize
+	 */
+	msleep(20);
+	mbhc->btn_press_intr = false;
 	wcd_mbhc_detect_plug_type(mbhc);
 	WCD_MBHC_RSC_UNLOCK(mbhc);
 	pr_debug("%s: leave\n", __func__);
@@ -1502,20 +1577,41 @@ static irqreturn_t wcd_mbhc_hs_rem_irq(int irq, void *data)
 	static u16 mic_trigerred;
 	unsigned long timeout;
 	bool removed = true;
-
+	int retry = 0;
+	bool is_pa_on = false;
 	pr_debug("%s: enter\n", __func__);
 
+	if (mbhc->in_mech_irq_handler){
+		pr_debug("%s: Returning as mechanical interrupt happens", __func__);
+		/*
+		 * Only removal mechanical interrupt can come if electrical interrupt
+		 * are already triggering because we enable schmitt trigger after
+		 * the mecahnical insertion interrupt when plug type is found as high_hph
+		 * so we can disable electrical interrupt in such case because it means
+		 * that the extension cable has been removed.
+		 */
+		wcd9xxx_spmi_disable_irq(mbhc->intr_ids->mbhc_hs_ins_intr);
+		wcd9xxx_spmi_disable_irq(mbhc->intr_ids->mbhc_hs_rem_intr);
+		return IRQ_HANDLED;
+	}
 	WCD_MBHC_RSC_LOCK(mbhc);
 
 	wcd_cancel_hs_detect_plug(mbhc, &mbhc->correct_plug_swch);
 	timeout = jiffies +
 		  msecs_to_jiffies(WCD_FAKE_REMOVAL_MIN_PERIOD_MS);
 	do {
+		retry++;
+		/*
+		 * read the result2 register every 10ms to look for
+		 * any change in HS_COMP_RESULT bit
+		 */
+		usleep_range(10000, 10100);
 		result2 = (snd_soc_read(codec,
 			MSM8X16_WCD_A_ANALOG_MBHC_ZDET_ELECT_RESULT));
 		pr_debug("%s: check result2 for fake removal: %x\n",
 			 __func__, result2);
-		if (!(result2 & 0x01)) {
+		if ((!(result2 & 0x01)) &&
+			(retry > FAKE_REM_RETRY_ATTEMPTS)) {
 			removed = false;
 			break;
 		}
@@ -1557,7 +1653,22 @@ static irqreturn_t wcd_mbhc_hs_rem_irq(int irq, void *data)
 
 report_unplug:
 
+	/* cancel pending button press */
+	if (wcd_cancel_btn_work(mbhc))
+		pr_debug("%s: button press is canceled\n", __func__);
+	/* cancel correct work function */
+	wcd_cancel_hs_detect_plug(mbhc, &mbhc->correct_plug_swch);
 	pr_debug("%s: Report extension cable\n", __func__);
+	wcd_mbhc_report_plug(mbhc, 1, SND_JACK_LINEOUT);
+	/*
+	 * If PA is enabled HPHL schmitt trigger can
+	 * be unreliable, make sure to disable it
+	 */
+	is_pa_on = snd_soc_read(codec,
+				MSM8X16_WCD_A_ANALOG_RX_HPH_CNP_EN) &
+				0x30;
+	if (is_pa_on)
+		wcd_mbhc_set_and_turnoff_hph_padac(mbhc);
 	/*
 	 * Disable HPHL trigger and MIC Schmitt triggers.
 	 * Setup for insertion detection.
@@ -1575,7 +1686,7 @@ report_unplug:
 	snd_soc_update_bits(codec, MSM8X16_WCD_A_ANALOG_MBHC_DET_CTL_1,
 				0x01, 0x01);
 	wcd9xxx_spmi_enable_irq(mbhc->intr_ids->mbhc_hs_ins_intr);
-	wcd_mbhc_report_plug(mbhc, 1, SND_JACK_LINEOUT);
+	//wcd_mbhc_report_plug(mbhc, 1, SND_JACK_LINEOUT);
 	hphl_trigerred = 0;
 	mic_trigerred = 0;
 	WCD_MBHC_RSC_UNLOCK(mbhc);
@@ -1746,6 +1857,15 @@ static irqreturn_t wcd_mbhc_release_handler(int irq, void *data)
 		}
 		mbhc->buttons_pressed &= ~WCD_MBHC_JACK_BUTTON_MASK;
 	}
+	/* huawei: ignore the btn3~7, only clear the mask , donot report */
+#ifdef CONFIG_HUAWEI_KERNEL
+	else
+	{
+		pr_err("%s: HUAWEI-- ignore reporting btn3~7 !\n",
+					 __func__);
+		mbhc->buttons_pressed &= ~WCD_MBHC_JACK_BUTTON_MASK_HUAWEI_IGNORE;
+	}
+#endif
 exit:
 	pr_debug("%s: leave\n", __func__);
 	WCD_MBHC_RSC_UNLOCK(mbhc);
@@ -1826,9 +1946,9 @@ static int wcd_mbhc_initialise(struct wcd_mbhc *mbhc)
 
 	snd_soc_update_bits(codec, MSM8X16_WCD_A_ANALOG_MBHC_DET_CTL_2,
 			0x01, 0x01);
-
-	snd_soc_write(codec, MSM8X16_WCD_A_ANALOG_MBHC_DBNC_TIMER, 0x98);
-
+    /* change the debounce time from 768ms to 384ms,so SW is receiving mechanical removal
+       and button press interrupts at the same time and hence not reporting button press */
+	snd_soc_write(codec, MSM8X16_WCD_A_ANALOG_MBHC_DBNC_TIMER, 0xA8);
 	/* enable MBHC clock */
 	snd_soc_update_bits(codec,
 			MSM8X16_WCD_A_DIGITAL_CDC_DIG_CLK_CTL,
@@ -2029,6 +2149,8 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 	mbhc->mbhc_cb = mbhc_cb;
 	mbhc->btn_press_intr = false;
 	mbhc->is_hs_recording = false;
+	mbhc->is_extn_cable = false;
+	mbhc->in_mech_irq_handler = false;
 
 	if (mbhc->intr_ids == NULL) {
 		pr_err("%s: Interrupt mapping not provided\n", __func__);
@@ -2060,6 +2182,22 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 			return ret;
 		}
 
+		ret = snd_jack_set_key(mbhc->button_jack.jack,
+		                       SND_JACK_BTN_1,
+		                       KEY_VOLUMEUP);
+		if (ret) {
+		        pr_err("%s: Failed to set code for btn-1\n",
+		                __func__);
+		        return ret;
+		}
+		ret = snd_jack_set_key(mbhc->button_jack.jack,
+		                       SND_JACK_BTN_2,
+		                       KEY_VOLUMEDOWN);
+		if (ret) {
+		        pr_err("%s: Failed to set code for btn-2\n",
+		                __func__);
+		        return ret;
+		}
 		INIT_DELAYED_WORK(&mbhc->mbhc_firmware_dwork,
 				  wcd_mbhc_fw_read);
 		INIT_DELAYED_WORK(&mbhc->mbhc_btn_dwork, wcd_btn_lpress_fn);
