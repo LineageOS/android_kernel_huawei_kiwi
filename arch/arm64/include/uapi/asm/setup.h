@@ -23,4 +23,8 @@
 
 #define COMMAND_LINE_SIZE	2048
 
+#ifdef CONFIG_HUAWEI_KERNEL
+/* runmode : factory , normal */
+bool is_runmode_factory(void);
+#endif
 #endif
