@@ -168,3 +168,12 @@ obj-$(CONFIG_ESOC)		+= esoc/
 obj-$(CONFIG_BIF)		+= bif/
 obj-$(CONFIG_SENSORS)		+= sensors/
 obj-$(CONFIG_SENSORS_SSC)	+= sensors/
+obj-$(CONFIG_HUAWEI_HW_DEV_DCT) += devdetect/
+obj-$(CONFIG_HUAWEI_FACTORY_INFO) += hw_fac_info/
+
+obj-$(CONFIG_HUAWEI_GOLDENEYE) += goldeneye/
+obj-y				+= huawei/
+
+obj-$(CONFIG_SRECORDER)     += srecorder/
+
+obj-$(CONFIG_HUAWEI_DRIVERS)    += huawei_platform/
