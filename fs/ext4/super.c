@@ -51,6 +51,16 @@
 #include "acl.h"
 #include "mballoc.h"
 
+#ifdef CONFIG_EXT4_HUAWEI_READ_ONLY_RECOVERY
+#include <linux/reboot.h>
+#ifdef CONFIG_FEATURE_HUAWEI_EMERGENCY_DATA
+#include <asm/setup.h>
+
+extern unsigned int get_datamount_flag(void);
+#endif
+#endif
+/*in this project, mmcblk0p24 is userdata partition*/
+#define USERDATA "mmcblk0p26"
 #define CREATE_TRACE_POINTS
 #include <trace/events/ext4.h>
 
@@ -369,6 +379,41 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
 	spin_unlock(&sbi->s_md_lock);
 }
 
+
+#ifdef CONFIG_EXT4_HUAWEI_READ_ONLY_RECOVERY
+static inline void trigger_double_data(struct super_block *sb)
+{
+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+	/*at present only /data fs could be reparied*/
+	if(NULL != sb->s_id){
+		if(!strcmp(sb->s_id, USERDATA)){
+			/* Update error status flag and restart */
+			es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
+			ext4_commit_super(sb, 1);
+
+#ifdef CONFIG_FEATURE_HUAWEI_EMERGENCY_DATA
+			/*
+			* if is factory mode, same to orignal.
+			* if flag equal to 0, this phone boot not caused
+			* by ext4_handle_error, so reboot.
+			* if flag equal to 1, this phone boot caused by
+			* ext4_handle_error, so not reboot again.
+			*/
+			if (is_runmode_factory()) { // factory mode
+				kernel_restart(NULL);
+			} else { // not factory mode
+				if (get_datamount_flag() == 0) {
+					kernel_restart("mountfail");
+				}
+			}
+#else
+			kernel_restart(NULL);
+#endif
+		}
+	}
+}
+#endif
+
 /* Deal with the reporting of failure conditions on a filesystem such as
  * inconsistencies detected or read IO failures.
  *
@@ -383,7 +428,6 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
  * the journal instead.  On recovery, the journal will complain about
  * that error until we've noted it down and cleared it.
  */
-
 static void ext4_handle_error(struct super_block *sb)
 {
 	if (sb->s_flags & MS_RDONLY)
@@ -403,6 +447,34 @@ static void ext4_handle_error(struct super_block *sb)
 	if (test_opt(sb, ERRORS_PANIC))
 		panic("EXT4-fs (device %s): panic forced after error\n",
 			sb->s_id);
+#ifdef CONFIG_EXT4_HUAWEI_READ_ONLY_RECOVERY
+	trigger_double_data(sb);
+#endif
+}
+
+
+/* move function ext4_msg&__ext4_warning from below to here */
+void ext4_msg(struct super_block *sb, const char *prefix, const char *fmt, ...)
+{
+	struct va_format vaf;
+	va_list args;
+	va_start(args, fmt);
+	vaf.fmt = fmt;
+	vaf.va = &args;
+	printk("%sEXT4-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
+	va_end(args);
+}
+void __ext4_warning(struct super_block *sb, const char *function,
+		    unsigned int line, const char *fmt, ...)
+{
+	struct va_format vaf;
+	va_list args;
+	va_start(args, fmt);
+	vaf.fmt = fmt;
+	vaf.va = &args;
+	printk(KERN_WARNING "EXT4-fs warning (device %s): %s:%d: %pV\n",
+	       sb->s_id, function, line, &vaf);
+	va_end(args);
 }
 
 void __ext4_error(struct super_block *sb, const char *function,
@@ -580,33 +652,13 @@ void __ext4_abort(struct super_block *sb, const char *function,
 	}
 	if (test_opt(sb, ERRORS_PANIC))
 		panic("EXT4-fs panic from previous error\n");
+
+#ifdef CONFIG_EXT4_HUAWEI_READ_ONLY_RECOVERY
+	trigger_double_data(sb);
+#endif
 }
 
-void ext4_msg(struct super_block *sb, const char *prefix, const char *fmt, ...)
-{
-	struct va_format vaf;
-	va_list args;
-
-	va_start(args, fmt);
-	vaf.fmt = fmt;
-	vaf.va = &args;
-	printk_ratelimited("%sEXT4-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
-	va_end(args);
-}
-
-void __ext4_warning(struct super_block *sb, const char *function,
-		    unsigned int line, const char *fmt, ...)
-{
-	struct va_format vaf;
-	va_list args;
-
-	va_start(args, fmt);
-	vaf.fmt = fmt;
-	vaf.va = &args;
-	printk(KERN_WARNING "EXT4-fs warning (device %s): %s:%d: %pV\n",
-	       sb->s_id, function, line, &vaf);
-	va_end(args);
-}
+/* move function ext4_msg&__ext4_warning from here to above */
 
 void __ext4_grp_locked_error(const char *function, unsigned int line,
 			     struct super_block *sb, ext4_group_t grp,
