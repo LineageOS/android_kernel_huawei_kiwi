@@ -1,0 +1,134 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/* External I2C controlled buck regulators */
+
+&i2c_4 {
+	ncp6335d-regulator@1c {
+		status = "disabled";
+	};
+
+	ncp6335d_a1c: ncp6335d-a1x@1c {
+		compatible = "onnn,ncp6335d-a1c";
+		reg = <0x1c>;
+		onnn,vsel = <0>;
+		onnn,slew-ns = <3333>;
+		onnn,step-size = <6250>;
+		onnn,min-slew-ns = <416>;
+		onnn,max-slew-ns = <3333>;
+		onnn,en-delay-ms = <0>;
+		regulator-min-microvolt = <1050000>;
+		regulator-max-microvolt = <1350000>;
+		onnn,min-setpoint = <600000>;
+		pintrl-names = "default";
+		pinctrl-0 = <&ext_buck_vsel_default>;
+		onnn,vsel-gpio = <&msm_gpio 111 1>;
+		onnn,discharge-enable;
+		onnn,restore-reg;
+		monitor_reg_work_flag=<1>;
+	};
+
+	ncp6335d_a18: ncp6335d-a1x@18 {
+		compatible = "onnn,ncp6335d-a18";
+		reg = <0x18>;
+		onnn,vsel = <0>;
+		onnn,slew-ns = <3333>;
+		onnn,step-size = <6250>;
+		onnn,min-slew-ns = <416>;
+		onnn,max-slew-ns = <3333>;
+		onnn,en-delay-ms = <0>;
+		regulator-min-microvolt = <1050000>;
+		regulator-max-microvolt = <1350000>;
+		onnn,min-setpoint = <600000>;
+		pintrl-names = "default";
+		pinctrl-0 = <&ext_buck_vsel_default>;
+		onnn,vsel-gpio = <&msm_gpio 111 1>;
+		onnn,discharge-enable;
+		onnn,restore-reg;
+		monitor_reg_work_flag=<1>;
+	};
+
+	ncp6335d_a10: ncp6335d-a1x@10 {
+		compatible = "onnn,ncp6335d-a10";
+		reg = <0x10>;
+		onnn,vsel = <0>;
+		onnn,slew-ns = <3333>;
+		onnn,step-size = <6250>;
+		onnn,min-slew-ns = <416>;
+		onnn,max-slew-ns = <3333>;
+		onnn,en-delay-ms = <0>;
+		regulator-min-microvolt = <1050000>;
+		regulator-max-microvolt = <1350000>;
+		onnn,min-setpoint = <600000>;
+		pintrl-names = "default";
+		pinctrl-0 = <&ext_buck_vsel_default>;
+		onnn,vsel-gpio = <&msm_gpio 111 1>;
+		onnn,discharge-enable;
+		onnn,restore-reg;
+		monitor_reg_work_flag=<1>;
+	};
+
+	fan53555: fan53555-regulator@60 {
+		monitor_reg_work_flag=<1>;
+	};
+};
+
+/* Memory accelerator and CPR controlled regulators */
+
+&soc {
+	/delete-node/ regulator_spk;
+
+	apc_vreg_corner: regulator@b018000 {
+		qcom,cpr-voltage-floor = <1050000 1150000 1137500>;
+		vdd-apc-optional-prim-supply = <&fan53555>;
+		vdd-apc-optional-sec-supply = <&ncp6335d_a18>;
+		qcom,cpr-voltage-floor-override =
+			<0xffffffff 0xffffffff 1050000 1050000 1050000 1150000
+			1150000 1150000 1150000 1150000 1150000 1150000 1150000
+			1150000 1150000 1150000 1137500 1137500 1137500 1137500
+			1137500 1137500 1137500 1137500 1137500 1137500 1137500
+			1137500 1137500 1137500>;
+		vdd-apc-supply = <&ncp6335d_a1c>;
+	};
+};
+
+/* RPM controlled regulators */
+
+&rpm_bus {
+	rpm-regulator-ldoa6 {
+		pm8916_l6: regulator-l6 {
+			regulator-boot-on;
+			regulator-always-on;
+		};
+	};
+
+	rpm-regulator-ldoa8 {
+		pm8916_l8: regulator-l8 {
+			regulator-min-microvolt = <2950000>;
+			regulator-max-microvolt = <2950000>;
+			qcom,init-voltage = <2950000>;
+		};
+	};
+
+	rpm-regulator-ldoa16 {
+		pm8916_l16: regulator-l16 {
+			regulator-boot-on;
+		};
+	};
+
+	rpm-regulator-ldoa17 {
+		pm8916_l17: regulator-l17 {
+			regulator-boot-on;
+			regulator-always-on;
+		};
+	};
+};
