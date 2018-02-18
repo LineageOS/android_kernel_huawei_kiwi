@@ -1,0 +1,22 @@
+#include "../kiwi/huawei.dtsi"
+#include "../kiwi/huawei-camera-vb.dtsi"
+#include "../kiwi/huawei-sensors-vb.dtsi"
+
+/ {
+	huawei_audio_info {
+		product-identifier = "kiw_l";
+	};
+
+	qcom,hw-camera-board-id {
+		compatible = "qcom,hw-camera-board-id";
+		qcom,product-name = "msm8939_kiw_l23";
+	};
+
+	huawei_fac_info {
+		compatible = "huawei,hw_fac_info";
+		fac,product_name = "HUAWEI KIW-L23";
+		fac,hardware_ver = "HL3KIWMAF";
+		fac,software_ver = "MSM8939_KIW_L23_VB";
+		status = "ok";
+	};
+};

@@ -1,0 +1,22 @@
+#include "../kiwi/huawei.dtsi"
+#include "../kiwi/huawei-camera-vc.dtsi"
+#include "../kiwi/huawei-sensors-vc.dtsi"
+
+/ {
+	huawei_audio_info {
+		product-identifier = "kiw_l";
+	};
+
+	qcom,hw-camera-board-id {
+		compatible = "qcom,hw-camera-board-id";
+		qcom,product-name = "msm8939_kiw_ul00_vc";
+	};
+
+	huawei_fac_info {
+		compatible = "huawei,hw_fac_info";
+		fac,product_name = "HUAWEI KII-L05";
+		fac,hardware_ver = "HL3KIWMBF";
+		fac,software_ver = "MSM8939_KII_L05_VB";
+		status = "ok";
+	};
+};
