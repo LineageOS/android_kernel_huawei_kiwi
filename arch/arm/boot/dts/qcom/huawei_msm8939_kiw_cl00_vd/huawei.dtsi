@@ -1,0 +1,22 @@
+#include "../kiwi/huawei.dtsi"
+#include "../kiwi/huawei-camera-vc.dtsi"
+#include "../kiwi/huawei-sensors-vc.dtsi"
+
+/ {
+	huawei_audio_info {
+		product-identifier = "kiw";
+	};
+
+	qcom,hw-camera-board-id {
+		compatible = "qcom,hw-camera-board-id";
+		qcom,product-name = "msm8939_kiw_cl00_vc";
+	};
+
+	huawei_fac_info {
+		compatible = "huawei,hw_fac_info";
+		fac,product_name = "HUAWEI KIW-CL00";
+		fac,hardware_ver = "HL1KIWMAL";
+		fac,software_ver = "MSM8939_KIW_CL00_VD";
+		status = "ok";
+	};
+};

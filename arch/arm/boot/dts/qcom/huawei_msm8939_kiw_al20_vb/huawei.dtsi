@@ -1,0 +1,22 @@
+#include "../kiwi/huawei.dtsi"
+#include "../kiwi/huawei-camera-vb.dtsi"
+#include "../kiwi/huawei-sensors-vb.dtsi"
+
+/ {
+	huawei_audio_info {
+		product-identifier = "kiw";
+	};
+
+	qcom,hw-camera-board-id {
+		compatible = "qcom,hw-camera-board-id";
+		qcom,product-name = "msm8939_kiw_al10_vc";
+	};
+
+	huawei_fac_info {
+		compatible = "huawei,hw_fac_info";
+		fac,product_name = "HUAWEI KIW-AL20";
+		fac,hardware_ver = "HL1KIWMH1AG";
+		fac,software_ver = "MSM8939_KIW_AL20_VB";
+		status = "ok";
+	};
+};
