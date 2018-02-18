@@ -1,0 +1,26 @@
+/* Copyright (c) 2013 The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&tlmm_pinmux {
+	ak8789_int_pin {
+		qcom,pins = <&gp 69>, <&gp 115>;
+		qcom,num-grp-pins = <2>;
+	};
+};
+
+/ {
+	huawei_hall_sensor {
+		huawei,hall_gpio_config_rn = <&msm_gpio 69 0x2>;
+		huawei,hall_gpio_config_rs = <&msm_gpio 115 0x2>;
+		hall_poles = <1>;
+	};
+};
