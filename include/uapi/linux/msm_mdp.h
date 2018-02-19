@@ -72,6 +72,13 @@
 #define FB_TYPE_3D_PANEL 0x10101010
 #define MDP_IMGTYPE2_START 0x10000
 #define MSMFB_DRIVER_VERSION	0xF9E8D701
+/*Add display color inversion function*/
+#ifdef CONFIG_HUAWEI_LCD
+#define MSMFB_DISPLAY_INVERSION	_IOWR(MSMFB_IOCTL_MAGIC, 253, unsigned  int)
+#endif
+#ifdef CONFIG_FB_AUTO_CABC
+#define MSMFB_AUTO_CABC           _IOWR(MSMFB_IOCTL_MAGIC, 255, struct msmfb_cabc_config)
+#endif
 
 /* HW Revisions for different MDSS targets */
 #define MDSS_GET_MAJOR(rev)		((rev) >> 28)
@@ -116,6 +123,7 @@ enum {
 	NOTIFY_TYPE_SUSPEND,
 	NOTIFY_TYPE_UPDATE,
 	NOTIFY_TYPE_BL_UPDATE,
+	NOTIFY_TYPE_BL_AD_ATTEN_UPDATE,
 };
 
 enum {
@@ -859,6 +867,15 @@ struct mdp_pp_init_data {
 	uint32_t init_request;
 };
 
+/*fix conflict load pp_calib*.xml and color temprature
+(color temprature become invalid after reboot)*/
+struct mdp_color_temprature_data {
+	uint32_t block;
+	uint32_t ops;
+	uint32_t attenuation_coeff;  // *1000
+	uint32_t modify_flag;          // 0: no need modify;  1: modify blue; 2: modify red
+};
+
 enum {
 	MDP_PP_DISABLE,
 	MDP_PP_ENABLE,
@@ -960,7 +977,9 @@ struct mdss_calib_cfg {
 	uint32_t ops;
 	uint32_t calib_mask;
 };
-
+/* add color temperature setting ioctl for avoid display partial red*/
+/*fix conflict load pp_calib*.xml and color temprature
+(color temprature become invalid after reboot)*/
 enum {
 	mdp_op_pcc_cfg,
 	mdp_op_csc_cfg,
@@ -979,8 +998,15 @@ enum {
 	mdp_op_calib_dcm_state,
 	mdp_op_max,
 	mdp_op_pp_init_cfg,
+	mdp_op_led_pcc_cfg,
+	mdp_op_pre_pcc_cfg,  //for colortemprature
 };
 
+enum{
+	CT_NO_NEED_MODIFY,
+	CT_MODIFY_BLUE,
+	CT_MODIFY_RED,
+};
 enum {
 	WB_FORMAT_NV12,
 	WB_FORMAT_RGB_565,
@@ -1011,6 +1037,9 @@ struct msmfb_mdp_pp {
 		struct mdp_calib_config_buffer calib_buffer;
 		struct mdp_calib_dcm_state calib_dcm;
 		struct mdp_pp_init_data init_data;
+/*fix conflict load pp_calib*.xml and color temprature
+(color temprature become invalid after reboot)*/
+		struct mdp_color_temprature_data color_temp_data;
 	} data;
 };
 
@@ -1113,6 +1142,26 @@ struct mdp_page_protection {
 	uint32_t page_protection;
 };
 
+#ifdef CONFIG_HUAWEI_LCD
+enum inversion_mode {
+	COLUMN_INVERSION = 0,
+	DOT_INVERSION = 2,
+};
+#endif
+
+#ifdef CONFIG_FB_AUTO_CABC
+enum cabc_mode {
+	CABC_MODE_OFF,
+	CABC_MODE_UI,
+	CABC_MODE_STILL,
+	CABC_MODE_MOVING,
+};
+struct msmfb_cabc_config {
+	uint32_t mode;
+	uint32_t dimming_on;
+	uint32_t mov_det_on;
+};
+#endif
 
 struct mdp_mixer_info {
 	int pndx;
