@@ -212,6 +212,10 @@ struct log {
 	u8 facility;		/* syslog facility */
 	u8 flags:5;		/* internal record flags */
 	u8 level:3;		/* syslog level */
+#ifdef CONFIG_HUAWEI_KERNEL
+	pid_t pid;					/* task pid */
+	char comm[TASK_COMM_LEN];	/* task name */
+#endif
 #if defined(CONFIG_LOG_BUF_MAGIC)
 	u32 magic;		/* handle for ramdump analysis tools */
 #endif
@@ -258,6 +262,7 @@ static u32 clear_idx;
 #define LOG_ALIGN __alignof__(struct log)
 #endif
 #define __LOG_BUF_LEN (1 << CONFIG_LOG_BUF_SHIFT)
+
 static char __log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
 static char *log_buf = __log_buf;
 static u32 log_buf_len = __LOG_BUF_LEN;
@@ -384,6 +389,11 @@ static void log_oops_store(struct log *msg)
 			msg->level = default_message_loglevel & 7;
 			msg->flags = (LOG_NEWLINE | LOG_PREFIX) & 0x1f;
 			msg->ts_nsec = ts_nsec;
+#ifdef CONFIG_HUAWEI_KERNEL
+			msg->pid = current->pid;
+			memset(msg->comm, 0, TASK_COMM_LEN);
+			memcpy(msg->comm, current->comm, TASK_COMM_LEN-1);
+#endif
 			eom = 1;
 		}
 
@@ -457,6 +467,12 @@ static void log_store(int facility, int level,
 	msg->facility = facility;
 	msg->level = level & 7;
 	msg->flags = flags & 0x1f;
+#ifdef CONFIG_HUAWEI_KERNEL
+	msg->pid = current->pid;
+	memset(msg->comm, 0, TASK_COMM_LEN);
+	memcpy(msg->comm, current->comm, TASK_COMM_LEN-1);
+#endif
+
 	LOG_MAGIC(msg);
 	if (ts_nsec > 0)
 		msg->ts_nsec = ts_nsec;
@@ -1035,6 +1051,23 @@ static size_t print_time(u64 ts, char *buf)
 		       (unsigned long)ts, rem_nsec / 1000);
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+static bool printk_task_info = 1;
+module_param_named(task_info, printk_task_info, bool, S_IRUGO | S_IWUSR);
+
+static size_t print_task_info(pid_t pid, const char *task_name, char *buf)
+{
+	if (!printk_task_info)
+		return 0;
+
+	if (!buf)
+		return snprintf(NULL, 0, "[%d, %s]", pid, task_name);
+
+	return sprintf(buf, "[%d, %s]", pid, task_name);
+}
+
+#endif
+
 static size_t print_prefix(const struct log *msg, bool syslog, char *buf)
 {
 	size_t len = 0;
@@ -1053,6 +1086,10 @@ static size_t print_prefix(const struct log *msg, bool syslog, char *buf)
 				len++;
 		}
 	}
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	len += print_task_info(msg->pid, msg->comm, buf ? buf + len : NULL);
+#endif
 
 	len += print_time(msg->ts_nsec, buf ? buf + len : NULL);
 	return len;
