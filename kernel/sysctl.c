@@ -65,6 +65,10 @@
 
 #include <asm/uaccess.h>
 #include <asm/processor.h>
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <linux/qpnp/power-on.h>
+extern u32 huawei_pon_regs[MAX_REG_TYPE];
+#endif
 
 #ifdef CONFIG_X86
 #include <asm/nmi.h>
@@ -1837,6 +1841,15 @@ static struct ctl_table debug_table[] = {
 		.extra1		= &zero,
 		.extra2		= &one,
 	},
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+    {
+            .procname   = "poweronoff_reason",
+            .data       = huawei_pon_regs,
+            .maxlen     = sizeof(huawei_pon_regs),
+            .mode       = 0644,
+            .proc_handler   = proc_dointvec,
+    },
 #endif
 	{ }
 };
