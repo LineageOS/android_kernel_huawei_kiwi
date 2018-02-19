@@ -807,7 +807,7 @@ static int subsys_ramdump(int enable, const struct subsys_desc *subsys)
 
 	if (!enable)
 		return 0;
-
+	pr_err("%s:%d:pil do ramdump\n",__FILE__ ,__LINE__);
 	return pil_do_ramdump(&d->desc, d->ramdump_dev);
 }
 

@@ -26,7 +26,7 @@
 #include <linux/workqueue.h>
 #include <linux/debugfs.h>
 #include <linux/kmemleak.h>
-
+#include "huawei_usb.h"
 static DEFINE_SPINLOCK(ch_lock);
 static LIST_HEAD(usb_diag_ch_list);
 
@@ -215,6 +215,20 @@ static void diag_write_complete(struct usb_ep *ep,
 	struct diag_context *ctxt = ep->driver_data;
 	struct diag_request *d_req = req->context;
 	unsigned long flags;
+	u8 req_buffer_part_out[17] = {0};
+	strncpy(req_buffer_part_out,(u8 *)req->buf,sizeof(req_buffer_part_out)-1);
+	/* huawei diag log printf */
+	if(( 75 == *((u8 *)req->buf)) && (( 201 == *((u8 *)req->buf+1) )||(200 == *((u8 *)req->buf+1))))
+	{
+       print_hex_dump(KERN_INFO, "[USB_LOGS]Data to usb: ", 8,
+                          1, DUMP_PREFIX_ADDRESS, req_buffer_part_out, 16, 1);
+    }
+	/*printf  7B 00 01 02 03 04 05 06 07 08 09 9D 5F 7E */
+	if(( 123 == *((u8 *)req->buf)) && (0 == *((u8 *)req->buf+1)))
+	{
+       print_hex_dump(KERN_INFO, "[USB_LOGS]Data to usb: ", 8,
+                          1, DUMP_PREFIX_ADDRESS, req_buffer_part_out, 16, 1);
+    }
 
 	ctxt->dpkts_tolaptop_pending--;
 
@@ -249,10 +263,23 @@ static void diag_read_complete(struct usb_ep *ep,
 	struct diag_context *ctxt = ep->driver_data;
 	struct diag_request *d_req = req->context;
 	unsigned long flags;
+	u8 req_buffer_part_in[17] = {0};
 
 	d_req->actual = req->actual;
 	d_req->status = req->status;
-
+	strncpy(req_buffer_part_in,(u8 *)req->buf,sizeof(req_buffer_part_in)-1);
+	/* huawei diag log printf */
+	if(( 75 == *((u8 *)req->buf)) && (( 201 == *((u8 *)req->buf+1) )||(200 == *((u8 *)req->buf+1))))
+	{
+       print_hex_dump(KERN_INFO, "[USB_LOGS]Data from usb: ", 8,
+                          1, DUMP_PREFIX_ADDRESS, req_buffer_part_in, 16, 1);
+    }
+	/*printf  7B 00 01 02 03 04 05 06 07 08 09 9D 5F 7E */
+	if(( 123 == *((u8 *)req->buf)) && (0 == *((u8 *)req->buf+1)))
+	{
+       print_hex_dump(KERN_INFO, "[USB_LOGS]Data from usb: ", 8,
+                          1, DUMP_PREFIX_ADDRESS, req_buffer_part_in, 16, 1);
+    }
 	spin_lock_irqsave(&ctxt->lock, flags);
 	list_add_tail(&req->list, &ctxt->read_pool);
 	spin_unlock_irqrestore(&ctxt->lock, flags);
@@ -296,7 +323,7 @@ struct usb_diag_ch *usb_diag_open(const char *name, void *priv,
 		if (!ch)
 			return ERR_PTR(-ENOMEM);
 	}
-
+    usb_logs_info("usb diag is open.\n");
 	ch->name = name;
 	ch->priv = priv;
 	ch->notify = notify;
@@ -320,7 +347,7 @@ void usb_diag_close(struct usb_diag_ch *ch)
 {
 	struct diag_context *dev = NULL;
 	unsigned long flags;
-
+	usb_logs_info("usb diag is close.\n");
 	spin_lock_irqsave(&ch_lock, flags);
 	ch->priv = NULL;
 	ch->notify = NULL;
