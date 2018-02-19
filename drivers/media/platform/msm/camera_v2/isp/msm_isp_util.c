@@ -20,10 +20,17 @@
 #include "msm_isp_stats_util.h"
 #include "msm_camera_io_util.h"
 
+#ifdef CONFIG_HUAWEI_KERNEL
+enum run_mode_enum{
+	RUN_MODE_INIT = 0,
+	RUN_MODE_FACTORY,
+	RUN_MODE_NORMAL,
+};
+extern char *saved_command_line;
+#endif
 #define MAX_ISP_V4l2_EVENTS 100
 static DEFINE_MUTEX(bandwidth_mgr_mutex);
 static struct msm_isp_bandwidth_mgr isp_bandwidth_mgr;
-
 static uint64_t msm_isp_cpp_clk_rate;
 
 #define VFE40_8974V2_VERSION 0x1001001A
@@ -1882,3 +1889,32 @@ int msm_isp_close_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	mutex_unlock(&vfe_dev->realtime_mutex);
 	return 0;
 }
+
+#ifdef CONFIG_HUAWEI_KERNEL
+bool huawei_cam_is_factory_mode(void)
+{
+	static enum run_mode_enum run_mode = RUN_MODE_INIT;
+
+	if(RUN_MODE_INIT == run_mode)
+	{
+		run_mode = RUN_MODE_NORMAL;
+		if(saved_command_line != NULL)
+		{
+			if(strstr(saved_command_line, "androidboot.huawei_swtype=factory") != NULL)
+			{
+				run_mode = RUN_MODE_FACTORY;
+			}
+		}
+		pr_warn("%s run mode is %d\n", __func__, run_mode);
+	}
+
+	if(RUN_MODE_FACTORY == run_mode)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+#endif
