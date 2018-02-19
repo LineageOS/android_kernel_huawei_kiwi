@@ -21,7 +21,6 @@ enum reboot_mode {
 extern int register_reboot_notifier(struct notifier_block *);
 extern int unregister_reboot_notifier(struct notifier_block *);
 
-
 /*
  * Architecture-specific implementations of sys_reboot commands.
  */

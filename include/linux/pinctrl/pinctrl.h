@@ -124,6 +124,10 @@ struct pinctrl_desc {
 	struct module *owner;
 };
 
+#ifdef  CONFIG_HUAWEI_KERNEL
+void msm_gpio_print_enabled(void);
+#endif
+
 /* External interface to pin controller */
 extern struct pinctrl_dev *pinctrl_register(struct pinctrl_desc *pctldesc,
 				struct device *dev, void *driver_data);
