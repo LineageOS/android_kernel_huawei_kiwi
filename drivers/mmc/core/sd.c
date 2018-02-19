@@ -254,6 +254,10 @@ static int mmc_read_ssr(struct mmc_card *card)
 	for (i = 0; i < 16; i++)
 		ssr[i] = be32_to_cpu(ssr[i]);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	card->ssr.speed_class = UNSTUFF_BITS(ssr, 440 - 384, 8);
+#endif
+
 	/*
 	 * UNSTUFF_BITS only works with four u32s so we have to offset the
 	 * bitfield positions accordingly.
@@ -764,6 +768,9 @@ MMC_DEV_ATTR(manfid, "0x%06x\n", card->cid.manfid);
 MMC_DEV_ATTR(name, "%s\n", card->cid.prod_name);
 MMC_DEV_ATTR(oemid, "0x%04x\n", card->cid.oemid);
 MMC_DEV_ATTR(serial, "0x%08x\n", card->cid.serial);
+#ifdef CONFIG_HUAWEI_KERNEL
+MMC_DEV_ATTR(speed_class, "0x%08x\n", card->ssr.speed_class);
+#endif
 
 
 static struct attribute *sd_std_attrs[] = {
@@ -779,6 +786,9 @@ static struct attribute *sd_std_attrs[] = {
 	&dev_attr_name.attr,
 	&dev_attr_oemid.attr,
 	&dev_attr_serial.attr,
+#ifdef CONFIG_HUAWEI_KERNEL
+	&dev_attr_speed_class.attr,
+#endif
 	NULL,
 };
 
@@ -802,7 +812,15 @@ int mmc_sd_get_cid(struct mmc_host *host, u32 ocr, u32 *cid, u32 *rocr)
 {
 	int err;
 	u32 max_current;
-	int retries = 10;
+    /*
+     * change retry time from 10 to 5,to avoid suspend or resume 12s
+     * timeout panic,especially bad card
+     */
+	int retries = 5;
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	int cmd11_retries = 3;
+#endif
 
 try_again:
 	if (!retries) {
@@ -861,6 +879,13 @@ try_again:
 			goto try_again;
 		} else if (err) {
 			retries = 0;
+#ifdef CONFIG_HUAWEI_KERNEL
+			cmd11_retries--;
+			if(cmd11_retries == 0)
+			{
+				return err;
+			}
+#endif
 			goto try_again;
 		}
 	}
@@ -1243,7 +1268,11 @@ static int mmc_sd_resume(struct mmc_host *host)
 
 	mmc_claim_host(host);
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
-	retries = 5;
+    /*
+     * change retry time from 5 to 4,to avoid suspend or resume 12s
+     * timeout panic,especially bad card
+     */
+	retries = 4;
 	while (retries) {
 		err = mmc_sd_init_card(host, host->ocr, host->card);
 
@@ -1444,4 +1473,3 @@ err:
 
 	return err;
 }
-
