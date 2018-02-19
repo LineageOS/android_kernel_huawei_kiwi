@@ -334,9 +334,15 @@ static int enter_state(suspend_state_t state)
 	if (state == PM_SUSPEND_FREEZE)
 		freeze_begin();
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	printk(KERN_INFO "PM: Syncing filesystems put the sync in the queue... ");
+	suspend_sys_sync_queue();
+	printk("put it done.\n");
+#else
 	printk(KERN_INFO "PM: Syncing filesystems ... ");
 	sys_sync();
 	printk("done.\n");
+#endif
 
 	pr_debug("PM: Preparing system for %s sleep\n", pm_states[state]);
 	error = suspend_prepare(state);
