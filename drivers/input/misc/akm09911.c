@@ -35,6 +35,10 @@
 #include <linux/of_gpio.h>
 #include <linux/sensors.h>
 
+#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+#include <linux/hw_dev_dec.h>
+#endif
+#include <misc/app_info.h>
 #define AKM_DEBUG_IF			0
 #define AKM_HAS_RESET			1
 #define AKM_INPUT_DEVICE_NAME	"compass"
@@ -132,13 +136,18 @@ static struct sensors_classdev sensors_cdev = {
 static struct akm_compass_data *s_akm;
 
 static int akm_compass_power_set(struct akm_compass_data *data, bool on);
-/***** I2C I/O function ***********************************************/
+#ifdef CONFIG_HUAWEI_KERNEL
+#define	SENSOR_I2C_SCL	 909
+#define	SENSOR_I2C_SDA	908
+#define I2C_RETRY_COUNT 3
+
 static int akm_i2c_rxdata(
 	struct i2c_client *i2c,
 	uint8_t *rxData,
 	int length)
 {
 	int ret;
+	int count = 0;
 
 	struct i2c_msg msgs[] = {
 		{
@@ -156,6 +165,98 @@ static int akm_i2c_rxdata(
 	};
 	uint8_t addr = rxData[0];
 
+	ret = -1;
+	while (ret != ARRAY_SIZE(msgs) && count < I2C_RETRY_COUNT) {
+		ret = i2c_transfer(i2c->adapter, msgs, ARRAY_SIZE(msgs));
+		count++;
+	}
+
+	if (ret < 0) {
+		dev_err(&i2c->dev, "%s: transfer failed.", __func__);
+		goto i2c_err;
+	} else if (ret != ARRAY_SIZE(msgs)) {
+		dev_err(&i2c->dev, "%s: transfer failed(size error).\n",
+				__func__);
+		ret = -ENXIO;
+		goto i2c_err;
+	}
+
+	dev_vdbg(&i2c->dev, "RxData: len=%02x, addr=%02x, data=%02x",
+		length, addr, rxData[0]);
+
+	return 0;
+
+i2c_err:
+	return ret;
+
+}
+
+
+static int akm_i2c_txdata(
+	struct i2c_client *i2c,
+	uint8_t *txData,
+	int length)
+{
+	int ret;
+	int count = 0;
+
+	struct i2c_msg msg[] = {
+		{
+			.addr = i2c->addr,
+			.flags = 0,
+			.len = length,
+			.buf = txData,
+		},
+	};
+
+	ret = -1;
+	while (ret != ARRAY_SIZE(msg) && count < I2C_RETRY_COUNT) {
+		ret = i2c_transfer(i2c->adapter, msg, ARRAY_SIZE(msg));
+		count++;
+	}
+
+	if (ret < 0) {
+		dev_err(&i2c->dev, "%s: transfer failed.", __func__);
+		goto i2c_err;
+	} else if (ret != ARRAY_SIZE(msg)) {
+		dev_err(&i2c->dev, "%s: transfer failed(size error).",
+				__func__);
+		ret = -ENXIO;
+		goto i2c_err;
+	}
+
+	dev_vdbg(&i2c->dev, "TxData: len=%02x, addr=%02x data=%02x",
+		length, txData[0], txData[1]);
+
+	return 0;
+
+i2c_err:
+	return ret;
+}
+#else
+
+/***** I2C I/O function ***********************************************/
+static int akm_i2c_rxdata(
+	struct i2c_client *i2c,
+	uint8_t *rxData,
+	int length)
+{
+	int ret;
+	struct i2c_msg msgs[] = {
+		{
+			.addr = i2c->addr,
+			.flags = 0,
+			.len = 1,
+			.buf = rxData,
+		},
+		{
+			.addr = i2c->addr,
+			.flags = I2C_M_RD,
+			.len = length,
+			.buf = rxData,
+		},
+	};
+	uint8_t addr = rxData[0];
 	ret = i2c_transfer(i2c->adapter, msgs, ARRAY_SIZE(msgs));
 	if (ret < 0) {
 		dev_err(&i2c->dev, "%s: transfer failed.", __func__);
@@ -203,6 +304,8 @@ static int akm_i2c_txdata(
 
 	return 0;
 }
+
+#endif
 
 /***** akm miscdevice functions *************************************/
 static int AKECS_Set_CNTL(
@@ -436,11 +539,11 @@ static int AKECS_GetData_Poll(
 	uint8_t buffer[AKM_SENSOR_DATA_SIZE];
 	int err;
 
-	/* Read data */
+	/* Read status */
 	buffer[0] = AKM_REG_STATUS;
-	err = akm_i2c_rxdata(akm->i2c, buffer, AKM_SENSOR_DATA_SIZE);
+	err = akm_i2c_rxdata(akm->i2c, buffer, 1);
 	if (err < 0) {
-		dev_err(&akm->i2c->dev, "%s failed.", __func__);
+		dev_err(&akm->i2c->dev, "%s read status failed.", __func__);
 		return err;
 	}
 
@@ -451,6 +554,14 @@ static int AKECS_GetData_Poll(
 	/* Data is over run is */
 	if (AKM_DOR_IS_HIGH(buffer[0]))
 		dev_dbg(&akm->i2c->dev, "Data over run!\n");
+
+	/* Read rest data */
+	buffer[1] = AKM_REG_STATUS + 1;
+	err = akm_i2c_rxdata(akm->i2c, &(buffer[1]), AKM_SENSOR_DATA_SIZE-1);
+	if (err < 0) {
+		dev_err(&akm->i2c->dev, "%s failed.", __func__);
+		return err;
+	}
 
 	memcpy(rbuf, buffer, size);
 	atomic_set(&akm->drdy, 0);
@@ -1010,6 +1121,12 @@ static int akm_poll_delay_set(struct sensors_classdev *sensors_cdev,
 
 	akm->delay[MAG_DATA_FLAG] = delay_msec * 1000000;
 	mode = akm_select_frequency(akm->delay[MAG_DATA_FLAG]);
+	/*before change compass mode, set to power down mode first*/
+	ret = AKECS_SetMode(akm, AKM_MODE_POWERDOWN);
+	if(ret < 0)
+	{
+		dev_err(&akm->i2c->dev, "Failed to set to power down mode\n");
+	}
 	ret = AKECS_SetMode(akm, mode);
 	if (ret < 0)
 		dev_err(&akm->i2c->dev, "Failed to set to mode(%x)\n", mode);
@@ -1738,6 +1855,12 @@ static int akm_compass_parse_dt(struct device *dev,
 			akm->gpio_rstn);
 		return -EINVAL;
 	}
+	rc = gpio_request(s_akm->gpio_rstn, "akm09911_reset");
+	if (rc < 0) {
+		gpio_free(s_akm->gpio_rstn);
+		rc = gpio_request(s_akm->gpio_rstn, "akm09911_reset");
+	}
+	gpio_direction_output(s_akm->gpio_rstn, 1);
 
 	return 0;
 }
@@ -1780,10 +1903,26 @@ static int akm_report_data(struct akm_compass_data *akm)
 	int ret;
 	int mag_x, mag_y, mag_z;
 	int tmp;
+	int count = 10;
+	static unsigned long total_delay_count = 0;
 
-	ret = AKECS_GetData_Poll(akm, dat_buf, AKM_SENSOR_DATA_SIZE);
-	if (ret) {
-		dev_err(&akm->i2c->dev, "Get data failed.\n");
+	do {
+		/* The typical time for single measurement is 7.2ms */
+		ret = AKECS_GetData_Poll(akm, dat_buf, AKM_SENSOR_DATA_SIZE);
+		if (ret == -EAGAIN) {
+			int getdata_delay = 1000;
+			usleep(getdata_delay);
+			total_delay_count++;
+			if ((total_delay_count & 0xFFF) == 0xFFF) {
+                dev_warn(&akm->i2c->dev,
+                "Waited %d us before polling again, count=%d, total_delay_count=%lu.\n",
+                        getdata_delay, count, total_delay_count);
+			}
+		}
+	} while ((ret == -EAGAIN) && (--count));
+
+	if (!count) {
+		dev_err(&akm->i2c->dev, "Timeout get valid data.\n");
 		return -EIO;
 	}
 
@@ -1876,13 +2015,27 @@ static void akm_dev_poll(struct work_struct *work)
 {
 	struct akm_compass_data *akm;
 	int ret;
-
+	uint8_t mode;
 	akm = container_of((struct delayed_work *)work,
 			struct akm_compass_data,  dwork);
 
 	ret = akm_report_data(akm);
-	if (ret < 0)
+	if (ret < 0){
 		dev_warn(&akm->i2c->dev, "Failed to report data\n");
+		/*if error occur, set compass mode to used mode*/
+		mode = akm_select_frequency(akm->delay[MAG_DATA_FLAG]);
+		/*before change compass mode, set to power down mode first*/
+		ret = AKECS_SetMode(akm, AKM_MODE_POWERDOWN);
+		if(ret < 0)
+		{
+			dev_err(&akm->i2c->dev, "Failed to set to power down mode\n");
+		}
+		ret = AKECS_SetMode(akm, mode);
+		if (ret < 0)
+		{
+			dev_err(&akm->i2c->dev, "Failed to set to mode(%x)\n", mode);
+		}
+	}
 
 	if (!akm->use_hrtimer)
 		queue_delayed_work(akm->work_queue, &akm->dwork,
@@ -2042,6 +2195,7 @@ int akm_compass_probe(struct i2c_client *client, const struct i2c_device_id *id)
 					WQ_NON_REENTRANT, 0);
 			INIT_DELAYED_WORK(&s_akm->dwork, akm_dev_poll);
 		}
+		s_akm->work_queue = alloc_workqueue("akm_poll_work", WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_HIGHPRI, 1);
 	}
 
 	/***** misc *****/
@@ -2072,7 +2226,19 @@ int akm_compass_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		dev_err(&client->dev, "class device create failed: %d\n", err);
 		goto exit8;
 	}
-
+	set_sensors_list(M_SENSOR);
+	err = app_info_set("M-Sensor", "AKM09911");
+	if (err)
+	{
+		dev_err(&client->dev, "%s, line %d:set compass AKM09911 app_info error\n", __func__, __LINE__);
+	}
+#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+	set_hw_dev_flag(DEV_I2C_COMPASS);
+#endif
+	err = set_sensor_input(AKM, s_akm->input->dev.kobj.name);
+	if (err) {
+		dev_err(&client->dev, "%s set_sensor_input failed\n", __func__);
+	}
 	akm_compass_power_set(s_akm, false);
 
 	dev_info(&client->dev, "successfully probed.");
