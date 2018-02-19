@@ -72,6 +72,7 @@
 #include <linux/uprobes.h>
 #include <linux/aio.h>
 
+#include <linux/cgroup_pids.h>
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
 #include <asm/uaccess.h>
@@ -1222,11 +1223,13 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 			goto bad_fork_free;
 	}
 	current->flags &= ~PF_NPROC_EXCEEDED;
-
-	retval = copy_creds(p, clone_flags);
+	retval = cgroup_pids_can_fork();
 	if (retval < 0)
 		goto bad_fork_free;
 
+	retval = copy_creds(p, clone_flags);
+	if (retval < 0)
+		goto bad_fork_cleanup_cgroup_pids;
 	/*
 	 * If multiple threads are within copy_process(), then this check
 	 * triggers too late. This doesn't hurt, the check is only there
@@ -1503,7 +1506,6 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	if (clone_flags & CLONE_THREAD)
 		threadgroup_change_end(current);
 	perf_event_fork(p);
-
 	trace_task_newtask(p, clone_flags);
 
 	return p;
@@ -1546,6 +1548,8 @@ bad_fork_cleanup_cgroup:
 bad_fork_cleanup_count:
 	atomic_dec(&p->cred->user->processes);
 	exit_creds(p);
+bad_fork_cleanup_cgroup_pids:
+	cgroup_pids_cancel_fork();
 bad_fork_free:
 	free_task(p);
 fork_out:
