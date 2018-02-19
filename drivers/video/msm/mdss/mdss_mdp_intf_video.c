@@ -17,7 +17,8 @@
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
 #include <linux/memblock.h>
-
+/*delete the DTS clerical error*/
+#include <mdss.h>
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 #include "mdss_panel.h"
@@ -447,6 +448,10 @@ static int mdss_mdp_video_intfs_stop(struct mdss_mdp_ctl *ctl,
 
 	mutex_lock(&ctl->offlock);
 	if (ctx->timegen_en) {
+	/*cancle the esd delay work*/
+	#ifdef CONFIG_HUAWEI_LCD
+		mdss_dsi_status_check_ctl(ctl->mfd,false);
+	#endif
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK, NULL);
 		if (rc == -EBUSY) {
 			pr_debug("intf #%d busy don't turn off\n",
@@ -622,6 +627,7 @@ static int mdss_mdp_video_wait4comp(struct mdss_mdp_ctl *ctl, void *arg)
 	return rc;
 }
 
+extern unsigned long mdss_mdp_get_clk_rate(u32 clk_idx);
 static void recover_underrun_work(struct work_struct *work)
 {
 	struct mdss_mdp_ctl *ctl =
@@ -985,6 +991,10 @@ static int mdss_mdp_video_display(struct mdss_mdp_ctl *ctl, void *arg)
 		ctx->timegen_en = true;
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_ON, NULL);
 		WARN(rc, "intf %d panel on error (%d)\n", ctl->intf_num, rc);
+	/*scheduled the esd delay work*/
+	#ifdef CONFIG_HUAWEI_LCD
+		mdss_dsi_status_check_ctl(ctl->mfd,true);
+	#endif
 	}
 
 	return 0;

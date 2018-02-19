@@ -30,3 +30,8 @@ config DIAGFWD_BRIDGE_CODE
 	help
 	 SMUX/HSIC Transport Layer for DIAG Router
 endmenu
+config HUAWEI_FEATURE_DIAG_MDLOG
+	depends on HUAWEI_KERNEL
+	bool "helps get modem log when communicating with PC"
+	help
+	 This feature helps get modem log when communicating with PC by USB.

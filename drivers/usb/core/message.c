@@ -58,8 +58,11 @@ static int usb_start_wait_urb(struct urb *urb, int timeout, int *actual_length)
 	if (!wait_for_completion_timeout(&ctx.done, expire)) {
 		usb_kill_urb(urb);
 		retval = (ctx.status == -ENOENT ? -ETIMEDOUT : ctx.status);
-
+#ifdef CONFIG_HUAWEI_KERNEL
+		dev_err(&urb->dev->dev,
+#else
 		dev_dbg(&urb->dev->dev,
+#endif
 			"%s timed out on ep%d%s len=%u/%u\n",
 			current->comm,
 			usb_endpoint_num(&urb->ep->desc),
