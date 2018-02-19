@@ -44,7 +44,7 @@
 #include <soc/qcom/smem.h>
 #include <soc/qcom/subsystem_notif.h>
 #include <soc/qcom/subsystem_restart.h>
-
+#include <sound/hw_audio_info.h>
 #include "smd_private.h"
 #include "smem_private.h"
 
@@ -140,8 +140,14 @@ struct interrupt_stat interrupt_stats[NUM_SMD_SUBSYSTEMS];
 					  entry * SMSM_NUM_HOSTS + host)
 #define SMSM_INTR_MUX_ADDR(entry)        (smsm_info.intr_mux + entry)
 
+#ifdef CONFIG_HUAWEI_WIFI
+int msm_smd_debug_mask = MSM_SMD_POWER_INFO | MSM_SMD_INFO |
+							MSM_SMSM_POWER_INFO |
+							MSM_SMD_DEBUG|MSM_SMSM_DEBUG|MSM_SMSM_INFO;
+#else
 int msm_smd_debug_mask = MSM_SMD_POWER_INFO | MSM_SMD_INFO |
 							MSM_SMSM_POWER_INFO;
+#endif
 module_param_named(debug_mask, msm_smd_debug_mask,
 		   int, S_IRUGO | S_IWUSR | S_IWGRP);
 void *smd_log_ctx;
@@ -2580,6 +2586,7 @@ static irqreturn_t smsm_irq_handler(int irq, void *data)
 		SMSM_DBG("<SM %08x %08x>\n", apps, modm);
 		if (modm & SMSM_RESET) {
 			pr_err("\nSMSM: Modem SMSM state changed to SMSM_RESET.");
+			//remove because this dsm report is reduplicate with the 20201 when modem restart report
 		} else if (modm & SMSM_INIT) {
 			if (!(apps & SMSM_INIT))
 				apps |= SMSM_INIT;
