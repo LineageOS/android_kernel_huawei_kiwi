@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fd8b8147_65f18dac",
+        "filename": "net/ipv4/udp.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 1454,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:42:14Z",
+      "side": 1,
+      "message": "Looks useless",
+      "revId": "594c18f09f8f47d38d05acd7d026d10113586ae7",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
