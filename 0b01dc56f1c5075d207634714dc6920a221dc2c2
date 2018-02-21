@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d8cee18f_e8c00791",
+        "filename": "arch/arm/configs/msm8916-perf_defconfig",
+        "patchSetId": 4
+      },
+      "lineNbr": 507,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:22:59Z",
+      "side": 1,
+      "message": "Useless",
+      "revId": "0b01dc56f1c5075d207634714dc6920a221dc2c2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa12602a_9682bdbe",
+        "filename": "arch/arm/configs/msm8916_defconfig",
+        "patchSetId": 4
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:22:59Z",
+      "side": 1,
+      "message": "Useless \u0026 below, we are 64bit and don\u0027t use these defconfigs",
+      "revId": "0b01dc56f1c5075d207634714dc6920a221dc2c2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ac808ced_a16dba92",
+        "filename": "arch/arm/configs/msm_defconfig",
+        "patchSetId": 4
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:22:59Z",
+      "side": 1,
+      "message": "Useless, same as previous files",
+      "revId": "0b01dc56f1c5075d207634714dc6920a221dc2c2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "002d5c3d_4cb7a1ec",
+        "filename": "arch/arm/mach-msm/Makefile",
+        "patchSetId": 4
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:22:59Z",
+      "side": 1,
+      "message": "Useless",
+      "revId": "0b01dc56f1c5075d207634714dc6920a221dc2c2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "12c0460c_b4748d21",
+        "filename": "arch/arm/mm/fault.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:22:59Z",
+      "side": 1,
+      "message": "Looks useless",
+      "revId": "0b01dc56f1c5075d207634714dc6920a221dc2c2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5216460b_20ef96d6",
+        "filename": "arch/arm64/configs/msm_defconfig",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:22:59Z",
+      "side": 1,
+      "message": "No need to modify this file, we\u0027re using huawei defconfig",
+      "revId": "0b01dc56f1c5075d207634714dc6920a221dc2c2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
