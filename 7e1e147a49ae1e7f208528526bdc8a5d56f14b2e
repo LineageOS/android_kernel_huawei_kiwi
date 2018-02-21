@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d546a515_f335d9bc",
+        "filename": "drivers/video/msm/mdss/hw_lcd_common.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T23:22:27Z",
+      "side": 1,
+      "message": "Remove this as well and references to it? noop",
+      "range": {
+        "startLine": 372,
+        "startChar": 0,
+        "endLine": 372,
+        "endChar": 51
+      },
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
