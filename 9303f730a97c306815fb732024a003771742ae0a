@@ -1,0 +1,268 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ce347431_2aa52322",
+        "filename": "sound/hw_audio_info.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 327,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:41:27Z",
+      "side": 1,
+      "message": "Remove these and then remove any calls to these from the other sound files",
+      "range": {
+        "startLine": 316,
+        "startChar": 0,
+        "endLine": 327,
+        "endChar": 1
+      },
+      "revId": "9303f730a97c306815fb732024a003771742ae0a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "03480f41_68cf204d",
+        "filename": "sound/soc/codecs/msm8916-wcd-irq.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:41:27Z",
+      "side": 1,
+      "message": "Useless",
+      "revId": "9303f730a97c306815fb732024a003771742ae0a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa04b5c2_953adf5f",
+        "filename": "sound/soc/codecs/msm8x16-wcd.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:41:27Z",
+      "side": 1,
+      "message": "I think you can remove this after removing the dsm calls",
+      "range": {
+        "startLine": 49,
+        "startChar": 0,
+        "endLine": 49,
+        "endChar": 32
+      },
+      "revId": "9303f730a97c306815fb732024a003771742ae0a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7d479c39_e3470436",
+        "filename": "sound/soc/codecs/wcd-mbhc-v2.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:41:27Z",
+      "side": 1,
+      "message": "Useless",
+      "range": {
+        "startLine": 13,
+        "startChar": 0,
+        "endLine": 21,
+        "endChar": 6
+      },
+      "revId": "9303f730a97c306815fb732024a003771742ae0a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a8382741_9bd39739",
+        "filename": "sound/soc/codecs/wcd-mbhc-v2.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:41:27Z",
+      "side": 1,
+      "message": "I think you can remove this after removing the dsm calls",
+      "range": {
+        "startLine": 23,
+        "startChar": 0,
+        "endLine": 23,
+        "endChar": 31
+      },
+      "revId": "9303f730a97c306815fb732024a003771742ae0a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "83c9e9a6_ec252070",
+        "filename": "sound/soc/codecs/wcd-mbhc-v2.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:41:27Z",
+      "side": 1,
+      "message": "I think you can remove this after removing the dsm calls",
+      "range": {
+        "startLine": 52,
+        "startChar": 0,
+        "endLine": 52,
+        "endChar": 32
+      },
+      "revId": "9303f730a97c306815fb732024a003771742ae0a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "91ed0d3c_1299e3f0",
+        "filename": "sound/soc/codecs/wcd-mbhc-v2.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 1454,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:41:27Z",
+      "side": 1,
+      "message": "Useless",
+      "revId": "9303f730a97c306815fb732024a003771742ae0a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "19106283_bce8fd9e",
+        "filename": "sound/soc/codecs/wcd-mbhc-v2.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 2313,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:41:27Z",
+      "side": 1,
+      "message": "I think this whole section is just to detect if device is rio and set enable_ignore_btn_press. You can probably remove it and any changes related to enable_ignore_btn_press",
+      "range": {
+        "startLine": 2296,
+        "startChar": 0,
+        "endLine": 2313,
+        "endChar": 2
+      },
+      "revId": "9303f730a97c306815fb732024a003771742ae0a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "15f7ff08_18df37ac",
+        "filename": "sound/soc/msm/msm8x16.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:41:27Z",
+      "side": 1,
+      "message": "I think you can remove this after removing the dsm calls",
+      "range": {
+        "startLine": 35,
+        "startChar": 0,
+        "endLine": 35,
+        "endChar": 32
+      },
+      "revId": "9303f730a97c306815fb732024a003771742ae0a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a3c1e50d_a4d1e228",
+        "filename": "sound/soc/msm/msm8x16.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 906,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:41:27Z",
+      "side": 1,
+      "message": "Dead code",
+      "range": {
+        "startLine": 893,
+        "startChar": 0,
+        "endLine": 906,
+        "endChar": 6
+      },
+      "revId": "9303f730a97c306815fb732024a003771742ae0a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8e1b8dbf_46b8a474",
+        "filename": "sound/soc/msm/msm8x16.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 933,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:41:27Z",
+      "side": 1,
+      "message": "Dead code",
+      "range": {
+        "startLine": 926,
+        "startChar": 0,
+        "endLine": 933,
+        "endChar": 6
+      },
+      "revId": "9303f730a97c306815fb732024a003771742ae0a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f0f8f310_3e238bd7",
+        "filename": "sound/soc/msm/msm8x16.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 998,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-21T17:41:27Z",
+      "side": 1,
+      "message": "Dead code",
+      "range": {
+        "startLine": 991,
+        "startChar": 0,
+        "endLine": 998,
+        "endChar": 6
+      },
+      "revId": "9303f730a97c306815fb732024a003771742ae0a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
