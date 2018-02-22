@@ -2,6 +2,233 @@
   "comments": [
     {
       "key": {
+        "uuid": "20f3c4af_2773353b",
+        "filename": "drivers/input/misc/Kconfig",
+        "patchSetId": 16
+      },
+      "lineNbr": 836,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-22T00:21:59Z",
+      "side": 1,
+      "message": "Remove changes to this file",
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "405ab5fa_c3946a85",
+        "filename": "drivers/input/misc/Makefile",
+        "patchSetId": 16
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-22T00:21:59Z",
+      "side": 1,
+      "message": "Remove changes to this file",
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5966d106_03c075c0",
+        "filename": "drivers/input/misc/akm09911.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-22T00:21:59Z",
+      "side": 1,
+      "message": "Remove changes to this file",
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "00cea88f_357b1a88",
+        "filename": "drivers/input/misc/lis3dh_acc.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-22T00:21:59Z",
+      "side": 1,
+      "message": "Remove changes to this file",
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2fd49601_07c8d52b",
+        "filename": "drivers/input/touchscreen/Kconfig",
+        "patchSetId": 16
+      },
+      "lineNbr": 1050,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-22T00:21:59Z",
+      "side": 1,
+      "message": "Changes to this file look useless",
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0c893ba2_4d138d04",
+        "filename": "drivers/input/touchscreen/Makefile",
+        "patchSetId": 16
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-22T00:21:59Z",
+      "side": 1,
+      "message": "All changes are commented out here",
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e3c3c543_7c7cbc68",
+        "filename": "drivers/leds/leds-gpio.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-22T00:21:59Z",
+      "side": 1,
+      "message": "Remove changes from this file",
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fe246e74_8f9f0997",
+        "filename": "drivers/misc/Makefile",
+        "patchSetId": 16
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-22T00:21:59Z",
+      "side": 1,
+      "message": "Revert these changes",
+      "range": {
+        "startLine": 33,
+        "startChar": 0,
+        "endLine": 34,
+        "endChar": 55
+      },
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4ce5e205_b82de1b5",
+        "filename": "drivers/net/wireless/wcnss/wcnss_vreg.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-22T00:21:59Z",
+      "side": 1,
+      "message": "Remove changes to this file",
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0af5e5f4_02d91800",
+        "filename": "drivers/net/wireless/wcnss/wcnss_wlan.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-22T00:21:59Z",
+      "side": 1,
+      "message": "Remove logging changes to this file",
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "43f318ff_34dced7d",
+        "filename": "drivers/platform/msm/qpnp-revid.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-22T00:21:59Z",
+      "side": 1,
+      "message": "Useless?",
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8cbdce8b_e8a14fe6",
+        "filename": "drivers/platform/msm/qpnp-vibrator.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-22T00:21:59Z",
+      "side": 1,
+      "message": "Remove logging changes to this file",
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "74fb0c40_26254903",
+        "filename": "drivers/power/reset/Kconfig",
+        "patchSetId": 16
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-22T00:21:59Z",
+      "side": 1,
+      "message": "Remove this and associated code?",
+      "revId": "7e1e147a49ae1e7f208528526bdc8a5d56f14b2e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d546a515_f335d9bc",
         "filename": "drivers/video/msm/mdss/hw_lcd_common.c",
         "patchSetId": 16
