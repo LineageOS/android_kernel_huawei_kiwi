@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "58486140_ee8ca7d5",
+        "filename": "kernel/workqueue.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 2878,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-23T22:28:27Z",
+      "side": 1,
+      "message": "All changes to this file is this commit https://github.com/LineageOS/android_kernel_qcom_msm8916/commit/3c3dc05ea4af25d0334c58618cdb09d0f169424f\n\nRemove them, already present in newer tags",
+      "revId": "44d35ac56fe4451e53b49320f9e4c19bd0b87f15",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
