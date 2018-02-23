@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "47b7e86c_8abf97db",
+        "filename": "mm/vmpressure.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-23T22:31:48Z",
+      "side": 1,
+      "message": "All changes in this file is this commit https://github.com/LineageOS/android_kernel_qcom_msm8916/commit/5e27271185aeaf9cb0025fa4f5077ebcd1db62bc included in newer tags. Remove them",
+      "revId": "f68585213393be680ddd1c207cd9ff7b7885fad6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
