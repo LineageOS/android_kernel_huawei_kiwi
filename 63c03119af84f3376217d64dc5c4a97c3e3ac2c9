@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ce5c8866_70ae5b2b",
+        "filename": "sound/soc/codecs/msm8916-wcd-irq.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-23T22:35:02Z",
+      "side": 1,
+      "message": "All changes in this file are this commit https://github.com/LineageOS/android_kernel_qcom_msm8916/commit/a96cc481c7d1feb3745d186e50d1f410d2da955a which is in newer tags, except the higher timeout here. Not sure if it\u0027s needed",
+      "revId": "63c03119af84f3376217d64dc5c4a97c3e3ac2c9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
