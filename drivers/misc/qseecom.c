@@ -105,6 +105,13 @@ static DEFINE_MUTEX(qsee_bw_mutex);
 static DEFINE_MUTEX(app_access_lock);
 static DEFINE_MUTEX(clk_access_lock);
 
+#define HUAWEI_TA_MAGIC_NUM  0x08171401
+struct huawei_ca_verify_cmd
+{
+    uint32_t magicnum;
+    pid_t pid;
+};
+
 struct qseecom_registered_listener_list {
 	struct list_head                 list;
 	struct qseecom_register_listener_req svc;
@@ -2048,7 +2055,21 @@ static int __qseecom_send_cmd(struct qseecom_dev_handle *data,
 	struct qseecom_registered_app_list *ptr_app;
 	bool found_app = false;
 	int name_len = 0;
+    struct huawei_ca_verify_cmd* huawei_cmd_ptr = NULL;
 
+	huawei_cmd_ptr = (struct huawei_ca_verify_cmd*)req->cmd_req_buf;
+	if(huawei_cmd_ptr->magicnum == HUAWEI_TA_MAGIC_NUM)
+	{
+		if(huawei_cmd_ptr->pid != current->tgid)
+		{
+			pr_err("PID:%d from userspace, PID:%d\n in kernel, not equal\n",huawei_cmd_ptr->pid,current->pid);
+			return -EINVAL;
+		}
+		else
+		{
+			pr_info("get a cmd form pid:%d\n",huawei_cmd_ptr->pid);
+		}
+	}
 	reqd_len_sb_in = req->cmd_req_len + req->resp_len;
 	/* find app_id & img_name from list */
 	spin_lock_irqsave(&qseecom.registered_app_list_lock, flags);
