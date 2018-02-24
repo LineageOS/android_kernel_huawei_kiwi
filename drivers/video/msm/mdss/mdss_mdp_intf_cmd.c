@@ -741,7 +741,10 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
 
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_ON, NULL);
 		WARN(rc, "intf %d panel on error (%d)\n", ctl->intf_num, rc);
-
+		/*schedule the esd delay work*/
+#ifdef CONFIG_HUAWEI_LCD
+		mdss_dsi_status_check_ctl(ctl->mfd,true);
+#endif
 		ctx->panel_power_state = MDSS_PANEL_POWER_ON;
 		if (sctx)
 			sctx->panel_power_state = MDSS_PANEL_POWER_ON;
@@ -888,6 +891,11 @@ int mdss_mdp_cmd_intfs_stop(struct mdss_mdp_ctl *ctl, int session,
 		pr_err("invalid ctx session: %d\n", session);
 		return -ENODEV;
 	}
+
+	/*cancel the esd delay work*/
+#ifdef CONFIG_HUAWEI_LCD
+	mdss_dsi_status_check_ctl(ctl->mfd,false);
+#endif
 
 	/* intf stopped,  no more kickoff */
 	ctx->intf_stopped = 1;
