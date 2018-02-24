@@ -1,3 +1,4 @@
+
 /*
  * Gadget Driver for Android
  *
@@ -37,8 +38,15 @@
 #include "gadget_chips.h"
 
 #include "f_fs.c"
+#ifdef CONFIG_HUAWEI_KERNEL
+#include "f_fs_hdb.c"
+#endif
+
 #ifdef CONFIG_SND_PCM
 #include "f_audio_source.c"
+#endif
+#ifdef CONFIG_HUAWEI_USB
+#include "huawei_usb.h"
 #endif
 #include "f_mass_storage.c"
 #define USB_ETH_RNDIS y
@@ -77,6 +85,34 @@
 #include "f_ncm.c"
 #include "f_charger.c"
 
+#include <linux/rtc.h>
+#define HW_USB_TIME_SYNC_PC
+#define USB_REQ_SEND_HOST_TIME    0xA2
+#define BEIJING_TIME_ZONE 8
+#define AFTER_BOOT_TO_1970YEAR ((1971-1970)*365*24*60*60)
+
+struct _time {
+    int            time_bias;
+    unsigned short year;
+    unsigned short month;
+    unsigned short day;
+    unsigned short hour;
+    unsigned short minute;
+    unsigned short second;
+    unsigned short millisecond;
+    unsigned short weekday;
+};
+
+struct gFlush_PC_Data {
+    struct timespec tv;
+	struct delayed_work pc_data_work;
+};
+
+struct gFlush_PC_Data flush_pc_data;
+static struct usb_ctrlrequest android_ctrl_request;
+static int android_setup_config(struct usb_configuration *c,
+        const struct usb_ctrlrequest *ctrl);
+
 MODULE_AUTHOR("Mike Lockwood");
 MODULE_DESCRIPTION("Android Composite USB Driver");
 MODULE_LICENSE("GPL");
@@ -89,7 +125,28 @@ static const char longname[] = "Gadget Android";
 #define PRODUCT_ID		0x0001
 
 #define ANDROID_DEVICE_NODE_NAME_LENGTH 11
+#define STRING_TO_DECIMAL_INT    10
 
+#ifdef CONFIG_HUAWEI_USB
+/* string id of sequence number in string descriptor */
+static int serial_str_id = -1;
+
+/* 0: no usb port switch request has been sent
+ * 1: one usb port switch request has already been sent at least
+ */
+static int switch_request = 0;
+
+/* to store the usb parameter in cmdline */
+usb_param usb_parameter = {
+    .usb_serial = {0},
+    .vender_name = {0},
+    .country_name = {0},
+    .hw_custom_features = 0
+};
+#define STRING_TO_HEX_INT        16
+
+#endif
+int usb_debug = 2;
 struct android_usb_function {
 	char *name;
 	void *config;
@@ -220,7 +277,12 @@ struct android_configuration {
 
 struct dload_struct __iomem *diag_dload;
 static struct class *android_class;
+#ifdef CONFIG_HUAWEI_USB
+static LIST_HEAD (android_dev_list );
+#else
 static struct list_head android_dev_list;
+#endif
+
 static int android_dev_count;
 static int android_bind_config(struct usb_configuration *c);
 static void android_unbind_config(struct usb_configuration *c);
@@ -269,6 +331,17 @@ static struct usb_device_descriptor device_desc = {
 	.bNumConfigurations   = 1,
 };
 
+#ifdef CONFIG_HUAWEI_KERNEL
+static int android_dev_enable = 1;
+int get_android_usb_none_mode(void)
+{
+	if ((android_dev_enable == 0) && (device_desc.bDeviceClass == 0))
+		return 1;
+	else
+		return 0;
+}
+#endif
+
 static struct usb_otg_descriptor otg_descriptor = {
 	.bLength =		sizeof otg_descriptor,
 	.bDescriptorType =	USB_DT_OTG,
@@ -280,6 +353,49 @@ static const struct usb_descriptor_header *otg_desc[] = {
 	(struct usb_descriptor_header *) &otg_descriptor,
 	NULL,
 };
+#ifdef CONFIG_HUAWEI_USB
+/*
+ * usb_port_switch_request: submit usb switch request by sending uevent
+ * @usb_pid_index: usb pid index to switch
+ * Return value: void
+ * Side effect : none
+ */
+void usb_port_switch_request(int usb_pid_index)
+{
+	struct android_dev *dev;
+	char event_buf[32];
+	char *envp[2] = {event_buf, NULL};
+	int ret;
+
+	if (list_empty(&android_dev_list))
+	{
+	    pr_info("no android_dev probed \n");
+	    return;
+	}
+
+	/* use the last android_dev that was probed.
+	 * in fact, just one android_dev is probed so far.
+	 */
+	dev = list_entry(android_dev_list.prev, struct android_dev, list_item);
+
+	snprintf(event_buf, sizeof(event_buf),"USB_PORT_SWITCH=%d", usb_pid_index);
+
+	pr_info("%s: send uevent (%s)\n", __func__, event_buf);
+	ret = kobject_uevent_env(&dev->dev->kobj, KOBJ_CHANGE, envp);
+	if (ret < 0)
+	{
+		pr_info("%s: uevent sending failed with ret = %d\n", __func__, ret);
+	}
+
+	/* framework may lost the requeset uevent when start with usb connection in normal mode
+	 * use switch_request as a flag to record a request has been sent already.
+	 */
+	switch_request = 1;
+
+	return;
+}
+EXPORT_SYMBOL(usb_port_switch_request);
+#endif  /* CONFIG_HUAWEI_USB */
 
 static const char *pm_qos_to_string(enum android_pm_qos_state state)
 {
@@ -700,6 +816,146 @@ static void *functionfs_acquire_dev_callback(const char *dev_name)
 static void functionfs_release_dev_callback(struct ffs_data *ffs_data)
 {
 }
+
+#ifdef CONFIG_HUAWEI_KERNEL
+struct functionfs_hdb_config {
+	bool opened;
+	bool enabled;
+	struct hdb_ffs_data *data;
+	struct android_dev *dev;
+};
+
+static int ffs_function_hdb_init(struct android_usb_function *f,
+			     struct usb_composite_dev *cdev)
+{
+	f->config = kzalloc(sizeof(struct functionfs_config), GFP_KERNEL);
+	if (!f->config)
+		return -ENOMEM;
+
+	return functionfs_hdb_init();
+}
+
+static void ffs_function_hdb_cleanup(struct android_usb_function *f)
+{
+	functionfs_hdb_cleanup();
+	kfree(f->config);
+}
+
+static void ffs_function_hdb_enable(struct android_usb_function *f)
+{
+	struct android_dev *dev = f->android_dev;
+	struct functionfs_hdb_config *config = f->config;
+
+	config->enabled = true;
+
+	/* Disable the gadget until the function is ready */
+	if (!config->opened)
+		android_disable(dev);
+}
+
+static void ffs_function_hdb_disable(struct android_usb_function *f)
+{
+	struct android_dev *dev = f->android_dev;
+	struct functionfs_hdb_config *config = f->config;
+
+	config->enabled = false;
+
+	/* Balance the disable that was called in closed_callback */
+	if (!config->opened)
+		android_enable(dev);
+}
+
+static int ffs_function_hdb_bind_config(struct android_usb_function *f,
+				    struct usb_configuration *c)
+{
+	struct functionfs_hdb_config *config = f->config;
+	return functionfs_hdb_bind_config(c->cdev, c, config->data);
+}
+
+static struct android_usb_function hdb_ffs_function = {
+	.name		= "hdb",
+	.init		= ffs_function_hdb_init,
+	.enable		= ffs_function_hdb_enable,
+	.disable	= ffs_function_hdb_disable,
+	.cleanup	= ffs_function_hdb_cleanup,
+	.bind_config	= ffs_function_hdb_bind_config,
+};
+
+static int functionfs_hdb_ready_callback(struct hdb_ffs_data *ffs)
+{
+	struct android_dev *dev = hdb_ffs_function.android_dev;
+	struct functionfs_hdb_config *config = hdb_ffs_function.config;
+	int ret = 0;
+
+	/* dev is null in case ADB is not in the composition */
+	if (dev) {
+		mutex_lock(&dev->mutex);
+		ret = functionfs_hdb_bind(ffs, dev->cdev);
+		if (ret) {
+			mutex_unlock(&dev->mutex);
+			return ret;
+		}
+	} else {
+		/* android ffs_func requires daemon to start only after enable*/
+		pr_debug("start hdbd only in HDB composition\n");
+		return -ENODEV;
+	}
+
+	config->data = ffs;
+	config->opened = true;
+	/* Save dev in case the adb function will get disabled */
+	config->dev = dev;
+
+	if (config->enabled)
+		android_enable(dev);
+
+	mutex_unlock(&dev->mutex);
+
+	return 0;
+}
+
+static void functionfs_hdb_closed_callback(struct hdb_ffs_data *ffs)
+{
+	struct android_dev *dev = hdb_ffs_function.android_dev;
+	struct functionfs_hdb_config *config = hdb_ffs_function.config;
+
+	/*
+	 * In case new composition is without hdb or ADB got disabled by the
+	 * time ffs_daemon was stopped then use saved one
+	 */
+	if (!dev)
+		dev = config->dev;
+
+	/* fatal-error: It should never happen */
+	if (!dev)
+		pr_err("functionfs_hdb_closed_callback: config->dev is NULL");
+
+	if (dev)
+		mutex_lock(&dev->mutex);
+
+	if (config->enabled && dev)
+		android_disable(dev);
+
+	config->dev = NULL;
+
+	config->opened = false;
+	config->data = NULL;
+
+	functionfs_hdb_unbind(ffs);
+
+	if (dev)
+		mutex_unlock(&dev->mutex);
+}
+
+static void *functionfs_hdb_acquire_dev_callback(const char *dev_name)
+{
+	return 0;
+}
+
+static void functionfs_hdb_release_dev_callback(struct hdb_ffs_data *ffs_data)
+{
+}
+#endif
 
 /* ACM */
 static char acm_transports[32];	/*enabled ACM ports - "tty[,sdio]"*/
@@ -1347,6 +1603,7 @@ static ssize_t wMTU_store(struct device *dev,
 	int value;
 	if (sscanf(buf, "%d", &value) == 1) {
 		if (value < 0 || value > USHRT_MAX)
+
 			pr_err("illegal MTU %d, enter unsigned 16 bits\n",
 				value);
 		else
@@ -2401,13 +2658,19 @@ struct mass_storage_function_config {
 static int mass_storage_function_init(struct android_usb_function *f,
 					struct usb_composite_dev *cdev)
 {
+#ifndef CONFIG_HUAWEI_USB
 	struct android_dev *dev = cdev_to_android_dev(cdev);
+#endif
 	struct mass_storage_function_config *config;
 	struct fsg_common *common;
 	int err;
-	int i, n;
+#ifdef CONFIG_HUAWEI_USB
+	int i;
+#endif
 	char name[FSG_MAX_LUNS][MAX_LUN_NAME];
+#ifndef CONFIG_HUAWEI_USB
 	u8 uicc_nluns = dev->pdata ? dev->pdata->uicc_nluns : 0;
+#endif
 
 	config = kzalloc(sizeof(struct mass_storage_function_config),
 							GFP_KERNEL);
@@ -2415,7 +2678,7 @@ static int mass_storage_function_init(struct android_usb_function *f,
 		pr_err("Memory allocation failed.\n");
 		return -ENOMEM;
 	}
-
+#ifndef CONFIG_HUAWEI_USB
 	config->fsg.nluns = 1;
 	snprintf(name[0], MAX_LUN_NAME, "lun");
 	config->fsg.luns[0].removable = 1;
@@ -2439,13 +2702,24 @@ static int mass_storage_function_init(struct android_usb_function *f,
 		config->fsg.luns[n].removable = 1;
 		config->fsg.nluns++;
 	}
+#else
+    /* support multi luns and ro of ench lun is set to 0 to allow
+     * opening "filename" in R/W mode. If the file is read-only,
+     * the ro will be set to 1 automatically.
+     */
+    config->fsg.nluns = USB_MAX_LUNS;
+	for (i = 0; i < USB_MAX_LUNS; i++) {
+        config->fsg.luns[i].removable = 1;
+        config->fsg.luns[i].nofua = 1;
+	}
+#endif
 
 	common = fsg_common_init(NULL, cdev, &config->fsg);
 	if (IS_ERR(common)) {
 		kfree(config);
 		return PTR_ERR(common);
 	}
-
+#ifndef CONFIG_HUAWEI_USB
 	for (i = 0; i < config->fsg.nluns; i++) {
 		err = sysfs_create_link(&f->dev->kobj,
 					&common->luns[i].dev.kobj,
@@ -2453,6 +2727,19 @@ static int mass_storage_function_init(struct android_usb_function *f,
 		if (err)
 			goto error;
 	}
+#else
+    /* create a symlink for each lun */
+	for (i = 0; i < USB_MAX_LUNS; i++)
+    {
+        err = sysfs_create_link(&f->dev->kobj,
+                    &common->luns[i].dev.kobj,
+                    dev_name(&common->luns[i].dev));
+        if (err)
+        {
+			goto error;
+        }
+    }
+#endif
 
 	config->common = common;
 	f->config = config;
@@ -2500,7 +2787,6 @@ static int mass_storage_lun_init(struct android_usb_function *f,
 
 	if (inc_lun)
 		number_of_luns++;
-
 	pr_debug("number_of_luns:%d\n", number_of_luns);
 	return number_of_luns;
 }
@@ -2598,6 +2884,141 @@ static ssize_t mass_storage_inquiry_store(struct device *dev,
 		return -EINVAL;
 	return size;
 }
+#ifdef CONFIG_HUAWEI_USB
+/*
+ * nluns_show: to get the total number of luns
+ * @dev: usb mass storage device
+ * @attr: the atrribute of device
+ * @buf: the buffer to place the result into
+ * Return value: the number of characters
+ * Side effect : none
+ */
+static ssize_t nluns_show(struct device *pdev, struct device_attribute *attr,
+			   char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", nluns);
+}
+
+/*
+ * nluns_store: to set the total number of luns
+ * @dev: usb mass storage device
+ * @attr: the atrribute of device
+ * @buf: the buffer to get input value
+ * @size: the size of buffer
+ * Return value: @size success, -1 fail
+ * Side effect : none
+ */
+static ssize_t nluns_store(struct device *pdev, struct device_attribute *attr,
+			    const char *buff, size_t size)
+{
+    /* use kstrtoint to replace sscanf */
+    int value = 0;
+
+    if(kstrtoint(buff, STRING_TO_DECIMAL_INT, &value) <0)
+    {
+	pr_err("Failed to set nluns\n");
+         return -1;
+    }
+
+	if(value <= USB_MAX_LUNS)
+	{
+	pr_info("nluns = %d\n", value);
+        nluns = value;
+        return size;
+    }
+
+	pr_err("failed because nluns is greater than the supported number \n");
+	return -1;
+}
+
+/*
+ * cdrom_index_store: to get cdrom_index
+ * @dev: usb mass storage device
+ * @attr: the atrribute of device
+ * @buf: the buffer to place the result into, "none" represents there is no cdrom and number represents the lun index
+ * Return value: the number of characters
+ * Side effect : none
+ */
+static ssize_t cdrom_index_show(struct device *pdev, struct device_attribute *attr,
+			   char *buf)
+{
+    if(cdrom_index >= USB_MAX_LUNS)
+    {
+        return snprintf(buf, PAGE_SIZE, "%s\n", "none");
+    }
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", cdrom_index);
+}
+
+/*
+ * cdrom_index_store: to set cdrom_index
+ * @dev: usb mass storage device
+ * @attr: the atrribute of device
+ * @buf: the buf to get input value, "none" represents there is no cdrom and number represents the lun index
+ * @size: the size of buf
+ * Return value: @size success, -1 fail
+ * Side effect : none
+ */
+static ssize_t cdrom_index_store(struct device *pdev, struct device_attribute *attr,
+			    const char *buff, size_t size)
+{
+    char buf[32];
+    int value = 0;
+    struct android_usb_function *f = dev_get_drvdata(pdev);
+    struct mass_storage_function_config *config = f->config;
+
+    strlcpy(buf, buff, sizeof(buf));
+
+    if(!strcmp(buf, "none"))
+    {
+	pr_info("no cdrom \n");
+        cdrom_index = USB_MAX_LUNS;
+        return size;
+    }
+
+    if(kstrtoint(buf, STRING_TO_DECIMAL_INT, &value) <0)
+    {
+	pr_err("Failed to set cdrom_index\n");
+        return -1;
+    }
+
+    if(likely(config) && likely(config->common) && likely(config->common->luns)
+        && value < USB_MAX_LUNS)
+    {
+        down_write(&config->common->filesem);
+        config->common->luns[value].cdrom = 1;
+        up_write(&config->common->filesem);
+    }
+
+    cdrom_index = value;
+	pr_info("cdrom_index = %d\n", cdrom_index);
+	return size;
+}
+
+/*
+ * create /sys/class/android_usb/android0/f_mass_storage/suitestate
+ * usb setttings apk will write 0 to this node
+ */
+static ssize_t suitestate_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    return snprintf(buf, PAGE_SIZE, "%d\n", suitestate);
+}
+static ssize_t suitestate_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+    int value = 0;
+    if(kstrtoint(buf, STRING_TO_DECIMAL_INT, &value) == 0)
+    {
+        suitestate = value;
+        return size;
+    }
+    return -1;
+}
+
+static DEVICE_ATTR(nluns, S_IRUGO | S_IWUSR, nluns_show, nluns_store);
+static DEVICE_ATTR(cdrom_index, S_IRUGO | S_IWUSR, cdrom_index_show, cdrom_index_store);
+static DEVICE_ATTR(suitestate, S_IRUGO | S_IWUSR, suitestate_show, suitestate_store);
+#endif
+
 
 static DEVICE_ATTR(inquiry_string, S_IRUGO | S_IWUSR,
 					mass_storage_inquiry_show,
@@ -2624,6 +3045,11 @@ static DEVICE_ATTR(luns, S_IRUGO | S_IWUSR,
 static struct device_attribute *mass_storage_function_attributes[] = {
 	&dev_attr_inquiry_string,
 	&dev_attr_luns,
+    #ifdef CONFIG_HUAWEI_USB
+	&dev_attr_nluns,
+	&dev_attr_cdrom_index,
+	&dev_attr_suitestate,
+	#endif
 	NULL
 };
 
@@ -2781,6 +3207,9 @@ static struct android_usb_function uasp_function = {
 
 static struct android_usb_function *supported_functions[] = {
 	&ffs_function,
+#ifdef CONFIG_HUAWEI_KERNEL
+	&hdb_ffs_function,
+#endif
 	&mbim_function,
 	&ecm_qc_function,
 #ifdef CONFIG_SND_PCM
@@ -3110,6 +3539,10 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 
 	strlcpy(buf, buff, sizeof(buf));
 	b = strim(buf);
+    /* print informatin for debug */
+#ifdef CONFIG_HUAWEI_USB
+	pr_info("%s\n", buf);
+#endif
 
 	dev->cdev->gadget->streaming_enabled = false;
 	while (b) {
@@ -3201,6 +3634,23 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	mutex_lock(&dev->mutex);
 
 	sscanf(buff, "%d", &enabled);
+#ifdef CONFIG_HUAWEI_USB
+        /* cleanup usb serial number for normal and factory mode */
+    if(!strcmp(serial_string, "cleanup"))
+    {
+        /* if in normal ro factory mode, set the serial number to 0 */
+        cdev->desc.iSerialNumber = 0;
+        serial_string[0] = '\0';
+		pr_info("cleanup usb serial number for noraml and factory mode!\n");
+    }
+    else /* google mode must have usb serial number */
+    {
+        /* recovery the serial number from serial_str_id */
+        cdev->desc.iSerialNumber = serial_str_id;
+	    strlcpy(serial_string, usb_parameter.usb_serial, USB_SERIAL_LEN);
+    }
+#endif  /* CONFIG_HUAWEI_USB */
+
 	if (enabled && !dev->enabled) {
 		/*
 		 * Update values in composite driver's copy of
@@ -3238,6 +3688,10 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 		}
 		dev->enabled = true;
 	} else if (!enabled && dev->enabled) {
+		/* close all stored file in each lun */
+#ifdef CONFIG_HUAWEI_USB
+		fsg_close_all_file(((struct mass_storage_function_config *)mass_storage_function.config)->common);
+#endif
 		android_disable(dev);
 		list_for_each_entry(conf, &dev->configs, list_item)
 			list_for_each_entry(f_holder, &conf->enabled_functions,
@@ -3252,6 +3706,10 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	}
 
 	mutex_unlock(&dev->mutex);
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	android_dev_enable = dev->enabled;
+#endif
 
 	return size;
 }
@@ -3303,6 +3761,45 @@ static ssize_t state_show(struct device *pdev, struct device_attribute *attr,
 	spin_unlock_irqrestore(&cdev->lock, flags);
 out:
 	return snprintf(buf, PAGE_SIZE, "%s\n", state);
+}
+
+#ifdef CONFIG_HUAWEI_USB
+static ssize_t switch_request_show(struct device *pdev, struct device_attribute *attr,
+			   char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", switch_request);
+}
+
+static ssize_t switch_request_store(struct device *pdev, struct device_attribute *attr,
+				const char *buff, size_t size)
+{
+	int value = 0;
+	if(kstrtoint(buff, STRING_TO_DECIMAL_INT, &value) <0)
+	{
+		pr_err("Failed to set switch_request\n");
+		return -1;
+	}
+
+	switch_request = value;
+	return size;
+}
+#endif
+static ssize_t usb_debug_show(struct device *pdev, struct device_attribute *attr,
+			   char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", usb_debug);
+}
+static ssize_t usb_debug_store(struct device *pdev, struct device_attribute *attr,
+			   const char *buff, size_t size)
+{
+	int value = 0;
+	if(kstrtoint(buff,STRING_TO_DECIMAL_INT,&value)<0)
+	{
+		pr_err("Failed to sent usb_debug\n");
+		return -1;
+	}
+	usb_debug = value;
+	return size;
 }
 
 #define ANDROID_DEV_ATTR(field, format_string)				\
@@ -3396,7 +3893,13 @@ ANDROID_DEV_ATTR(idle_pc_rpm_no_int_secs, "%u\n");
 static DEVICE_ATTR(state, S_IRUGO, state_show, NULL);
 static DEVICE_ATTR(remote_wakeup, S_IRUGO | S_IWUSR,
 		remote_wakeup_show, remote_wakeup_store);
-
+#ifdef CONFIG_HUAWEI_USB
+/* read the attribute to indentify if there is a switch request has been sent or not
+ * write 0 to clear the request flag
+ */
+static DEVICE_ATTR(switch_request, S_IRUGO | S_IWUSR, switch_request_show, switch_request_store);
+#endif
+static DEVICE_ATTR(usb_debug, S_IRUGO | S_IWUSR, usb_debug_show, usb_debug_store);
 static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_idVendor,
 	&dev_attr_idProduct,
@@ -3417,12 +3920,134 @@ static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_idle_pc_rpm_no_int_secs,
 	&dev_attr_pm_qos_state,
 	&dev_attr_state,
+	&dev_attr_usb_debug,
 	&dev_attr_remote_wakeup,
+#ifdef CONFIG_HUAWEI_USB
+    &dev_attr_switch_request,
+#endif
 	NULL
 };
 
+#ifdef HW_USB_TIME_SYNC_PC
+static void flushPcDataWork(struct work_struct *work)
+{
+    struct gFlush_PC_Data *pc_data = container_of(work,
+	struct gFlush_PC_Data, pc_data_work.work);
+	struct rtc_device *rtc;
+	struct rtc_time new_rtc_tm;
+	//int rv = 0;
+
+	pr_info( "Enter function: flushPcDataWork!\n");
+
+	if(do_settimeofday(&pc_data->tv) < 0)
+	{
+	pr_info("set system time Fail!\n");
+	}
+
+	rtc = rtc_class_open(CONFIG_RTC_HCTOSYS_DEVICE);
+	if (rtc == NULL) {
+	  pr_info("%s: unable to open rtc device (%s)\n",
+				__FILE__, CONFIG_RTC_HCTOSYS_DEVICE);
+		return;
+	}
+
+	rtc_time_to_tm(pc_data->tv.tv_sec, &new_rtc_tm);
+	#if 0
+	rv = rtc_set_time(rtc, &new_rtc_tm);
+	if(rv!=0)
+	{
+		 pr_info("set RTC time Fail!rv is %d\n",rv);
+	}
+	#endif
+	pr_info( "set system time ok!\n");
+}
+
 /*-------------------------------------------------------------------------*/
 /* Composite driver */
+static void android_handle_host_time(struct usb_ep *ep, struct usb_request *req)
+{
+	struct _time *host_time;
+	struct timeval tvNow;
+
+	host_time = (struct _time *)req->buf;
+
+	pr_info("Time Bias:%d minutes\n", host_time->time_bias);
+
+	pr_info("Host Time:[%d:%d:%d %d:%d:%d:%d Weekday:%d]\n", host_time->year,
+			host_time->month, host_time->day, host_time->hour, host_time->minute,
+			host_time->second, host_time->millisecond, host_time->weekday);
+
+	do_gettimeofday(&tvNow);
+	if(AFTER_BOOT_TO_1970YEAR < (tvNow.tv_sec))
+		return;
+
+	flush_pc_data.tv.tv_nsec = NSEC_PER_SEC >> 1;
+	flush_pc_data.tv.tv_sec = (unsigned long) mktime (host_time->year,
+					host_time->month,
+					host_time->day,
+					(host_time->hour+BEIJING_TIME_ZONE),
+					host_time->minute,
+					host_time->second);
+	schedule_delayed_work(&(flush_pc_data.pc_data_work), 0);
+
+	return;
+}
+
+static int android_setup_config(struct usb_configuration *c,
+        const struct usb_ctrlrequest *ctrl)
+{
+	struct usb_composite_dev *cdev = c->cdev;
+	struct usb_request *req = cdev->req;
+	u16     w_index  = le16_to_cpu(ctrl->wIndex);
+	u16     w_value  = le16_to_cpu(ctrl->wValue);
+	u16     w_length = le16_to_cpu(ctrl->wLength);
+	int     value    = -EOPNOTSUPP;
+
+	/*
+	 * for MBB spec command such like "40 A2",
+	 * to support any other commands, add here.
+	 */
+	switch (ctrl->bRequestType) {
+	case (USB_DIR_OUT | USB_TYPE_VENDOR):
+		switch (ctrl->bRequest) {
+		case (USB_REQ_SEND_HOST_TIME):
+			/*
+			 * "40 A1"-The host sends sys-time to device
+			 */
+			memcpy((void *)&android_ctrl_request, (void *)ctrl,
+					sizeof(struct usb_ctrlrequest));
+			req->context = &android_ctrl_request;
+			req->complete = android_handle_host_time;
+			cdev->gadget->ep0->driver_data = cdev;
+			value = w_length;
+			break;
+
+		default:
+		 pr_info("invalid control req%02x.%02x v%04x i%04x l%d\n",
+				ctrl->bRequestType, ctrl->bRequest,    w_value, w_index, w_length);
+			break;
+		}
+		break;
+
+	default:
+			pr_info("invalid control req%02x.%02x v%04x i%04x l%d\n",
+			ctrl->bRequestType, ctrl->bRequest,    w_value, w_index, w_length);
+		break;
+	}
+
+	/* respond with data transfer or status phase? */
+	if (value >= 0) {
+		req->zero = 0;
+		req->length = value;
+		value = usb_ep_queue(cdev->gadget->ep0, req, GFP_ATOMIC);
+		if (value < 0) {
+			pr_info("android_setup_config response err 0x%x\n", value);
+		}
+	}
+
+	return value;
+}
+#endif
 
 static int android_bind_config(struct usb_configuration *c)
 {
@@ -3490,13 +4115,21 @@ static int android_bind(struct usb_composite_dev *cdev)
 	strlcpy(manufacturer_string, "Android",
 		sizeof(manufacturer_string) - 1);
 	strlcpy(product_string, "Android", sizeof(product_string) - 1);
+#ifdef CONFIG_HUAWEI_USB
+	strlcpy(serial_string, usb_parameter.usb_serial, USB_SERIAL_LEN);
+#else
 	strlcpy(serial_string, "0123456789ABCDEF", sizeof(serial_string) - 1);
+#endif
 
 	id = usb_string_id(cdev);
 	if (id < 0)
 		return id;
 	strings_dev[STRING_SERIAL_IDX].id = id;
 	device_desc.iSerialNumber = id;
+	/* backup the serial str id */
+#ifdef CONFIG_HUAWEI_USB
+	serial_str_id = id;
+#endif
 
 	if (gadget_is_otg(cdev->gadget))
 		list_for_each_entry(conf, &dev->configs, list_item)
@@ -3709,7 +4342,14 @@ static struct android_configuration *alloc_android_config
 	dev->configs_num++;
 	conf->usb_config.label = dev->name;
 	conf->usb_config.unbind = android_unbind_config;
+    #ifdef HW_USB_TIME_SYNC_PC
+	conf->usb_config.setup = android_setup_config;
+	#endif
 	conf->usb_config.bConfigurationValue = dev->configs_num;
+#ifdef CONFIG_HUAWEI_USB
+	conf->usb_config.bmAttributes = USB_CONFIG_ATT_ONE | USB_CONFIG_ATT_SELFPOWER,
+	conf->usb_config.MaxPower = 0x1F4, /* 500ma */
+#endif
 
 	INIT_LIST_HEAD(&conf->enabled_functions);
 
@@ -3735,7 +4375,6 @@ static int usb_diag_update_pid_and_serial_num(u32 pid, const char *snum)
 		pr_debug("%s: unable to update PID and serial_no\n", __func__);
 		return -ENODEV;
 	}
-
 	pr_debug("%s: dload:%p pid:%x serial_num:%s\n",
 				__func__, diag_dload, pid, snum);
 
@@ -3887,6 +4526,7 @@ static int android_probe(struct platform_device *pdev)
 
 	pr_debug("%s(): registering android_usb_driver with core id:%d\n",
 		__func__, android_usb_driver.gadget_driver.usb_core_id);
+
 	ret = usb_composite_probe(&android_usb_driver);
 	if (ret) {
 		/* Perhaps UDC hasn't probed yet, try again later */
@@ -3985,10 +4625,108 @@ static struct platform_driver android_platform_driver = {
 	.remove = android_remove,
 	.id_table = android_id_table,
 };
+#ifdef CONFIG_HUAWEI_USB
+static int __init vender_country_para_setup(char * p)
+{
+	char vender_country_para[64] = {0};
+	char *country_name = NULL;
+
+	if('\0' == *p || '/' == *p || !strchr(p, '/'))
+	{
+		pr_info(" no valid vender info in cmdline \n");
+		return 0;
+	}
+
+	strlcpy(vender_country_para, p, sizeof(vender_country_para));
+
+	country_name= strchr(vender_country_para, '/');
+	*country_name++ = 0;
+
+	strlcpy(usb_parameter.vender_name, vender_country_para, VENDOR_NAME_LEN);
+	strlcpy(usb_parameter.country_name, country_name, COUNTRY_NAME_LEN);
+
+	return 0;
+}
+early_param("androidboot.localproppath", vender_country_para_setup);
+
+static int __init usb_serial_setup(char * p)
+{
+    if('\0' != *p)
+    {
+        strlcpy(usb_parameter.usb_serial, p, USB_SERIAL_LEN);
+    }
+
+    return 0;
+}
+early_param("usb.serial", usb_serial_setup);
+/*
+ * to get hw_custom_features from cmdline
+ * the format in cmdline is "hw_custom_features=0xXXXXMM"
+ */
+static int __init hw_custom_features_setup(char * p)
+{
+	char buff[HW_CUSTOM_FEATURES_LENTH] = {0};
+	char *pMM = NULL;
+	unsigned int value = 0;
+
+	if(NULL == p)
+	{
+	pr_err(" input null\n");
+		return 0;
+	}
+
+	/* hw_custom_features should begin with "0x" */
+	if(strncmp(p, "0x", strlen("0x")))
+	{
+	pr_err(" hw_custom_features not begin with 0x\n");
+		return 0;
+	}
+
+	strlcpy(buff, p+strlen("0x"), sizeof(buff));
+
+	/* hw_custom_features should end with "MM" */
+	pMM = strstr(buff, "MM");
+
+	if(NULL == pMM)
+	{
+	pr_err("hw_custom_features not end with MM\n");
+		return 0;
+	}
+
+	*pMM = '\0';
+
+
+	/* from string to unsigned int */
+	if(kstrtouint(buff, STRING_TO_HEX_INT, &value) <0)
+	{
+	pr_err("Failed to get hw_custom_features\n");
+		return 0;
+	}
+
+	usb_parameter.hw_custom_features = value;
+
+	return 0;
+}
+early_param("hw_custom_features", hw_custom_features_setup);
+#endif
 
 static int __init init(void)
 {
 	int ret;
+#ifdef CONFIG_HUAWEI_USB
+	if(('\0' == usb_parameter.vender_name[0]) || ('\0' == usb_parameter.country_name[0]))
+	{
+		pr_info("usb use default vender info \n");
+		strlcpy(usb_parameter.vender_name, "hw", VENDOR_NAME_LEN);
+		strlcpy(usb_parameter.country_name, "default", COUNTRY_NAME_LEN);
+	}
+
+	if('\0' == usb_parameter.usb_serial[0])
+	{
+		pr_info("usb use default serial \n");
+		strlcpy(usb_parameter.usb_serial, USB_DEFAULT_SN, USB_SERIAL_LEN);
+	}
+#endif
 
 	INIT_LIST_HEAD(&android_dev_list);
 	android_dev_count = 0;
@@ -4006,6 +4744,11 @@ static int __init init(void)
 	android_usb_driver.gadget_driver.suspend = android_suspend;
 	composite_resume_func = android_usb_driver.gadget_driver.resume;
 	android_usb_driver.gadget_driver.resume = android_resume;
+
+	#ifdef HW_USB_TIME_SYNC_PC
+	memset(&flush_pc_data, 0, sizeof(struct gFlush_PC_Data) );
+	INIT_DELAYED_WORK(&(flush_pc_data.pc_data_work), flushPcDataWork);
+	#endif
 
 	return ret;
 }
