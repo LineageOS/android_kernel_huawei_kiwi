@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e2bfa5b5_132429ed",
+        "filename": "drivers/mmc/host/sdhci.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 0,
+      "message": "No",
+      "revId": "3d8f74ee0dacb8aed4c3105a445114e49ce4a71b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}

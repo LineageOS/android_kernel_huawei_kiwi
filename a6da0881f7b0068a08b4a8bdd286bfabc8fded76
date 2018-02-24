@@ -1,0 +1,382 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2b76c856_6a408f72",
+        "filename": "drivers/mmc/card/Kconfig",
+        "patchSetId": 3
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "17a65879_5d8c1c5b",
+        "filename": "drivers/mmc/card/block.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1438,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Remove this change",
+      "range": {
+        "startLine": 1438,
+        "startChar": 0,
+        "endLine": 1438,
+        "endChar": 36
+      },
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2b8361c0_adb822bf",
+        "filename": "drivers/mmc/card/block.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2918,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Remove this change",
+      "range": {
+        "startLine": 2918,
+        "startChar": 2,
+        "endLine": 2918,
+        "endChar": 51
+      },
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "09f253f6_4456f9d1",
+        "filename": "drivers/mmc/core/core.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "range": {
+        "startLine": 50,
+        "startChar": 0,
+        "endLine": 52,
+        "endChar": 6
+      },
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a005b64_79450636",
+        "filename": "drivers/mmc/core/core.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "range": {
+        "startLine": 120,
+        "startChar": 0,
+        "endLine": 162,
+        "endChar": 6
+      },
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d9d7a7eb_2ac07a2a",
+        "filename": "drivers/mmc/core/core.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "range": {
+        "startLine": 369,
+        "startChar": 0,
+        "endLine": 385,
+        "endChar": 6
+      },
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "74a1a902_bf901c7f",
+        "filename": "drivers/mmc/core/core.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 4158,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "range": {
+        "startLine": 4147,
+        "startChar": 0,
+        "endLine": 4158,
+        "endChar": 6
+      },
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "988c0eed_6f1a3178",
+        "filename": "drivers/mmc/core/debugfs.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "All changes to this file are useless",
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b9e0ca64_743dbdb0",
+        "filename": "drivers/mmc/core/sd.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "speed_class changes here are useless",
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8ae0f297_8f48e627",
+        "filename": "drivers/mmc/host/sdhci-msm.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2325,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "range": {
+        "startLine": 2315,
+        "startChar": 0,
+        "endLine": 2325,
+        "endChar": 1
+      },
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "672427d6_305c13d2",
+        "filename": "drivers/mmc/host/sdhci-msm.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 3398,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "range": {
+        "startLine": 3385,
+        "startChar": 0,
+        "endLine": 3398,
+        "endChar": 6
+      },
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8c8fee08_a6740bda",
+        "filename": "drivers/mmc/host/sdhci.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "range": {
+        "startLine": 48,
+        "startChar": 0,
+        "endLine": 58,
+        "endChar": 33
+      },
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b1a95b54_3e7e5206",
+        "filename": "drivers/mmc/host/sdhci.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 304,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a810276_41bea19b",
+        "filename": "drivers/mmc/host/sdhci.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 335,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c32bf02c_1e91819c",
+        "filename": "drivers/mmc/host/sdhci.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1848,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "range": {
+        "startLine": 1844,
+        "startChar": 0,
+        "endLine": 1848,
+        "endChar": 6
+      },
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "81dcb90d_2e0195d3",
+        "filename": "drivers/mmc/host/sdhci.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1902,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "range": {
+        "startLine": 1897,
+        "startChar": 0,
+        "endLine": 1902,
+        "endChar": 6
+      },
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "74b9ade7_88073245",
+        "filename": "drivers/mmc/host/sdhci.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2190,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "range": {
+        "startLine": 2184,
+        "startChar": 0,
+        "endLine": 2190,
+        "endChar": 6
+      },
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "73d5fa75_933dbadd",
+        "filename": "drivers/mmc/host/sdhci.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:39:27Z",
+      "side": 1,
+      "message": "Useless",
+      "revId": "a6da0881f7b0068a08b4a8bdd286bfabc8fded76",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
