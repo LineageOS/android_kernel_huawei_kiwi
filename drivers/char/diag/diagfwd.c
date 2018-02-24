@@ -1114,6 +1114,24 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 						packet_type = 0;
 				}
 			}
+#ifdef CONFIG_HUAWEI_KERNEL
+			/* automation cmd_code is 0xF6 */
+			/* judge if it is automation cmd_code */
+			else if ((entry.cmd_code == 255)
+					&& (entry.subsys_id == 0xF6)
+					&& (cmd_code == 0xF6))
+			{
+				if ((entry.cmd_code_lo <= subsys_id) && (entry.cmd_code_hi >= subsys_id))
+				{
+					if( !(diag_send_data(entry, buf, len,data_type)) )
+					{
+						pr_err("%s: diag send data failed\n",__func__);
+					}
+					packet_type = 0;
+				}
+
+			}
+#endif
 		}
 	}
 #if defined(CONFIG_DIAG_OVER_USB)
@@ -1528,7 +1546,8 @@ static int diagfwd_mux_write_done(unsigned char *buf, int len, int buf_ctxt,
 			 * channels. This will ensure that the next read is not
 			 * missed.
 			 */
-			if (driver->logging_mode == MEMORY_DEVICE_MODE) {
+			if (driver->logging_mode == MEMORY_DEVICE_MODE &&
+					ctxt == DIAG_MEMORY_DEVICE_MODE) {
 				flush_workqueue(smd_info->wq);
 				wake_up(&driver->smd_wait_q);
 			}

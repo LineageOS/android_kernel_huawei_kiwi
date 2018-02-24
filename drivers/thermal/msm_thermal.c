@@ -41,6 +41,11 @@
 #include <soc/qcom/scm.h>
 #include <linux/sched/rt.h>
 
+#ifdef CONFIG_HUAWEI_RESET_DETECT
+#include <linux/huawei_reset_detect.h>
+#endif
+
+
 #define CREATE_TRACE_POINTS
 #define TRACE_MSM_THERMAL
 #include <trace/trace_thermal.h>
@@ -2069,6 +2074,11 @@ static void msm_thermal_bite(int tsens_id, long temp)
 
 	pr_err("TSENS:%d reached temperature:%ld. System reset\n",
 		tsens_id, temp);
+
+#ifdef CONFIG_HUAWEI_RESET_DETECT
+    set_reset_magic(RESET_MAGIC_THERMAL);
+#endif
+
 	if (!is_scm_armv8()) {
 		scm_call_atomic1(SCM_SVC_BOOT, THERM_SECURE_BITE_CMD, 0);
 	} else {

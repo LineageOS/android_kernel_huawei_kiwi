@@ -145,9 +145,14 @@ static unsigned int max_clients = 15;
 static unsigned int threshold_client_limit = 30;
 module_param(max_clients, uint, 0);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+int diag_max_reg = 850;
+int diag_threshold_reg = 1000;
+#else
 /* This is the maximum number of pkt registrations supported at initialization*/
 int diag_max_reg = 600;
 int diag_threshold_reg = 750;
+#endif
 
 /* Timer variables */
 static struct timer_list drain_timer;
