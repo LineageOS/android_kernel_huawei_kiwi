@@ -138,6 +138,11 @@ config ONESHOT_SYNC_USER
 	help
 	  Provide a userspace API for creating oneshot sync objects.
 
+config HUAWEI_LOG_PARSER
+	bool "logcat parser integration"
+	help
+	  provides the necessary inforation for logcat parser tool
+
 source "drivers/staging/android/ion/Kconfig"
 
 source "drivers/staging/android/fiq_debugger/Kconfig"
