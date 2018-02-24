@@ -17,7 +17,7 @@
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
 #include <linux/memblock.h>
-
+#include <mdss.h>
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 #include "mdss_panel.h"

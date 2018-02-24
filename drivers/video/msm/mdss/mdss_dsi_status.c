@@ -44,6 +44,7 @@ struct dsi_status_data *pstatus_data;
  * calls platform specific DSI ctrl Status function.
  * @work  : dsi controller status data
  */
+
 static void check_dsi_ctrl_status(struct work_struct *work)
 {
 	struct dsi_status_data *pdsi_status = NULL;
@@ -178,7 +179,11 @@ static int param_dsi_status_disable(const char *val, struct kernel_param *kp)
 	ret = kstrtos32(val, 0, &int_val);
 	if (ret)
 		return ret;
-
+	/*modify for cancel the work when setting the dsi_status_disable is 1*/
+	if (int_val == 1)
+	{
+		cancel_delayed_work_sync(&pstatus_data->check_status);
+	}
 	pr_info("%s: Set DSI status disable to %d\n",
 			__func__, int_val);
 	*((int *)kp->arg) = int_val;
@@ -214,7 +219,6 @@ int __init mdss_dsi_status_init(void)
 		pr_err("%s: can't allocate memory\n", __func__);
 		return -ENOMEM;
 	}
-
 	pstatus_data->fb_notifier.notifier_call = fb_event_callback;
 
 	rc = fb_register_client(&pstatus_data->fb_notifier);
@@ -236,7 +240,9 @@ int __init mdss_dsi_status_init(void)
 
 void __exit mdss_dsi_status_exit(void)
 {
+#ifndef CONFIG_HUAWEI_LCD
 	fb_unregister_client(&pstatus_data->fb_notifier);
+#endif
 	cancel_delayed_work_sync(&pstatus_data->check_status);
 	kfree(pstatus_data);
 	pr_debug("%s: DSI ctrl status work queue removed\n", __func__);

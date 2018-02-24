@@ -1001,4 +1001,5 @@ void mdss_mdp_ctl_restore(void);
 int  mdss_mdp_ctl_reset(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_user_pcc_config(struct mdp_pcc_cfg_data *config);
 
+int mdss_mdp_pp_set_comform_coff(unsigned int coff_val, unsigned int update_flag);
 #endif /* MDSS_MDP_H */
