@@ -138,4 +138,20 @@ source "drivers/usb/phy/Kconfig"
 
 source "drivers/usb/gadget/Kconfig"
 
+source "drivers/usb/switch/Kconfig"
+
+config HUAWEI_USB
+	depends on HUAWEI_KERNEL
+	bool "Use Huawei usb code"
+	default n
+	---help---
+	  use Huawei usb feature
+
+config HUAWEI_EXTERN_ID_DETECT
+	depends on HUAWEI_KERNEL
+	bool "Use extern id detect"
+	default n
+	---help---
+	  usb id is detected by other chip, not pmic, not gpio
+
 endif # USB_SUPPORT
