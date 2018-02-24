@@ -32,6 +32,25 @@
 #include <soc/qcom/restart.h>
 #include <soc/qcom/watchdog.h>
 
+#ifdef CONFIG_HUAWEI_RESET_DETECT
+#include <linux/huawei_reset_detect.h>
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <linux/fcntl.h>
+#include <linux/syscalls.h>
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+#include <linux/huawei_boot_log.h>
+#endif
+
+#define MISC_DEVICE "/dev/block/bootdevice/by-name/misc"
+#define USB_UPDATE_POLL_TIME  2000
+struct bootloader_message {
+    char command[32];
+    char status[32];
+    char recovery[768];
+    char stage[32];
+};
+#endif
 #define EMERGENCY_DLOAD_MAGIC1    0x322A4F99
 #define EMERGENCY_DLOAD_MAGIC2    0xC67E4350
 #define EMERGENCY_DLOAD_MAGIC3    0x77777777
@@ -43,9 +62,16 @@
 #define SCM_EDLOAD_MODE			0X01
 #define SCM_DLOAD_CMD			0x10
 
-
 static int restart_mode;
+#ifdef CONFIG_HUAWEI_KERNEL
+void *restart_reason = NULL;
+#else
 void *restart_reason;
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+#define RESTART_FLAG_MAGIC_NUM    0x20890206
+void *restart_flag_addr = NULL;
+#endif
 static bool scm_pmic_arbiter_disable_supported;
 static bool scm_deassert_ps_hold_supported;
 /* Download mode master kill-switch */
@@ -55,6 +81,17 @@ static phys_addr_t tcsr_boot_misc_detect;
 #ifdef CONFIG_MSM_DLOAD_MODE
 #define EDL_MODE_PROP "qcom,msm-imem-emergency_download_mode"
 #define DL_MODE_PROP "qcom,msm-imem-download_mode"
+
+#ifdef CONFIG_HUAWEI_KERNEL
+#define SDUPDATE_FLAG_MAGIC_NUM  0x77665528
+#define USBUPDATE_FLAG_MAGIC_NUM  0x77665523
+#define SD_UPDATE_RESET_FLAG   "sdupdate"
+#define USB_UPDATE_RESET_FLAG   "usbupdate"
+#endif
+
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+static uint32_t *reboot_flag_addr;
+#endif
 
 static int in_panic;
 static void *dload_mode_addr;
@@ -118,35 +155,93 @@ static void set_dload_mode(int on)
 	dload_mode_enabled = on;
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+void clear_dload_mode(void)
+{
+    set_dload_mode(0);
+}
+#endif
 static bool get_dload_mode(void)
 {
 	return dload_mode_enabled;
 }
-
-static void enable_emergency_dload_mode(void)
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+static void clear_bootup_flag(void)
 {
-	int ret;
+	/*move the ioremap_nocache for reboot_flag_addr into msm_restart_probe()*/
+	if(NULL != reboot_flag_addr)
+	{
+		uint32_t *magic    = (uint32_t*)(reboot_flag_addr);
 
-	if (emergency_dload_mode_addr) {
-		__raw_writel(EMERGENCY_DLOAD_MAGIC1,
-				emergency_dload_mode_addr);
-		__raw_writel(EMERGENCY_DLOAD_MAGIC2,
-				emergency_dload_mode_addr +
-				sizeof(unsigned int));
-		__raw_writel(EMERGENCY_DLOAD_MAGIC3,
-				emergency_dload_mode_addr +
-				(2 * sizeof(unsigned int)));
-
-		/* Need disable the pmic wdt, then the emergency dload mode
-		 * will not auto reset. */
-		qpnp_pon_wd_config(0);
+		/* If by any chance (version upgreade) the addresses are changed,
+		 * We might crash. Lets avoid that difficult to debug scenrio.
+		 * We trading it off with the non-availability of NFF logs*/
+		if (*magic != HUAWEI_BOOT_MAGIC_NUMBER) {
+			pr_notice("NFF: Invalid magic number %x. Disabled NFF\n", *magic);
+			return;
+		}
+		__raw_writel( 0x00000000, reboot_flag_addr);
 		mb();
+		/*move the iounmap(reboot_flag_addr);*/
 	}
-
-	ret = scm_set_dload_mode(SCM_EDLOAD_MODE, 0);
-	if (ret)
-		pr_err("Failed to set secure EDLOAD mode: %d\n", ret);
+	return;
 }
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+/*This function write usb_update sign to the misc partion,
+   if write successfull, then hard restart the device*/
+void huawei_restart(void)
+{
+    struct bootloader_message boot;
+    int fd  = 0;
+
+    memset((void*)&boot, 0x0, sizeof(struct bootloader_message));
+    strlcpy(boot.command, "boot-recovery", sizeof(boot.command));
+    strcpy(boot.recovery, "recovery\n");
+    strcat(boot.recovery, "--");
+    strcat(boot.recovery, "usb_update");
+
+    fd = sys_open(MISC_DEVICE,O_RDWR,0);
+    if( fd < 0 )
+    {
+        pr_err("open the devices %s fail",MISC_DEVICE);
+        return ;
+    }
+    if(sys_write((unsigned int )fd, (char*)&boot, sizeof(boot)) < 0)
+    {
+        pr_err("write to the devices %s fail",MISC_DEVICE);
+        return;
+    }
+    sys_sync();
+    kernel_restart(NULL);
+}
+/*This function poll the address restart_reason,if
+   there is the magic SDUPDATE_FLAG_MAGIC_NUM, restart
+   the devices.,the magic is written by modem when the
+   user click the usb update tool to update*/
+int usb_update_thread(void *__unused)
+{
+    unsigned int  dload_magic = 0;
+    for(;;)
+    {
+        if(NULL != restart_reason)
+        {
+             dload_magic = __raw_readl(restart_reason);
+        }
+        else
+        {
+             pr_info("restart_reason is null,wait for ready\n");
+        }
+        if(SDUPDATE_FLAG_MAGIC_NUM == dload_magic)
+        {
+            pr_info("update mode, restart to usb update\n");
+            huawei_restart();
+        }
+        msleep(USB_UPDATE_POLL_TIME);
+    }
+    return 0;
+}
+#endif
 
 static int dload_set(const char *val, struct kernel_param *kp)
 {
@@ -227,7 +322,27 @@ static void msm_restart_prepare(const char *cmd)
 			(in_panic || restart_mode == RESTART_DLOAD));
 #endif
 
-	need_warm_reset = (get_dload_mode() ||
+#ifdef CONFIG_HUAWEI_RESET_DETECT
+    /* if the restart is triggered by panic, keep the magic number
+	 * if the restart is a nomal reboot, clear the reset magic number
+	 */
+    if(!in_panic)
+    {
+        clear_reset_magic();
+    }
+#endif
+
+#ifdef CONFIG_HUAWEI_KERNEL
+   if(restart_flag_addr)
+  {
+   __raw_writel(RESTART_FLAG_MAGIC_NUM, restart_flag_addr);
+  }
+#endif
+
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+	clear_bootup_flag();
+#endif
+	need_warm_reset = (in_panic || get_dload_mode() ||
 				(cmd != NULL && cmd[0] != '\0'));
 
 	if (qpnp_pon_check_hard_reset_stored()) {
@@ -269,8 +384,21 @@ static void msm_restart_prepare(const char *cmd)
 			if (!ret)
 				__raw_writel(0x6f656d00 | (code & 0xff),
 					     restart_reason);
-		} else if (!strncmp(cmd, "edl", 3)) {
-			enable_emergency_dload_mode();
+#ifdef CONFIG_HUAWEI_KERNEL
+		} else if (!strncmp(cmd, "huawei_rtc", 10)) {
+			__raw_writel(0x77665524, restart_reason);
+		} else if (!strncmp(cmd, "huawei_dload", 12)) {
+			__raw_writel(0x77665529, restart_reason);
+		//Added adb reboot sdupdate/usbupdate command support
+		} else if(!strncmp(cmd, SD_UPDATE_RESET_FLAG, strlen(SD_UPDATE_RESET_FLAG))) {
+			__raw_writel(SDUPDATE_FLAG_MAGIC_NUM, restart_reason);
+		} else if(!strncmp(cmd, USB_UPDATE_RESET_FLAG, strlen(USB_UPDATE_RESET_FLAG))) {
+			__raw_writel(USBUPDATE_FLAG_MAGIC_NUM, restart_reason);
+#endif
+#ifdef CONFIG_HUAWEI_RESET_DETECT
+		}  else if (!strncmp(cmd, "emergency_restart", 17)) {
+            pr_info("do nothing\n");
+#endif
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
@@ -361,6 +489,11 @@ static void do_msm_poweroff(void)
 #ifdef CONFIG_MSM_DLOAD_MODE
 	set_dload_mode(0);
 #endif
+
+#ifdef CONFIG_HUAWEI_RESET_DETECT
+    clear_reset_magic();
+#endif
+
 	qpnp_pon_system_pwr_off(PON_POWER_OFF_SHUTDOWN);
 	/* Needed to bypass debug image on some chips */
 	if (!is_scm_armv8())
@@ -424,6 +557,18 @@ static int msm_restart_probe(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_HUAWEI_KERNEL
+    np = of_find_compatible_node(NULL, NULL,
+				"qcom,msm-imem-restart_flag_addr");
+	if (!np) {
+		pr_err("unable to find DT imem restart flag addr node\n");
+	} else {
+		restart_flag_addr = of_iomap(np, 0);
+		if (!restart_flag_addr) {
+			pr_err("unable to map imem restart flag addr\n");
+		}
+	}
+#endif
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	msm_ps_hold = devm_ioremap_resource(dev, mem);
 	if (IS_ERR(msm_ps_hold))
@@ -443,6 +588,13 @@ static int msm_restart_probe(struct platform_device *pdev)
 		scm_deassert_ps_hold_supported = true;
 
 	set_dload_mode(download_mode);
+
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+	reboot_flag_addr = (uint32_t *)ioremap_nocache(HUAWEI_BOOT_LOG_ADDR,0x100000);
+	if (!reboot_flag_addr) {
+		pr_err("ioremap failed for address: %x \n", HUAWEI_BOOT_LOG_ADDR);
+	}
+#endif
 
 	return 0;
 
