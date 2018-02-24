@@ -33,20 +33,39 @@ static int mmc_gpio_get_status(struct mmc_host *host)
 	if (!ctx || !gpio_is_valid(ctx->cd_gpio))
 		goto out;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+/* to make mmc_gpio_get_status return 1, mean sdcard plugged-in status
+ *                             return 0, mead sdcard plugged-out status
+ **/
+	ret = gpio_get_value_cansleep(ctx->cd_gpio);
+	if(host->caps2 & MMC_CAP2_CD_ACTIVE_HIGH)
+	{
+		ret = gpio_get_value_cansleep(ctx->cd_gpio);
+	}
+	else
+	{
+		ret = !gpio_get_value_cansleep(ctx->cd_gpio);
+	}
+#else
 	ret = !gpio_get_value_cansleep(ctx->cd_gpio) ^
 		!!(host->caps2 & MMC_CAP2_CD_ACTIVE_HIGH);
+#endif
 out:
 	return ret;
 }
 
-
+#ifdef CONFIG_HUAWEI_KERNEL
+static unsigned long msmsdcc_irqtime = 0;
+#endif
 static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 {
 	/* Schedule a card detection after a debounce timeout */
 	struct mmc_host *host = dev_id;
 	struct mmc_gpio *ctx = host->slot.handler_priv;
 	int status;
-
+#ifdef CONFIG_HUAWEI_KERNEL
+	unsigned long duration =0;
+#endif
 	/*
 	 * In case host->ops are not yet initialized return immediately.
 	 * The card will get detected later when host driver calls
@@ -63,14 +82,41 @@ static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 		goto out;
 
 	if (status ^ ctx->status) {
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+		host->slot_detect_change_flag = true;
+#endif
 		pr_info("%s: slot status change detected (%d -> %d), GPIO_ACTIVE_%s\n",
 				mmc_hostname(host), ctx->status, status,
 				(host->caps2 & MMC_CAP2_CD_ACTIVE_HIGH) ?
 				"HIGH" : "LOW");
 		ctx->status = status;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+		duration = jiffies - msmsdcc_irqtime;
+		/* current msmsdcc is present, add to handle dithering */
+		if (status)
+		{
+			/* the distance of two interrupts can not less than 7 second */
+			if (duration < (7 * HZ))
+			{
+				duration = (7 * HZ) - duration;
+			}
+			else
+			{
+				/* 100 millisecond */
+				duration = msecs_to_jiffies(100);
+			}
+		}
+		else
+		{
+			duration = msecs_to_jiffies(2000);
+		}
+		mmc_detect_change(host, duration);
+		msmsdcc_irqtime = jiffies;
+#else
 		/* Schedule a card detection after a debounce timeout */
 		mmc_detect_change(host, msecs_to_jiffies(200));
+#endif
 	}
 out:
 
