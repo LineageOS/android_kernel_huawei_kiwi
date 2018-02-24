@@ -50,6 +50,11 @@
 
 #define MAX_TUNING_LOOP 40
 
+#ifdef CONFIG_HUAWEI_KERNEL
+static struct kmem_cache *mmc_area_cachep __read_mostly;
+static struct scatterlist	*cur_sg = NULL;
+static struct scatterlist	*prev_sg = NULL;
+#endif
 #define SDHCI_DBG_DUMP_RS_INTERVAL (10 * HZ)
 #define SDHCI_DBG_DUMP_RS_BURST 2
 
@@ -3514,6 +3519,18 @@ static int sdhci_is_adma2_64bit(struct sdhci_host *host)
 	return 0;
 }
 #endif
+#ifdef CONFIG_HUAWEI_KERNEL
+struct scatterlist* sdhci_get_cur_sg(void){
+
+	return cur_sg;
+}
+EXPORT_SYMBOL(sdhci_get_cur_sg);
+
+struct scatterlist* sdhci_get_prev_sg(void){
+	return prev_sg;
+}
+EXPORT_SYMBOL(sdhci_get_prev_sg);
+#endif
 
 int sdhci_add_host(struct sdhci_host *host)
 {
@@ -3522,7 +3539,9 @@ int sdhci_add_host(struct sdhci_host *host)
 	u32 max_current_caps;
 	unsigned int ocr_avail;
 	int ret;
-
+#ifdef CONFIG_HUAWEI_KERNEL
+	u32 max_segs_size = 0;
+#endif
 	WARN_ON(host == NULL);
 	if (host == NULL)
 		return -EINVAL;
@@ -4100,6 +4119,45 @@ int sdhci_add_host(struct sdhci_host *host)
 
 	if (host->quirks2 & SDHCI_QUIRK2_IGN_DATA_END_BIT_ERROR)
 		sdhci_clear_set_irqs(host, SDHCI_INT_DATA_END_BIT, 0);
+#ifdef CONFIG_HUAWEI_KERNEL
+	/*add slab cache for mmc1(sdcard)*/
+	if(!strcmp(mmc_hostname(mmc), "mmc1")){
+		max_segs_size = mmc->max_segs*sizeof(struct scatterlist);
+
+		mmc_area_cachep= kmem_cache_create("mmc_area_cache",
+			max_segs_size,
+				0, 0, NULL);
+
+		if(unlikely(!mmc_area_cachep)) {
+			printk(KERN_ERR "sdhci: failed to create slab cache for sdcard\n");
+			goto cache_fail_create;
+		}
+		pr_info("created %s cache size=%d bytes\n",mmc_hostname(mmc), max_segs_size);
+
+		/*malloc cache for sdcard*/
+		cur_sg = kmem_cache_zalloc(mmc_area_cachep, GFP_KERNEL);
+		if(NULL == cur_sg){
+			printk(KERN_ERR "cur_sg cache alloc failed\n");
+			goto cache_fail_create;
+		}
+		pr_info("cur cache alloc sucess\n");
+
+		prev_sg = kmem_cache_zalloc(mmc_area_cachep, GFP_KERNEL);
+		if (NULL == prev_sg){
+			printk(KERN_ERR "+++cache alloc failed\n");
+
+			/*free cur_sg cache due to malloc fail*/
+			kmem_cache_free(mmc_area_cachep, cur_sg);
+
+			/*set pointer to NULL*/
+			cur_sg = NULL;
+			prev_sg = NULL;
+			goto cache_fail_create;
+		}
+		pr_info("pre cache alloc sucess\n");
+	}
+cache_fail_create:
+#endif
 	pr_info("%s: SDHCI controller on %s [%s] using %s\n",
 		mmc_hostname(mmc), host->hw_name, dev_name(mmc_dev(mmc)),
 		(host->flags & SDHCI_USE_ADMA) ?
