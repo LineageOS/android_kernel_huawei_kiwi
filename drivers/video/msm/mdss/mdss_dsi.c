@@ -24,17 +24,46 @@
 #include <linux/leds-qpnp-wled.h>
 #include <linux/clk.h>
 
+/* optimize the screen wake up time*/
+#include <linux/pm_qos.h>
 #include "mdss.h"
 #include "mdss_panel.h"
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
 #include "mdss_livedisplay.h"
+#include <linux/hw_lcd_common.h>
 
 #define XO_CLK_RATE	19200000
 
+#define REGULATOR_DCDC_MODE 0
+#define REGULATOR_LDO_MODE  1
+static int g_mipi_regulator_mode = REGULATOR_DCDC_MODE;
 static int mdss_dsi_pinctrl_set_state(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 					bool active);
+/* optimize the screen wake up time*/
+#define DSI_DISABLE_PC_LATENCY 100
+#define DSI_ENABLE_PC_LATENCY PM_QOS_DEFAULT_VALUE
 
+static struct pm_qos_request mdss_dsi_pm_qos_request;
+
+static void mdss_dsi_pm_qos_add_request(void)
+{
+	pr_debug("%s: add request",__func__);
+	pm_qos_add_request(&mdss_dsi_pm_qos_request, PM_QOS_CPU_DMA_LATENCY,
+			PM_QOS_DEFAULT_VALUE);
+}
+
+static void mdss_dsi_pm_qos_remove_request(void)
+{
+	pr_debug("%s: remove request",__func__);
+	pm_qos_remove_request(&mdss_dsi_pm_qos_request);
+}
+
+static void mdss_dsi_pm_qos_update_request(int val)
+{
+	pr_debug("%s: update request %d",__func__,val);
+	pm_qos_update_request(&mdss_dsi_pm_qos_request, val);
+}
 static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -247,6 +276,10 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 	if (!ret)
 		pinfo->panel_power_state = power_state;
 
+#ifdef CONFIG_HUAWEI_LCD
+	if (!ret)
+		lcd_pwr_status.panel_power_on |= pinfo->panel_power_state;
+#endif
 	return ret;
 }
 
@@ -268,7 +301,7 @@ static void mdss_dsi_put_dt_vreg_data(struct device *dev,
 static int mdss_dsi_get_dt_vreg_data(struct device *dev,
 	struct dss_module_power *mp, enum dsi_pm_type module)
 {
-	int i = 0, rc = 0;
+	int i = 0, rc = 0, ret = 0;
 	u32 tmp = 0;
 	struct device_node *of_node = NULL, *supply_node = NULL;
 	const char *pm_supply_name = NULL;
@@ -290,8 +323,14 @@ static int mdss_dsi_get_dt_vreg_data(struct device *dev,
 		goto novreg;
 	}
 
+/*T2 10 LCD on*/
 	for_each_child_of_node(supply_root_node, supply_node) {
-		mp->num_vreg++;
+		const char *supply_name = NULL;
+		ret = of_property_read_string(supply_node,
+			"qcom,supply-name", &supply_name);
+		if (!ret) {/*vreg supply-name not null*/
+			mp->num_vreg++;
+		}
 	}
 
 	if (mp->num_vreg == 0) {
@@ -317,7 +356,9 @@ static int mdss_dsi_get_dt_vreg_data(struct device *dev,
 		if (rc) {
 			pr_err("%s: error reading name. rc=%d\n",
 				__func__, rc);
-			goto error;
+			//goto error;
+			rc = 0;/*if name is null we not return and find next one*/
+			break;
 		}
 		snprintf(mp->vreg_config[i].vreg_name,
 			ARRAY_SIZE((mp->vreg_config[i].vreg_name)), "%s", st);
@@ -505,7 +546,9 @@ panel_power_ctrl:
 		pr_err("%s: Panel power off failed\n", __func__);
 		goto end;
 	}
-
+#ifdef CONFIG_HUAWEI_LCD
+	lcd_pwr_status.panel_power_on = panel_info->panel_power_state;
+#endif
 	if (panel_info->dynamic_fps
 	    && (panel_info->dfps_update == DFPS_SUSPEND_RESUME_MODE)
 	    && (panel_info->new_fps != panel_info->mipi.frame_rate))
@@ -560,6 +603,9 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 				panel_data);
 
 	cur_power_state = pdata->panel_info.panel_power_state;
+#ifdef CONFIG_HUAWEI_LCD
+		lcd_pwr_status.panel_power_on |= cur_power_state;
+#endif
 	pr_debug("%s+: ctrl=%pK ndx=%d cur_power_state=%d\n", __func__,
 		ctrl_pdata, ctrl_pdata->ndx, cur_power_state);
 
@@ -704,6 +750,8 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
 
+	/* optimize the screen wake up time*/
+	mdss_dsi_pm_qos_update_request(DSI_DISABLE_PC_LATENCY);
 	pr_debug("%s+: ctrl=%pK ndx=%d cur_blank_state=%d\n", __func__,
 		ctrl_pdata, ctrl_pdata->ndx, pdata->panel_info.blank_state);
 
@@ -740,6 +788,8 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 
 error:
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
+	/* optimize the screen wake up time*/
+	mdss_dsi_pm_qos_update_request(DSI_ENABLE_PC_LATENCY);
 	pr_debug("%s-:\n", __func__);
 
 	return ret;
@@ -1382,6 +1432,16 @@ static struct device_node *mdss_dsi_pref_prim_panel(
 	return dsi_pan_node;
 }
 
+/* This function be used to change the dsi regulator mode.*/
+void set_mipi_regulator_mode(int mode)
+{
+	g_mipi_regulator_mode = mode;
+}
+/* Calling this function be get the dsi regulator mode.*/
+int get_mipi_regulator_mode(void)
+{
+	return g_mipi_regulator_mode;
+}
 /**
  * mdss_dsi_find_panel_of_node(): find device node of dsi panel
  * @pdev: platform_device of the dsi ctrl node
@@ -1403,6 +1463,7 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 	int ctrl_id = pdev->id - 1;
 	char panel_name[MDSS_MAX_PANEL_LEN];
 	char ctrl_id_stream[3] =  "0:";
+	char mipi_mode_stream[] =  ":lcd_mipi_regulator_mode:";
 	char *stream = NULL, *pan = NULL;
 	struct device_node *dsi_pan_node = NULL, *mdss_node = NULL;
 
@@ -1431,7 +1492,21 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 				panel_name[i] = *(stream + i);
 			panel_name[i] = 0;
 		}
-
+		/* Here to parse the cmdline of the dsi regulator mode.*/
+		stream = strnstr(panel_cfg, mipi_mode_stream, len);
+		if (!stream) {
+				pr_err("controller config is not present\n");
+				goto end;
+		}
+		stream += strlen(mipi_mode_stream);
+		if (*stream == '0')
+		{
+			set_mipi_regulator_mode(REGULATOR_DCDC_MODE);
+		}
+		else
+		{
+			set_mipi_regulator_mode(REGULATOR_LDO_MODE);
+		}
 		pr_debug("%s:%d:%s:%s\n", __func__, __LINE__,
 			 panel_cfg, panel_name);
 
@@ -1608,6 +1683,8 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		}
 		disable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
 	}
+	/* optimize the screen wake up time*/
+	mdss_dsi_pm_qos_add_request();
 	pr_debug("%s: Dsi Ctrl->%d initialized\n", __func__, index);
 	return 0;
 
@@ -1635,7 +1712,8 @@ static int mdss_dsi_ctrl_remove(struct platform_device *pdev)
 		pr_err("%s: no driver data\n", __func__);
 		return -ENODEV;
 	}
-
+	/* optimize the screen wake up time*/
+	mdss_dsi_pm_qos_remove_request();
 	for (i = DSI_MAX_PM - 1; i >= 0; i--) {
 		if (msm_dss_config_vreg(&pdev->dev,
 				ctrl_pdata->power_data[i].vreg_config,
@@ -1793,9 +1871,18 @@ int dsi_panel_device_register(struct device_node *pan_node,
 
 	pinfo->mipi.dsi_phy_db.reg_ldo_mode = of_property_read_bool(
 		ctrl_pdev->dev.of_node, "qcom,regulator-ldo-mode");
-
-	data = of_get_property(ctrl_pdev->dev.of_node,
-		"qcom,platform-regulator-settings", &len);
+	/*Here to prase the dtsi and get the parameter setting.*/
+	if(get_mipi_regulator_mode() == REGULATOR_DCDC_MODE)
+	{
+        pinfo->mipi.dsi_phy_db.reg_ldo_mode = 0;
+		data = of_get_property(ctrl_pdev->dev.of_node,
+			"qcom,platform-regulator-settings-dcdc", &len);
+	}
+	else
+	{
+		data = of_get_property(ctrl_pdev->dev.of_node,
+			"qcom,platform-regulator-settings", &len);
+	}
 	if ((!data) || (len != 7)) {
 		pr_err("%s:%d, Unable to read Phy regulator settings\n",
 			__func__, __LINE__);
@@ -2003,6 +2090,9 @@ int dsi_panel_device_register(struct device_node *pan_node,
 			(CTRL_STATE_PANEL_INIT | CTRL_STATE_MDP_ACTIVE);
 	} else {
 		pinfo->panel_power_state = MDSS_PANEL_POWER_OFF;
+#ifdef CONFIG_HUAWEI_LCD
+		lcd_pwr_status.panel_power_on |= pinfo->panel_power_state;
+#endif
 	}
 
 	rc = mdss_register_panel(ctrl_pdev, &(ctrl_pdata->panel_data));

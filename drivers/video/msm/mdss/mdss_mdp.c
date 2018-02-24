@@ -3052,18 +3052,29 @@ int mdss_panel_get_boot_cfg(void)
 	return rc;
 }
 
+/* Adjust the frequence of mipi-clk to under 450Mhz.*/
 static int mdss_mdp_cx_ctrl(struct mdss_data_type *mdata, int enable)
 {
 	int rc = 0;
-
+	uint32_t soc_version = socinfo_get_version();
 	if (!mdata->vdd_cx)
 		return rc;
 
 	if (enable) {
-		rc = regulator_set_voltage(
-				mdata->vdd_cx,
-				RPM_REGULATOR_CORNER_SVS_SOC,
-				RPM_REGULATOR_CORNER_SUPER_TURBO);
+		if(SOCINFO_VERSION_MAJOR(soc_version) == 3)
+		{
+			rc = regulator_set_voltage(
+					mdata->vdd_cx,
+					RPM_REGULATOR_CORNER_SVS_SOC,
+					RPM_REGULATOR_CORNER_SUPER_TURBO);
+		}
+		else
+		{
+			rc = regulator_set_voltage(
+					mdata->vdd_cx,
+					RPM_REGULATOR_CORNER_NORMAL,
+					RPM_REGULATOR_CORNER_SUPER_TURBO);
+		}
 		if (rc < 0)
 			goto vreg_set_voltage_fail;
 
