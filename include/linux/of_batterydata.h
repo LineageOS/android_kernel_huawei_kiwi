@@ -35,6 +35,60 @@
 int of_batterydata_read_data(struct device_node *container_node,
 				struct bms_battery_data *batt_data,
 				int batt_id_uv);
+
+#ifdef CONFIG_HUAWEI_KERNEL
+/* read dts property */
+#define OF_HW_READ_PROPERTY_VAL(node, prop, getVal)\
+do{\
+	u32 val;\
+	if (of_property_read_u32(node, prop, &val))\
+	{\
+		pr_err("property %s is read failed, the value is not changed!! \n", prop);\
+	}\
+	else\
+	{\
+		(getVal) = val;\
+		pr_debug("property %s is read ok, value=%d \n", prop, val);\
+	}\
+}while(0)
+
+#define OF_HW_READ_PROPERTY_STRING(node, prop, pgetStr)\
+do{\
+	const char* pstr = "";\
+	if (of_property_read_string(node, prop, &pstr))\
+	{\
+		pr_err("property %s is read failed, the value is not changed!! \n", prop);\
+	}\
+	else\
+	{\
+		(pgetStr) = (char*)pstr;\
+		pr_debug("property %s is read ok, value=%s \n", prop, pstr);\
+	}\
+}while(0)
+
+#define OF_HW_READ_PROPERTY_IDX_STRING(node, prop, idx, pgetStr)\
+do{\
+	const char* pstr = "";\
+	if (of_property_read_string_index(node, prop, idx, &pstr))\
+	{\
+		pr_err("property %s is read idx %d failed !! \n", prop, idx);\
+	}\
+	else\
+	{\
+		(pgetStr) = (char*)pstr;\
+		pr_debug("property %s is read idx %d ok, value=%s \n", prop, idx, pstr);\
+	}\
+}while(0)
+
+#define OF_HW_READ_PROPERTY_BOOL(node, prop, getBool)\
+do{\
+	getBool = of_property_read_bool(node, prop);\
+	pr_debug("property %s is read ok, value=%d \n", prop, getBool);\
+}while(0)
+
+#endif
+
+#else
 /**
  * of_batterydata_get_best_profile() - Find matching battery data device node
  * @batterydata_container_node: pointer to the battery-data container device
@@ -51,7 +105,7 @@ int of_batterydata_read_data(struct device_node *container_node,
 struct device_node *of_batterydata_get_best_profile(
 		struct device_node *batterydata_container_node,
 		const char *psy_name, const char *batt_type);
-#else
+
 static inline int of_batterydata_read_data(struct device_node *container_node,
 				struct bms_battery_data *batt_data,
 				int batt_id_uv);
