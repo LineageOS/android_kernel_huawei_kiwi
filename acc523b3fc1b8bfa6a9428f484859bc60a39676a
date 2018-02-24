@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7ee92f9e_22a5313d",
+        "filename": "drivers/input/misc/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 0,
+      "message": "Don\u0027t remove",
+      "revId": "acc523b3fc1b8bfa6a9428f484859bc60a39676a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}

@@ -1,0 +1,384 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3c4a9852_c4c499d7",
+        "filename": "drivers/char/diag/diag_memorydevice.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "useless",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ae9fc7ab_1a51d1e9",
+        "filename": "drivers/char/diag/diag_usb.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "useless",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "edde7146_ebf7e2bf",
+        "filename": "drivers/char/diag/diagchar_core.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "Useless",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "965d5468_7807b415",
+        "filename": "drivers/char/diag/diagfwd.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1116,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "All changes here are useless",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8d7bef7b_861e7040",
+        "filename": "drivers/coresight/coresight-nidnt.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 313,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "Useless, coresight is just for debugging",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "58f49559_4ba1d087",
+        "filename": "drivers/cpufreq/cpufreq.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "I think you should remove all these changes",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9ef9ffa2_d6770311",
+        "filename": "drivers/cpufreq/cpufreq_governor.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 364,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "I think you should remove all these changes",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2047199c_aab623f6",
+        "filename": "drivers/cpufreq/cpufreq_interactive.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "I think you should remove all these changes",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6cd62121_d78b91af",
+        "filename": "drivers/cpufreq/qcom-cpufreq.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "I think you should remove all these changes",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fb98f47e_5c9a5fc1",
+        "filename": "drivers/cpuidle/lpm-levels.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "duplicated",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ffb03422_9c7688e9",
+        "filename": "drivers/gpu/msm/adreno_ringbuffer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "All changes here are useless",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1e40b244_d92e8a45",
+        "filename": "drivers/input/touchscreen/Kconfig",
+        "patchSetId": 3
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "Don\u0027t comment",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f28608fd_0be102d4",
+        "filename": "drivers/input/touchscreen/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "Don\u0027t comment",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e6e80052_aa86f445",
+        "filename": "drivers/misc/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "Don\u0027t comment",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "83e760e9_7dfdae8c",
+        "filename": "drivers/platform/msm/qpnp-vibrator.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "Looks useless?",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2dce7431_e422c7e6",
+        "filename": "drivers/soc/qcom/rpm_log.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 526,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "Remove this and related code",
+      "range": {
+        "startLine": 526,
+        "startChar": 22,
+        "endLine": 526,
+        "endChar": 34
+      },
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e27b6cdb_0495c8ad",
+        "filename": "drivers/soc/qcom/smd.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "Useless",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a0683d09_03c3adab",
+        "filename": "drivers/soc/qcom/subsys-pil-tz.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 810,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "Useless",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0341ffa0_b4821186",
+        "filename": "drivers/staging/android/Kconfig",
+        "patchSetId": 3
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "Looks useless",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b8997056_258e9b67",
+        "filename": "drivers/staging/android/binder.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1903,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "Remove changes from here, we have new binder in new kernel",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8ab1a238_c7e3ae5f",
+        "filename": "drivers/staging/zram/zram_drv.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 596,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "Remove changes here, we have new zram backported in new kernel",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "42202c41_6c667c5b",
+        "filename": "drivers/tty/serial/msm_serial_hs_lite.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1426,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T16:06:13Z",
+      "side": 1,
+      "message": "Remove all changes from this file",
+      "revId": "3386275cf277a90eee83b9079c2ca7f6a555cf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
