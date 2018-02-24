@@ -78,6 +78,10 @@ enum {
 #define PRONTO_PMU_OFFSET       0x1004
 #define WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP   BIT(5)
 
+#ifdef CONFIG_HUAWEI_WIFI
+const void *get_hw_wifi_pubfile_id(void);
+void construct_nvbin_with_pubfd(char *nvbin_path);
+#endif
 struct device *wcnss_wlan_get_device(void);
 void wcnss_get_monotonic_boottime(struct timespec *ts);
 struct resource *wcnss_wlan_get_memory_map(struct device *dev);

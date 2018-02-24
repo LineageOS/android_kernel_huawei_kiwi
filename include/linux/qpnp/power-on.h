@@ -90,4 +90,13 @@ static inline bool qpnp_pon_check_hard_reset_stored(void)
 }
 #endif
 
+#ifdef CONFIG_HUAWEI_KERNEL
+enum {
+	PON_REASON_INDEX = 0,
+	POFF_REASON_INDEX,
+	WARM_REASON_INDEX,
+	MAX_REG_TYPE
+};
+#endif
+
 #endif
