@@ -16,6 +16,28 @@
 #include <linux/delay.h>
 #include <linux/mdss_io_util.h>
 
+/*open black screen gesture function,can't wake up screen*/
+#include <linux/hw_lcd_common.h>
+
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <linux/regulator/driver.h>
+
+struct regulator {
+	struct device *dev;
+	struct list_head list;
+	unsigned int always_on:1;
+	unsigned int bypass:1;
+	int uA_load;
+	int min_uV;
+	int max_uV;
+	int enabled;
+	char *supply_name;
+	struct device_attribute dev_attr;
+	struct regulator_dev *rdev;
+	struct dentry *debugfs;
+};
+#endif
+
 #define MAX_I2C_CMDS  16
 void dss_reg_w(struct dss_io_data *io, u32 offset, u32 value, u32 debug)
 {
@@ -212,6 +234,10 @@ int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 {
 	int i = 0, rc = 0;
 	bool need_sleep;
+/*open black screen gesture function,can't wake up screen*/
+	int tp_gesture_enable_status = -1;
+	tp_gesture_enable_status = get_tp_gesture_enable_status();
+
 	if (enable) {
 		for (i = 0; i < num_vreg; i++) {
 			rc = PTR_RET(in_vreg[i].vreg);
@@ -243,7 +269,23 @@ int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 			}
 		}
 	} else {
-		for (i = num_vreg-1; i >= 0; i--)
+		for (i = num_vreg-1; i >= 0; i--){
+/*can't wake up screen*/
+/*open black screen gesture function,can't wake up screen*/
+			if(false == !tp_gesture_enable_status)
+			{
+				if(!strcmp(in_vreg[i].vreg_name, "vsp") || !strcmp(in_vreg[i].vreg_name, "vsn"))
+						continue;
+			}
+			else
+			{
+				if(!strcmp(in_vreg[i].vreg_name, "vsp") || !strcmp(in_vreg[i].vreg_name, "vsn"))
+				{
+					if(in_vreg[i].vreg->rdev->use_count > 1)
+						in_vreg[i].vreg->rdev->use_count = 1;
+				}
+			}
+
 			if (regulator_is_enabled(in_vreg[i].vreg)) {
 				if (in_vreg[i].pre_off_sleep)
 					msleep(in_vreg[i].pre_off_sleep);
@@ -253,6 +295,7 @@ int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 				if (in_vreg[i].post_off_sleep)
 					msleep(in_vreg[i].post_off_sleep);
 			}
+		}
 	}
 	return rc;
 
