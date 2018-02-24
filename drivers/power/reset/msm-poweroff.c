@@ -32,6 +32,11 @@
 #include <soc/qcom/restart.h>
 #include <soc/qcom/watchdog.h>
 
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <linux/fcntl.h>
+#include <linux/syscalls.h>
+#endif
+
 #define EMERGENCY_DLOAD_MAGIC1    0x322A4F99
 #define EMERGENCY_DLOAD_MAGIC2    0xC67E4350
 #define EMERGENCY_DLOAD_MAGIC3    0x77777777
@@ -45,7 +50,15 @@
 
 
 static int restart_mode;
+#ifdef CONFIG_HUAWEI_KERNEL
+void *restart_reason = NULL;
+#else
 void *restart_reason;
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+#define RESTART_FLAG_MAGIC_NUM    0x20890206
+void *restart_flag_addr = NULL;
+#endif
 static bool scm_pmic_arbiter_disable_supported;
 static bool scm_deassert_ps_hold_supported;
 /* Download mode master kill-switch */
@@ -123,6 +136,7 @@ static bool get_dload_mode(void)
 	return dload_mode_enabled;
 }
 
+#ifndef CONFIG_HUAWEI_KERNEL
 static void enable_emergency_dload_mode(void)
 {
 	int ret;
@@ -147,6 +161,14 @@ static void enable_emergency_dload_mode(void)
 	if (ret)
 		pr_err("Failed to set secure EDLOAD mode: %d\n", ret);
 }
+#endif
+
+#ifdef CONFIG_HUAWEI_KERNEL
+void clear_dload_mode(void)
+{
+    set_dload_mode(0);
+}
+#endif
 
 static int dload_set(const char *val, struct kernel_param *kp)
 {
@@ -171,10 +193,12 @@ static int dload_set(const char *val, struct kernel_param *kp)
 #else
 #define set_dload_mode(x) do {} while (0)
 
+#ifndef CONFIG_HUAWEI_KERNEL
 static void enable_emergency_dload_mode(void)
 {
 	pr_err("dload mode is not enabled on target\n");
 }
+#endif
 
 static bool get_dload_mode(void)
 {
@@ -225,6 +249,13 @@ static void msm_restart_prepare(const char *cmd)
 
 	set_dload_mode(download_mode &&
 			(in_panic || restart_mode == RESTART_DLOAD));
+#endif
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(restart_flag_addr)
+	{
+		__raw_writel(RESTART_FLAG_MAGIC_NUM, restart_flag_addr);
+	}
 #endif
 
 	if (qpnp_pon_check_hard_reset_stored()) {
@@ -285,8 +316,16 @@ static void msm_restart_prepare(const char *cmd)
 			if (!ret)
 				__raw_writel(0x6f656d00 | (code & 0xff),
 					     restart_reason);
+#ifndef CONFIG_HUAWEI_KERNEL
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+		} else if (!strncmp(cmd, "huawei_rtc", 10)) {
+			__raw_writel(0x77665524, restart_reason);
+		} else if (!strncmp(cmd, "huawei_dload", 12)) {
+			__raw_writel(0x77665529, restart_reason);
+#endif
 		} else {
 			qpnp_pon_set_restart_reason(PON_RESTART_REASON_UNKNOWN);
 			__raw_writel(0x77665501, restart_reason);
@@ -441,6 +480,18 @@ static int msm_restart_probe(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	np = of_find_compatible_node(NULL, NULL,
+				"qcom,msm-imem-restart_flag_addr");
+	if (!np) {
+		pr_err("unable to find DT imem restart flag addr node\n");
+	} else {
+		restart_flag_addr = of_iomap(np, 0);
+		if (!restart_flag_addr) {
+			pr_err("unable to map imem restart flag addr\n");
+		}
+	}
+#endif
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	msm_ps_hold = devm_ioremap_resource(dev, mem);
 	if (IS_ERR(msm_ps_hold))
