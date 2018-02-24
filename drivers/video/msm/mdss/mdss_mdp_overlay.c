@@ -35,7 +35,8 @@
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 #include "mdss_mdp_rotator.h"
-
+/* add log on panel resume and suspend module */
+#include <linux/hw_lcd_common.h>
 #define VSYNC_PERIOD 16
 #define BORDERFILL_NDX	0x0BF000BF
 #define CHECK_BOUNDS(offset, size, max_size) \
@@ -50,6 +51,15 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd);
 static void __overlay_kickoff_requeue(struct msm_fb_data_type *mfd);
 static void __vsync_retire_signal(struct msm_fb_data_type *mfd, int val);
 static int __vsync_set_vsync_handler(struct msm_fb_data_type *mfd);
+
+/* add color temperature setting ioctl for avoid display partial red*/
+static uint32_t  ct_table[3] = {32768,32768,32768};
+static uint32_t led_ct_table[3] = {32768,32768,32768};
+
+/*fix conflict load pp_calib*.xml and color temprature
+(color temprature become invalid after reboot)*/
+static struct mdp_pcc_cfg_data origin_pcc_cfg_data;
+static struct mdp_color_temprature_data saved_ct_data;
 
 static inline bool is_ov_right_blend(struct mdp_rect *left_blend,
 	struct mdp_rect *right_blend, u32 left_lm_w)
@@ -1726,6 +1736,14 @@ static int __mdss_mdp_overlay_release_all(struct msm_fb_data_type *mfd,
 	}
 	mutex_unlock(&mdp5_data->ov_lock);
 
+/*  */
+#ifdef CONFIG_HUAWEI_LCD
+	if (cnt && mfd->panel_power_state == MDSS_PANEL_POWER_ON)
+#else
+	if (cnt)
+#endif
+		mfd->mdp.kickoff_fnc(mfd, NULL);
+
 	list_for_each_entry_safe(rot, tmp, &mdp5_data->rot_proc_list, list) {
 		if (rot->pid == pid) {
 			if (!list_empty(&rot->list))
@@ -1734,7 +1752,7 @@ static int __mdss_mdp_overlay_release_all(struct msm_fb_data_type *mfd,
 		}
 	}
 
-	return cnt;
+	return 0;
 }
 
 static int mdss_mdp_overlay_play_wait(struct msm_fb_data_type *mfd,
@@ -2306,6 +2324,100 @@ static ssize_t mdss_mdp_ad_store(struct device *dev,
 	return count;
 }
 
+static unsigned int lcd_comform_val=0;
+static ssize_t store_lcd_comform_mode(struct device *device,
+			      struct device_attribute *attr,
+			      const char *buf, size_t count)
+{
+
+	int ret=0;
+	unsigned int val;
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fb_info->par;
+
+	pr_info("%s start\n", __func__);
+
+	if (!fb_info )
+		return -ENODEV;
+
+	if(sscanf(&buf[0], "%u\n", &val) != 1){
+		return -EINVAL;
+	}
+
+	if(!(val >= 0 && val <= 80)){
+		pr_err("input value(%d) out of range!\n", val);
+		return -EINVAL;
+	}
+
+	lcd_comform_val=val;
+	if(mdss_panel_is_power_off(mfd->panel_power_state)){
+		ret = mdss_mdp_pp_set_comform_coff(val, 0);
+	}else{
+		ret = mdss_mdp_pp_set_comform_coff(val, 1);
+	}
+	if(ret){
+		pr_err("set comform coff failed!\n");
+	}
+
+	pr_info("%s end\n", __func__);
+
+	return count;
+
+}
+
+static ssize_t show_lcd_comform_mode(struct device *device,
+			     struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+
+	if (!fb_info )
+		return -ENODEV;
+
+	return snprintf(buf, PAGE_SIZE, "%u\n", lcd_comform_val);
+
+}
+
+static ssize_t get_support_mode(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct mdss_panel_data *pdata;
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("no panel connected for fb%d\n", mfd->index);
+		return -ENODEV;
+	}
+
+	return snprintf(buf, 16,"%d\n", pdata->panel_info.support_mode);
+}
+
+static ssize_t set_support_mode(struct device *dev,
+    struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret = 0;
+	unsigned long val = 0;
+	struct mdss_panel_data *pdata;
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+
+
+	ret = strict_strtoul(buf, 0, &val);
+	if (ret)
+	    return ret;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("no panel connected for fb%d\n", mfd->index);
+		return -ENODEV;
+	}
+
+	pdata->panel_info.support_mode = val;
+
+	return snprintf((char *)buf, 16,"%d\n", pdata->panel_info.support_mode);
+}
+
 static ssize_t mdss_mdp_dyn_pu_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -2341,6 +2453,8 @@ static ssize_t mdss_mdp_dyn_pu_store(struct device *dev,
 	return count;
 }
 
+static DEVICE_ATTR(lcd_support_mode, S_IRUGO|S_IWUSR, get_support_mode, set_support_mode);
+static DEVICE_ATTR(lcd_comform_mode, S_IRUGO|S_IWUSR, show_lcd_comform_mode, store_lcd_comform_mode);
 static DEVICE_ATTR(vsync_event, S_IRUGO, mdss_mdp_vsync_show_event, NULL);
 static DEVICE_ATTR(ad, S_IRUGO | S_IWUSR | S_IWGRP, mdss_mdp_ad_show,
 	mdss_mdp_ad_store);
@@ -2350,6 +2464,8 @@ static DEVICE_ATTR(dyn_pu, S_IRUGO | S_IWUSR | S_IWGRP, mdss_mdp_dyn_pu_show,
 static struct attribute *mdp_overlay_sysfs_attrs[] = {
 	&dev_attr_vsync_event.attr,
 	&dev_attr_ad.attr,
+	&dev_attr_lcd_comform_mode.attr,
+	&dev_attr_lcd_support_mode.attr,
 	&dev_attr_dyn_pu.attr,
 	NULL,
 };
@@ -2853,6 +2969,34 @@ static int mdss_bl_scale_config(struct msm_fb_data_type *mfd,
 	return ret;
 }
 
+
+/*fix conflict load pp_calib*.xml and color temprature
+(color temprature become invalid after reboot)*/
+static void do_color_temprature(struct msmfb_mdp_pp* p_mdp_pp)
+{
+	uint32_t r,b;
+	r = p_mdp_pp->data.pcc_cfg_data.r.r;
+	b = p_mdp_pp->data.pcc_cfg_data.b.b;
+	switch(saved_ct_data.modify_flag){
+		case CT_MODIFY_BLUE: //blue
+			b = (uint32_t) (b-b*saved_ct_data.attenuation_coeff/1000);
+			p_mdp_pp->data.pcc_cfg_data.b.b = b;
+			/*pp_calib*.xml maybe send MDP_PP_OPS_DISABLE, NO, Enable it for color temprate*/
+			if( p_mdp_pp->data.pcc_cfg_data.ops & MDP_PP_OPS_DISABLE)
+				p_mdp_pp->data.pcc_cfg_data.ops = MDP_PP_OPS_ENABLE | MDP_PP_OPS_WRITE;
+			break;
+		case CT_MODIFY_RED: //red
+			r = (uint32_t) (r-r*saved_ct_data.attenuation_coeff/1000);
+			p_mdp_pp->data.pcc_cfg_data.r.r = r;
+			/*pp_calib*.xml maybe send MDP_PP_OPS_DISABLE, NO, Enable it for color temprate*/
+			if( p_mdp_pp->data.pcc_cfg_data.ops & MDP_PP_OPS_DISABLE)
+				p_mdp_pp->data.pcc_cfg_data.ops = MDP_PP_OPS_ENABLE | MDP_PP_OPS_WRITE;
+			break;
+		default: //no need do
+			pr_info("no set color temprature\n");
+			break;
+	}
+}
 static int mdss_mdp_pp_ioctl(struct msm_fb_data_type *mfd,
 				void __user *argp)
 {
@@ -2861,6 +3005,7 @@ static int mdss_mdp_pp_ioctl(struct msm_fb_data_type *mfd,
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	u32 copyback = 0;
 	u32 copy_from_kernel = 0;
+	u32 from_pre_pcc_flag=0;
 
 	if (!mdata)
 		return -EPERM;
@@ -2887,11 +3032,50 @@ static int mdss_mdp_pp_ioctl(struct msm_fb_data_type *mfd,
 					&copyback);
 		break;
 
+/*fix conflict load pp_calib*.xml and color temprature
+(color temprature become invalid after reboot)*/
+	case mdp_op_pre_pcc_cfg:
+		saved_ct_data = mdp_pp.data.color_temp_data;
+		pr_info("mdp_op_pre_pcc_cfg:attenuation_coeff=%u, modify_flag=%u\n",  saved_ct_data.attenuation_coeff, saved_ct_data.modify_flag);
+		/*do mdp_op_pcc_cfg after geted color temprature params*/
+		mdp_pp.data.pcc_cfg_data = origin_pcc_cfg_data;
+		mdp_pp.op = mdp_op_pcc_cfg;
+		mdp_pp.data.pcc_cfg_data.block = MDP_LOGICAL_BLOCK_DISP_0;
+		mdp_pp.data.pcc_cfg_data.ops = MDP_PP_OPS_ENABLE | MDP_PP_OPS_WRITE;
+		from_pre_pcc_flag=1;  // no need save pcc_cfg_data to origin_pcc_cfg_data
+		/*no need break, need call mdp_op_pcc_cfg*/
+
+/* add color temperature setting ioctl for avoid display partial red*/
 	case mdp_op_pcc_cfg:
+	case mdp_op_led_pcc_cfg:
+		if(mdp_pp.op == mdp_op_pcc_cfg)
+		{
+			/*fix conflict load pp_calib*.xml and color temprature
+			(color temprature become invalid after reboot)*/
+			pr_info("old ct_table: %u %u %u led_ct_table: %u %u %u\n",ct_table[0],ct_table[1],ct_table[2],led_ct_table[0],led_ct_table[1],led_ct_table[2]);
+			if(!from_pre_pcc_flag){
+				origin_pcc_cfg_data = mdp_pp.data.pcc_cfg_data;
+			}
+			do_color_temprature(&mdp_pp);
+			ct_table[0] = mdp_pp.data.pcc_cfg_data.r.r;
+			ct_table[1] = mdp_pp.data.pcc_cfg_data.g.g;
+			ct_table[2] = mdp_pp.data.pcc_cfg_data.b.b;
+		}
+		else if(mdp_pp.op == mdp_op_led_pcc_cfg)
+		{
+			led_ct_table[0] = mdp_pp.data.pcc_cfg_data.r.r;
+			led_ct_table[1] = mdp_pp.data.pcc_cfg_data.g.g;
+			led_ct_table[2] = mdp_pp.data.pcc_cfg_data.b.b;
+		}
+
+		mdp_pp.data.pcc_cfg_data.r.r = ct_table[0]*led_ct_table[0]/32768;
+		mdp_pp.data.pcc_cfg_data.g.g = ct_table[1]*led_ct_table[1]/32768;
+		mdp_pp.data.pcc_cfg_data.b.b = ct_table[2]*led_ct_table[2]/32768;
+
+		pr_info("ct_table: %u %u %u led_ct_table: %u %u %u\n",ct_table[0],ct_table[1],ct_table[2],led_ct_table[0],led_ct_table[1],led_ct_table[2]);
 		ret = mdss_mdp_pcc_config(&mdp_pp.data.pcc_cfg_data,
 					&copyback);
 		break;
-
 	case mdp_op_lut_cfg:
 		switch (mdp_pp.data.lut_cfg_data.lut_type) {
 		case mdp_lut_igc:
@@ -3633,7 +3817,7 @@ error:
 
 static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 {
-	int rc;
+	int rc, ad_ret;
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_ctl *ctl = NULL;
 
@@ -3682,6 +3866,12 @@ panel_on:
 		pr_err("Failed to turn on fb%d\n", mfd->index);
 		mdss_mdp_overlay_off(mfd);
 		goto end;
+	}
+
+	if (mfd->mdp.ad_work_setup) {
+		ad_ret = mfd->mdp.ad_work_setup(mfd);
+		if (ad_ret)
+			pr_err("AD work queue setup failed! ret =%d\n", ad_ret);
 	}
 
 end:
@@ -4220,6 +4410,18 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 		}
 	}
 	mdp5_data->dyn_pu_state = mfd->panel_info->partial_update_enabled;
+
+	/*fix conflict load pp_calib*.xml and color temprature
+	(color temprature become invalid after reboot)*/
+	memset(&origin_pcc_cfg_data, 0, sizeof(origin_pcc_cfg_data));
+	memset(&saved_ct_data, 0, sizeof(saved_ct_data));
+
+	origin_pcc_cfg_data.r.r=0x8000;
+	origin_pcc_cfg_data.g.g=0x8000;
+	origin_pcc_cfg_data.b.b=0x8000;
+
+	saved_ct_data.modify_flag =0;
+	saved_ct_data.attenuation_coeff=0;
 
 	if (mdss_mdp_pp_overlay_init(mfd))
 		pr_warn("Failed to initialize pp overlay data.\n");
