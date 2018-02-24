@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "11f5bdcd_334cf29b",
+        "filename": "drivers/regulator/core.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T14:56:28Z",
+      "side": 1,
+      "message": "Useless changes",
+      "revId": "0a2f0105237fdd8ddd10a9de46c92d77e7589d70",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "500bfd02_4cfc07d0",
+        "filename": "drivers/regulator/cpr-regulator.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3753,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T14:56:28Z",
+      "side": 1,
+      "message": "Useless changes",
+      "revId": "0a2f0105237fdd8ddd10a9de46c92d77e7589d70",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
