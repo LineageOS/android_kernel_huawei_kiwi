@@ -18,7 +18,7 @@
 #include <linux/mdss_io_util.h>
 #include <linux/irqreturn.h>
 #include <linux/pinctrl/consumer.h>
-#include <linux/gpio.h>
+#include <linux/msm_mdp.h>
 
 #include "mdss_panel.h"
 #include "mdss_dsi_cmd.h"
@@ -151,6 +151,8 @@ enum dsi_pm_type {
 #define DSI_CMD_DST_FORMAT_RGB666	7
 #define DSI_CMD_DST_FORMAT_RGB888	8
 
+/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
+#define DSI_INTR_DESJEW_MASK				BIT(31)
 #define DSI_INTR_DYNAMIC_REFRESH_MASK		BIT(29)
 #define DSI_INTR_DYNAMIC_REFRESH_DONE		BIT(28)
 #define DSI_INTR_ERROR_MASK		BIT(25)
@@ -165,6 +167,16 @@ enum dsi_pm_type {
 #define DSI_INTR_CMD_DMA_DONE		BIT(0)
 /* Update this if more interrupt masks are added in future chipsets */
 #define DSI_INTR_TOTAL_MASK		0x2222AA02
+
+/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
+#define DSI_INTR_MASK_ALL	\
+		(DSI_INTR_DESJEW_MASK | \
+		DSI_INTR_DYNAMIC_REFRESH_MASK | \
+		DSI_INTR_ERROR_MASK | \
+		DSI_INTR_BTA_DONE_MASK | \
+		DSI_INTR_VIDEO_DONE_MASK | \
+		DSI_INTR_CMD_MDP_DONE_MASK | \
+		DSI_INTR_CMD_DMA_DONE_MASK)
 
 #define DSI_CMD_TRIGGER_NONE		0x0	/* mdp trigger */
 #define DSI_CMD_TRIGGER_TE		0x02
@@ -284,6 +296,7 @@ enum {
 #define DSI_EV_MDP_FIFO_UNDERFLOW	0x0002
 #define DSI_EV_DSI_FIFO_EMPTY		0x0004
 #define DSI_EV_DLNx_FIFO_OVERFLOW	0x0008
+#define DSI_EV_LP_RX_TIMEOUT		0x0010
 #define DSI_EV_STOP_HS_CLK_LANE		0x40000000
 #define DSI_EV_MDP_BUSY_RELEASE		0x80000000
 
@@ -327,6 +340,22 @@ struct mdss_dsi_ctrl_pdata {
 	int disp_te_gpio;
 	int rst_gpio;
 	int disp_en_gpio;
+	int which_product_pad;
+	int disp_vsn_gpio102;
+	int disp_vsp_gpio100;
+	int disp_reset_gpio32;
+	int disp_vled_gpio97;
+	int disp_bl_gpio109;
+
+	/*T2 10 LCD on*/
+	/*Rename GPIO*/
+	int hw_product_pad;
+	int disp_en_gpio_vled;
+	int disp_power_backlight;
+	int disp_power_panel;
+	/* Modify JDI tp/lcd power on/off to reduce power consumption */
+	int tp_vci_gpio;
+	int hw_led_en_flag;
 	int bklt_en_gpio;
 	int mode_gpio;
 	int bklt_ctrl;	/* backlight ctrl */
@@ -342,6 +371,8 @@ struct mdss_dsi_ctrl_pdata {
 	bool dsi_irq_line;
 	atomic_t te_irq_ready;
 
+/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
+	bool cmd_clk_ln_recovery_en;
 	bool cmd_sync_wait_broadcast;
 	bool cmd_sync_wait_trigger;
 
@@ -357,6 +388,10 @@ struct mdss_dsi_ctrl_pdata {
 
 	struct dsi_panel_cmds on_cmds;
 	struct dsi_panel_cmds off_cmds;
+#ifdef CONFIG_FB_AUTO_CABC
+	struct dsi_panel_cmds dsi_panel_cabc_ui_cmds;
+	struct dsi_panel_cmds dsi_panel_cabc_video_cmds;
+#endif
 	struct dsi_panel_cmds status_cmds;
 	u32 status_cmds_rlen;
 	u32 status_value;
@@ -377,6 +412,10 @@ struct mdss_dsi_ctrl_pdata {
 	struct mutex mutex;
 	struct mutex cmd_mutex;
 	struct mutex clk_lane_mutex;
+#ifdef CONFIG_HUAWEI_LCD
+	struct mutex put_mutex;
+	/*not need the mutex,so delete one line*/
+#endif
 
 	u32 ulps_clamp_ctrl_off;
 	u32 ulps_phyrst_ctrl_off;
@@ -387,11 +426,40 @@ struct mdss_dsi_ctrl_pdata {
 
 	struct dsi_buf tx_buf;
 	struct dsi_buf rx_buf;
+#ifdef CONFIG_HUAWEI_LCD
+	u32 esd_check_enable;
+	struct dsi_panel_cmds esd_cmds;
+#endif
 	struct dsi_buf status_buf;
 	int status_mode;
 
 	struct dsi_pinctrl_res pin_res;
+/*add vars of dispaly color inversion*/
+#ifdef CONFIG_HUAWEI_LCD
+	struct dsi_panel_cmds dot_inversion_cmds;
+	struct dsi_panel_cmds column_inversion_cmds;
+	u32 long_read_flag;
+	u32 skip_reg_read;
+	char reg_expect_value;
+	u32 reg_expect_count;
+	u32 inversion_state;
+	struct dsi_panel_cmds dsi_panel_inverse_on_cmds;
+	struct dsi_panel_cmds dsi_panel_inverse_off_cmds;
 
+	/*<add cabc node>*/
+	struct dsi_panel_cmds dsi_panel_cabc_off_cmds;
+	struct dsi_panel_cmds dsi_panel_cabc_moving_cmds;
+	struct dsi_panel_cmds dsi_panel_cabc_still_cmds;
+
+	bool frame_checksum_support;
+	u32 panel_checksum_cmd_len;
+	struct dsi_panel_cmds dsi_frame_crc_enable_cmds;
+	struct dsi_panel_cmds dsi_frame_crc_disable_cmds;
+	u32 frame_crc_read_cmds[8];
+	u32 frame_crc_read_cmds_value[24];
+	u32 esd_set_cabc_flag;
+	u32 reset_for_pt_flag;
+#endif
 	unsigned long dma_size;
 	dma_addr_t dma_addr;
 	bool cmd_cfg_restore;
@@ -460,7 +528,8 @@ void mdss_dsi_phy_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_phy_init(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_ctrl_init(struct device *ctrl_dev,
 			struct mdss_dsi_ctrl_pdata *ctrl);
-void mdss_dsi_cmd_mdp_busy(struct mdss_dsi_ctrl_pdata *ctrl);
+/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
+int mdss_dsi_cmd_mdp_busy(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_wait4video_done(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_en_wait4dynamic_done(struct mdss_dsi_ctrl_pdata *ctrl);
 int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
@@ -551,6 +620,9 @@ static inline struct mdss_dsi_ctrl_pdata *mdss_dsi_get_ctrl_by_index(int ndx)
 	return ctrl_list[ndx];
 }
 
+#ifdef CONFIG_HUAWEI_LCD
+int panel_check_live_status(struct mdss_dsi_ctrl_pdata *ctrl);
+#endif
 static inline bool mdss_dsi_is_ctrl_clk_slave(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	return mdss_dsi_split_display_enabled() &&

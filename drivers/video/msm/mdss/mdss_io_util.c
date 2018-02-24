@@ -16,6 +16,28 @@
 #include <linux/delay.h>
 #include <linux/mdss_io_util.h>
 
+/*open black screen gesture function,can't wake up screen*/
+#include <linux/hw_lcd_common.h>
+
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <linux/regulator/driver.h>
+
+struct regulator {
+	struct device *dev;
+	struct list_head list;
+	unsigned int always_on:1;
+	unsigned int bypass:1;
+	int uA_load;
+	int min_uV;
+	int max_uV;
+	int enabled;
+	char *supply_name;
+	struct device_attribute dev_attr;
+	struct regulator_dev *rdev;
+	struct dentry *debugfs;
+};
+#endif
+
 #define MAX_I2C_CMDS  16
 void dss_reg_w(struct dss_io_data *io, u32 offset, u32 value, u32 debug)
 {
@@ -208,9 +230,156 @@ vreg_get_fail:
 } /* msm_dss_config_vreg */
 EXPORT_SYMBOL(msm_dss_config_vreg);
 
+/*
+*add delay time before vddio-incell enable for ATH JDINT35695. if vddio-incell pull down time is smaller than 80ms.
+*/
+#define ATH_JDINT35695_VDDIO_MAX_TIME 80
+int msm_dss_enable_vreg_ath_jdi(struct dss_vreg *in_vreg, int num_vreg, int enable)
+{
+	int i = 0, rc = 0;
+	unsigned long timeout = 0;
+	unsigned long tp_vddio_poweroff_time = 0;
+	unsigned int  tp_vddio_delay = 0;
+	/* FPC unlock can't light lcd backlight */
+	int lcd_delay_time = 0;
+	/*open black screen gesture function,can't wake up screen*/
+	int tp_gesture_enable_status = -1;
+	tp_gesture_enable_status = get_tp_gesture_enable_status();
+	lcd_delay_time = get_lcd_power_delay_time();
+
+	if (enable) {
+		for (i = 0; i < num_vreg; i++) {
+			rc = PTR_RET(in_vreg[i].vreg);
+			if (rc) {
+				DEV_ERR("%pS->%s: %s regulator error. rc=%d\n",
+					__builtin_return_address(0), __func__,
+					in_vreg[i].vreg_name, rc);
+				goto vreg_set_opt_mode_fail;
+			}
+
+			if(!strcmp(in_vreg[i].vreg_name, "vddio-incell"))
+			{
+				timeout = jiffies;
+				tp_vddio_poweroff_time = get_tp_vddio_poweroff_time();
+				if(tp_vddio_poweroff_time)
+				{
+					if(time_before(timeout, (tp_vddio_poweroff_time + (HZ * ATH_JDINT35695_VDDIO_MAX_TIME/1000))))
+					{
+						//did not time out, vddio-incell pull down time is smaller than 80ms, do delay.
+						if(timeout > tp_vddio_poweroff_time)
+							tp_vddio_delay = jiffies_to_msecs(timeout - tp_vddio_poweroff_time);
+						else
+							tp_vddio_delay = 0;
+
+						pr_info("%s: power up %s tp_vddio_delay=%u",__func__, in_vreg[i].vreg_name, tp_vddio_delay);
+						if(tp_vddio_delay < ATH_JDINT35695_VDDIO_MAX_TIME)
+						{
+							pr_info("%s: power up %s delay %u ms\n",__func__,in_vreg[i].vreg_name,ATH_JDINT35695_VDDIO_MAX_TIME-tp_vddio_delay);
+							msleep(ATH_JDINT35695_VDDIO_MAX_TIME - tp_vddio_delay);
+						}
+					}
+				}
+			}
+
+			if (in_vreg[i].pre_on_sleep)
+				msleep(in_vreg[i].pre_on_sleep);
+			rc = regulator_set_optimum_mode(in_vreg[i].vreg,
+				in_vreg[i].enable_load);
+			if (rc < 0) {
+				DEV_ERR("%pS->%s: %s set opt m fail\n",
+					__builtin_return_address(0), __func__,
+					in_vreg[i].vreg_name);
+				goto vreg_set_opt_mode_fail;
+			}
+			rc = regulator_enable(in_vreg[i].vreg);
+			/* FPC unlock can't light lcd backlight */
+			if(lcd_delay_time)
+			{
+				if(!strcmp(in_vreg[i].vreg_name, "vsp"))
+				{
+					usleep(lcd_delay_time);
+					pr_info("vsp post on delay time is %d\n",lcd_delay_time);
+				}
+			}
+
+			if (in_vreg[i].post_on_sleep)
+				msleep(in_vreg[i].post_on_sleep);
+			if (rc < 0) {
+				DEV_ERR("%pS->%s: %s enable failed\n",
+					__builtin_return_address(0), __func__,
+					in_vreg[i].vreg_name);
+				goto disable_vreg;
+			}
+		}
+	}
+	else {
+		for (i = num_vreg-1; i >= 0; i--){
+/*can't wake up screen*/
+/*open black screen gesture function,can't wake up screen*/
+			if(false == !tp_gesture_enable_status)
+			{
+				if(!strcmp(in_vreg[i].vreg_name, "vsp") || !strcmp(in_vreg[i].vreg_name, "vsn"))
+					continue;
+			}
+			else
+			{
+				if(!strcmp(in_vreg[i].vreg_name, "vsp") || !strcmp(in_vreg[i].vreg_name, "vsn"))
+				{
+					if(in_vreg[i].vreg->rdev->use_count > 1)
+						in_vreg[i].vreg->rdev->use_count = 1;
+				}
+			}
+			if (regulator_is_enabled(in_vreg[i].vreg)) {
+				if (in_vreg[i].pre_off_sleep)
+					msleep(in_vreg[i].pre_off_sleep);
+				regulator_set_optimum_mode(in_vreg[i].vreg,
+					in_vreg[i].disable_load);
+				regulator_disable(in_vreg[i].vreg);
+				if (in_vreg[i].post_off_sleep)
+					msleep(in_vreg[i].post_off_sleep);
+			}
+
+			/* FPC unlock can't light lcd backlight */
+			if(lcd_delay_time)
+			{
+				if(!strcmp(in_vreg[i].vreg_name, "vsn"))
+				{
+					usleep(lcd_delay_time);
+					pr_info("vsn post off delay time is %d\n", lcd_delay_time);
+				}
+			}
+		}
+	}
+
+	return rc;
+
+disable_vreg:
+	regulator_set_optimum_mode(in_vreg[i].vreg, in_vreg[i].disable_load);
+
+vreg_set_opt_mode_fail:
+	for (i--; i >= 0; i--) {
+		if (in_vreg[i].pre_off_sleep)
+			msleep(in_vreg[i].pre_off_sleep);
+		regulator_set_optimum_mode(in_vreg[i].vreg,
+			in_vreg[i].disable_load);
+		regulator_disable(in_vreg[i].vreg);
+		if (in_vreg[i].post_off_sleep)
+			msleep(in_vreg[i].post_off_sleep);
+	}
+
+	return rc;
+}
+EXPORT_SYMBOL(msm_dss_enable_vreg_ath_jdi);
 int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 {
 	int i = 0, rc = 0;
+	/* FPC unlock can't light lcd backlight */
+	int lcd_delay_time = 0;
+/*open black screen gesture function,can't wake up screen*/
+	int tp_gesture_enable_status = -1;
+	tp_gesture_enable_status = get_tp_gesture_enable_status();
+	lcd_delay_time = get_lcd_power_delay_time();
+
 	if (enable) {
 		for (i = 0; i < num_vreg; i++) {
 			rc = PTR_RET(in_vreg[i].vreg);
@@ -231,6 +400,15 @@ int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 				goto vreg_set_opt_mode_fail;
 			}
 			rc = regulator_enable(in_vreg[i].vreg);
+			/* FPC unlock can't light lcd backlight */
+			if(lcd_delay_time)
+			{
+				if(!strcmp(in_vreg[i].vreg_name, "vsp"))
+				{
+					usleep(lcd_delay_time);
+					pr_info("vsp post on delay time is %d\n", lcd_delay_time);
+				}
+			}
 			if (in_vreg[i].post_on_sleep)
 				msleep(in_vreg[i].post_on_sleep);
 			if (rc < 0) {
@@ -241,7 +419,23 @@ int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 			}
 		}
 	} else {
-		for (i = num_vreg-1; i >= 0; i--)
+		for (i = num_vreg-1; i >= 0; i--){
+/*can't wake up screen*/
+/*open black screen gesture function,can't wake up screen*/
+			if(false == !tp_gesture_enable_status)
+			{
+				if(!strcmp(in_vreg[i].vreg_name, "vsp") || !strcmp(in_vreg[i].vreg_name, "vsn"))
+						continue;
+			}
+			else
+			{
+				if(!strcmp(in_vreg[i].vreg_name, "vsp") || !strcmp(in_vreg[i].vreg_name, "vsn"))
+				{
+					if(in_vreg[i].vreg->rdev->use_count > 1)
+						in_vreg[i].vreg->rdev->use_count = 1;
+				}
+			}
+
 			if (regulator_is_enabled(in_vreg[i].vreg)) {
 				if (in_vreg[i].pre_off_sleep)
 					msleep(in_vreg[i].pre_off_sleep);
@@ -251,6 +445,16 @@ int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 				if (in_vreg[i].post_off_sleep)
 					msleep(in_vreg[i].post_off_sleep);
 			}
+			/* FPC unlock can't light lcd backlight */
+			if(lcd_delay_time)
+			{
+				if(!strcmp(in_vreg[i].vreg_name, "vsn"))
+				{
+					usleep(lcd_delay_time);
+					pr_info("vsn post off delay time is %d\n", lcd_delay_time);
+				}
+			}
+		}
 	}
 	return rc;
 
