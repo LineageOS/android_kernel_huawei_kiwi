@@ -19,6 +19,12 @@
 #include <linux/types.h>
 #include <linux/batterydata-lib.h>
 #include <linux/power_supply.h>
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <linux/of_batterydata.h>
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <misc/app_info.h>
+#endif
 
 static int of_batterydata_read_lut(const struct device_node *np,
 			int max_cols, int max_rows, int *ncols, int *nrows,
@@ -192,7 +198,7 @@ static int of_batterydata_read_batt_id_kohm(const struct device_node *np,
 	const __be32 *data;
 	int num, i, *id_kohm = batt_ids->kohm;
 
-	prop = of_find_property(np, "qcom,batt-id-kohm", NULL);
+	prop = of_find_property(np, propname, NULL);
 	if (!prop) {
 		pr_err("%s: No battery id resistor found\n", np->name);
 		return -EINVAL;
@@ -235,6 +241,48 @@ static int of_batterydata_load_battery_data(struct device_node *node,
 				struct bms_battery_data *batt_data)
 {
 	int rc;
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	int warm_bat_decidegc = 0;
+	int warm_bat_chg_ma = 0;
+	int warm_bat_mv = 0;
+
+	int cool_bat_decidegc = 0;
+	int cool_bat_chg_ma = 0;
+	int cool_bat_mv = 0;
+
+	int cold_bat_decidegc = 0;
+	int hot_bat_decidegc = 0;
+
+	rc = 0;
+
+	OF_PROP_READ(warm_bat_decidegc, "warm-bat-decidegc", node, rc, false);
+	OF_PROP_READ(warm_bat_chg_ma, "ibatmax-warm-ma", node, rc, false);
+	OF_PROP_READ(warm_bat_mv, "warm-bat-mv", node, rc, false);
+
+	OF_PROP_READ(cool_bat_decidegc, "cool-bat-decidegc", node, rc, false);
+	OF_PROP_READ(cool_bat_chg_ma, "ibatmax-cool-ma", node, rc, false);
+	OF_PROP_READ(cool_bat_mv, "cool-bat-mv", node, rc, false);
+
+	OF_PROP_READ(hot_bat_decidegc, "hot-bat-decidegc", node, rc, false);
+	OF_PROP_READ(cold_bat_decidegc, "cold-bat-decidegc", node, rc, false);
+
+	if (!rc)
+	{
+		batt_data->warm_bat_decidegc = warm_bat_decidegc;
+		batt_data->warm_bat_chg_ma = warm_bat_chg_ma;
+		batt_data->warm_bat_mv = warm_bat_mv;
+
+		batt_data->cool_bat_decidegc = cool_bat_decidegc;
+		batt_data->cool_bat_chg_ma = cool_bat_chg_ma;
+		batt_data->cool_bat_mv = cool_bat_mv;
+
+		batt_data->hot_bat_decidegc = hot_bat_decidegc;
+		batt_data->cold_bat_decidegc = cold_bat_decidegc;
+	}
+
+	rc = 0;
+#endif
 
 	rc = of_batterydata_read_single_row_lut(node, "qcom,fcc-temp-lut",
 			batt_data->fcc_temp_lut);
@@ -306,6 +354,32 @@ static int64_t of_batterydata_convert_battery_id_kohm(int batt_id_uv,
 	return resistor_value_kohm;
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+#define BATT_ID_TYPE 7
+
+/* design_kohm--------resistance that given in advance
+ * thres_down---------the lower limit for the resistance
+ * thres_up---------the higher limit of the resistance
+ */
+struct batt_id_map
+{
+	int design_kohm;
+	int thres_down;
+	int thres_up;
+};
+
+struct batt_id_map batt_id_map[BATT_ID_TYPE] =
+{
+	{10,7,16},
+	{22,16,31},
+	{39,31,54},
+	{68,54,89},
+	{110,89,156},
+	{200,156,335},
+	{470,335,700},
+};
+#endif
+/*modify the wrong word unknow to unknown */
 struct device_node *of_batterydata_get_best_profile(
 		const struct device_node *batterydata_container_node,
 		const char *psy_name,  const char  *batt_type)
@@ -401,8 +475,15 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 	struct device_node *node, *best_node;
 	struct batt_ids batt_ids;
 	const char *battery_type = NULL;
+#ifdef CONFIG_HUAWEI_KERNEL
+	static int app_info_set_done = 0;
+	int counter = 0;
+	int best_delta = 0, batt_id_kohm = 0, rpull_up_kohm = 0,
+		vadc_vdd_uv = 0, best_id_kohm = 0, rc = 0;
+#else
 	int delta, best_delta, batt_id_kohm, rpull_up_kohm,
 		vadc_vdd_uv, best_id_kohm, i, rc = 0;
+#endif
 
 	node = batterydata_container_node;
 	OF_PROP_READ(rpull_up_kohm, "rpull-up-kohm", node, rc, false);
@@ -416,6 +497,25 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 	best_delta = 0;
 	best_id_kohm = 0;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	pr_info("batt_id_kohm = %d\n", batt_id_kohm);
+	for (counter = 0; counter < BATT_ID_TYPE; counter++)
+	{
+		if (is_between(batt_id_map[counter].thres_down, batt_id_map[counter].thres_up, batt_id_kohm))
+			break;
+	}
+	if (counter >= BATT_ID_TYPE && !app_info_set_done)
+	{
+		rc = app_info_set("battery_name", "Unknown battery");
+		if(rc){
+			pr_err("set battery_name failed\n");
+			return rc;
+		}
+		app_info_set_done = 1;
+		pr_err("No battery data found\n");
+		return -ENODATA;
+	}
+#endif
 	/*
 	 * Find the battery data with a battery id resistor closest to this one
 	 */
@@ -425,6 +525,14 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 						&batt_ids);
 		if (rc)
 			continue;
+#ifdef CONFIG_HUAWEI_KERNEL
+		if (batt_id_map[counter].design_kohm == batt_ids.kohm[0])
+		{
+			best_node = node;
+			best_id_kohm = batt_ids.kohm[0];
+			break;
+		}
+#else
 		for (i = 0; i < batt_ids.num; i++) {
 			delta = abs(batt_ids.kohm[i] - batt_id_kohm);
 			if (delta < best_delta || !best_node) {
@@ -433,9 +541,21 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 				best_id_kohm = batt_ids.kohm[i];
 			}
 		}
+#endif
 	}
 
 	if (best_node == NULL) {
+#ifdef CONFIG_HUAWEI_KERNEL
+		if(!app_info_set_done)
+		{
+			rc = app_info_set("battery_name", "Unknown battery");
+			if(rc){
+				pr_err("set battery_name failed\n");
+				return rc;
+			}
+			app_info_set_done = 1;
+		}
+#endif
 		pr_err("No battery data found\n");
 		return -ENODATA;
 	}
@@ -446,8 +566,27 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 	else
 		pr_info("%s loaded\n", best_node->name);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	if (!app_info_set_done)
+	{
+		if (!rc){
+			rc = app_info_set("battery_name", battery_type);
+			if(rc){
+				pr_err("set battery_name failed\n");
+				return rc;
+			}
+		}else{
+			rc = app_info_set("battery_name", "Unknown battery");
+			if(rc){
+				pr_err("set battery_name failed\n");
+				return rc;
+			}
+		}
+		app_info_set_done = 1;
+	}
+#endif
+
 	return of_batterydata_load_battery_data(best_node,
 					best_id_kohm, batt_data);
 }
-
 MODULE_LICENSE("GPL v2");

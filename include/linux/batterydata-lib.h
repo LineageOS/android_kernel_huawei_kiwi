@@ -138,7 +138,48 @@ struct bms_battery_data {
 	int			iterm_ua;
 	int			batt_id_kohm;
 	const char		*battery_type;
+#ifdef CONFIG_HUAWEI_KERNEL
+	int			warm_bat_decidegc;
+	int			warm_bat_chg_ma;
+	int			warm_bat_mv;
+	int			cool_bat_decidegc;
+	int			cool_bat_chg_ma;
+	int			cool_bat_mv;
+	int			cold_bat_decidegc;
+	int			hot_bat_decidegc;
+#endif
 };
+
+#ifdef CONFIG_HUAWEI_KERNEL
+struct max77819_temp_control_info {
+	short	cold_bat_degree;		/*lowest temperature to stop charging*/
+	short	cool_bat_degree;		/*cool temprature to limit charging current and voltage*/
+	int		imaxua_cool_bat;		/* ua max battery charging input current */
+	int		vmaxuv_cool_bat;		/* uv max battery terminate voltage*/
+	short	warm_bat_degree;		/*warm temprature to limit charging current and voltage*/
+	int		imaxua_warm_bat;		/* ua max battery charging input current */
+	int		vmaxuv_warm_bat;		/* uv max battery terminate voltage*/
+	short	hot_bat_degree;			/*highest temperature to stop charging*/
+	int		sys_limit_current;		/*the limit charging current by system*/
+};
+
+/*below info should be provided by Maxim with a *.INI file
+for detailed infor, pls refer to maxim fuelgauge usermanual 20140916 beigin*/
+#define MAX17048_MODEL_DATA_SIZE	64
+/* add full capacity info */
+struct max17048_batt_data{
+	int		full_capacity;
+	short	ini_rcompseg;
+	char	ini_rcomp;
+	int		ini_tempco_up;
+	int		ini_tempco_dwon;
+	char	ini_soccheck_a;
+	char	ini_soccheck_b;
+	short	ini_ocvtest;
+	char	ini_bits;
+	char	model_data[MAX17048_MODEL_DATA_SIZE];
+};
+#endif
 
 #if defined(CONFIG_PM8921_BMS) || \
 	defined(CONFIG_PM8921_BMS_MODULE) || \
