@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "185c9be7_06086ab3",
+        "filename": "drivers/video/fbmem.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:50:15Z",
+      "side": 1,
+      "message": "All changes here look useless",
+      "revId": "ed366b8e193ce553e37bd8b51240c0f0809df544",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
