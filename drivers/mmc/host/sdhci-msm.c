@@ -211,6 +211,11 @@ enum sdc_mpm_pin_state {
 /* Timeout value to avoid infinite waiting for pwr_irq */
 #define MSM_PWR_IRQ_TIMEOUT_MS 5000
 
+#define CORE_VENDOR_SPEC_FUNC2 0x110
+#define HC_SW_RST_WAIT_IDLE_DIS (1 << 20)
+#define HC_SW_RST_REQ (1 << 21)
+#define ONE_MID_EN (1 << 25)
+
 static const u32 tuning_block_64[] = {
 	0x00FF0FFF, 0xCCC3CCFF, 0xFFCC3CC3, 0xEFFEFFFE,
 	0xDDFFDFFF, 0xFBFFFBFF, 0xFF7FFFBF, 0xEFBDF777,
@@ -2178,6 +2183,14 @@ static int sdhci_msm_setup_vreg(struct sdhci_msm_pltfm_data *pdata,
 				goto out;
 		}
 	}
+/* according to spec,vdd need to be below 500mv and keep 1ms at least
+ * so sd will be recognized next time
+ */
+	if(pdata->nonremovable != true && !enable)
+	{
+		pr_info("mmc1:add delay for sd vdd power off\n");
+		msleep(120);
+	}
 out:
 	return ret;
 }
@@ -2365,6 +2378,29 @@ static irqreturn_t sdhci_msm_pwr_irq(int irq, void *data)
 			pr_err("%s: Timedout clearing (0x%x) pwrctl status register\n",
 				mmc_hostname(host->mmc), irq_status);
 			sdhci_msm_dump_pwr_ctrl_regs(host);
+			BUG_ON(1);
+		}
+		writeb_relaxed(irq_status,
+				(msm_host->core_mem + CORE_PWRCTL_CLEAR));
+		retry--;
+		udelay(10);
+	}
+	if (likely(retry < 10))
+		pr_debug("%s: success clearing (0x%x) pwrctl status register, retries left %d\n",
+				mmc_hostname(host->mmc), irq_status, retry);
+
+	/*
+	 * There is a rare HW scenario where the first clear pulse could be
+	 * lost when actual reset and clear/read of status register is
+	 * happening at a time. Hence, retry for at least 10 times to make
+	 * sure status register is cleared. Otherwise, this will result in
+	 * a spurious power IRQ resulting in system instability.
+	 */
+	while (irq_status &
+		readb_relaxed(msm_host->core_mem + CORE_PWRCTL_STATUS)) {
+		if (retry == 0) {
+			pr_err("%s: Timedout clearing (0x%x) pwrctl status register\n",
+				mmc_hostname(host->mmc), irq_status);
 			BUG_ON(1);
 		}
 		writeb_relaxed(irq_status,
@@ -3274,7 +3310,64 @@ static void sdhci_set_default_hw_caps(struct sdhci_msm_host *msm_host,
 	caps = readl_relaxed(host->ioaddr + SDHCI_CAPABILITIES);
 	caps &= ~CORE_SYS_BUS_SUPPORT_64_BIT;
 	writel_relaxed(caps, host->ioaddr + CORE_VENDOR_SPEC_CAPABILITIES0);
+
+    /*
+    * Enable one MID mode for SDCC5 (major 1) on 8916/8939 (minor 0x2e) and
+    * on 8992 (minor 0x3e) as a workaround to reset for data stuck issue.
+    */
+    if (major == 1 && (minor == 0x2e || minor == 0x3e)) {
+        host->quirks2 |= SDHCI_QUIRK2_USE_RESET_WORKAROUND;
+        val = readl_relaxed(host->ioaddr + CORE_VENDOR_SPEC_FUNC2);
+        writel_relaxed((val | ONE_MID_EN),
+        host->ioaddr + CORE_VENDOR_SPEC_FUNC2);
+    }
 }
+
+/*
+ * To get the gpio infor when SD plugged in, based on the device tree info of SD
+ * return 1, 	mean high active and set MMC_CAP2_CD_ACTIVE_HIGH bit
+ * return 0, 	mean low  active
+ * return -1, 	mean error
+ **/
+#ifdef CONFIG_HUAWEI_KERNEL
+static int sdhci_msm_set_gpio_info(struct sdhci_msm_pltfm_data *pdata)
+{
+	int ret = -1;
+	char prop_name[MAX_PROP_SIZE] = {0};
+	struct device_node *np = NULL;
+
+	if(!pdata)
+	{
+		/*if pdata is NULL,return 0.*/
+		return ret;
+	}
+
+	/*try to get the device node huawei-gpio-info.*/
+	np = of_find_compatible_node(NULL,NULL,"huawei-gpio-info");
+	if(!np)
+	{
+		/*if np is NULL, default is high: return 1.*/
+		pdata->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
+		ret = 1;
+		return ret;
+	}
+
+	snprintf(prop_name, MAX_PROP_SIZE,
+			"%s", "huawei,voltage-active-high");
+	if (of_get_property(np, prop_name, NULL))
+	{
+		pdata->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
+		ret = 1;
+	}
+	else
+	{
+		pdata->caps2 &= ~MMC_CAP2_CD_ACTIVE_HIGH;
+		ret = 0;
+	}
+
+	return ret;
+}
+#endif
 
 static int sdhci_msm_probe(struct platform_device *pdev)
 {
@@ -3327,6 +3420,20 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "DT parsing error\n");
 			goto pltfm_free;
 		}
+#ifdef CONFIG_HUAWEI_KERNEL
+		if(sdhci_msm_set_gpio_info(msm_host->pdata) == 1)
+		{
+			pr_err("the voltage of gpio is high when insert the sdcard.\n");
+		}
+		else if (sdhci_msm_set_gpio_info(msm_host->pdata) == 0)
+		{
+			pr_err("the voltage of gpio is low when insert the sdcard.\n");
+		}
+		else
+		{
+			pr_err("sdhci_msm_set_gpio_info failed.\n");
+		}
+#endif
 	} else {
 		dev_err(&pdev->dev, "No device tree node\n");
 		goto pltfm_free;
@@ -3560,6 +3667,9 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	msm_host->mmc->pm_caps |= MMC_PM_KEEP_POWER | MMC_PM_WAKE_SDIO_IRQ;
 	msm_host->mmc->caps2 |= MMC_CAP2_CORE_PM;
 
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	msm_host->mmc->slot_detect_change_flag = false;
+#endif
 	if (msm_host->pdata->nonremovable)
 		msm_host->mmc->caps |= MMC_CAP_NONREMOVABLE;
 
@@ -3583,6 +3693,14 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 					__func__, ret);
 			goto vreg_deinit;
 		}
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+		/*
+		* enable wake irq as deferred resume is enabled,
+		* we need detect the hot-plug of SD card when suspend.
+		*/
+		enable_irq_wake(host->irq);
+		enable_irq_wake(msm_host->pdata->status_gpio);
+#endif
 	}
 
 	if ((sdhci_readl(host, SDHCI_CAPABILITIES) & SDHCI_CAN_64BIT) &&
@@ -3622,7 +3740,17 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Add host failed (%d)\n", ret);
 		goto free_cd_gpio;
 	}
-
+#ifdef CONFIG_HUAWEI_KERNEL
+	/*add UHS-I mode for 3.0 sdcard except MMC_CAP_UHS_SDR104 for RIO,and disable it for ATH.*/
+	if(!strcmp(mmc_hostname(msm_host->mmc), "mmc1")) {
+		if (of_get_property(pdev->dev.of_node, "huawei,support-uhs", NULL)) {
+			msm_host->mmc->caps &= ~MMC_CAP_UHS_SDR104;
+		} else {
+			msm_host->mmc->caps &= ~(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
+					MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104 | MMC_CAP_UHS_DDR50);
+		}
+	}
+#endif
 	msm_host->msm_bus_vote.max_bus_bw.show = show_sdhci_max_bus_bw;
 	msm_host->msm_bus_vote.max_bus_bw.store = store_sdhci_max_bus_bw;
 	sysfs_attr_init(&msm_host->msm_bus_vote.max_bus_bw.attr);
@@ -3862,12 +3990,18 @@ skip_enable_host_irq:
 static int sdhci_msm_suspend(struct device *dev)
 {
 	struct sdhci_host *host = dev_get_drvdata(dev);
+#ifndef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	/*mask mmc_gpio_free_cd function for deferred resume. */
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_msm_host *msm_host = pltfm_host->priv;
+#endif
 	int ret = 0;
 
+#ifndef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	/*mask mmc_gpio_free_cd function for deferred resume. */
 	if (gpio_is_valid(msm_host->pdata->status_gpio))
 		mmc_gpio_free_cd(msm_host->mmc);
+#endif
 
 	if (pm_runtime_suspended(dev)) {
 		pr_debug("%s: %s: already runtime suspended\n",
@@ -3883,10 +4017,15 @@ out:
 static int sdhci_msm_resume(struct device *dev)
 {
 	struct sdhci_host *host = dev_get_drvdata(dev);
+#ifndef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	/*mask mmc_gpio_request_cd function for deferred resume. */
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_msm_host *msm_host = pltfm_host->priv;
+#endif
 	int ret = 0;
 
+#ifndef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	/*mask mmc_gpio_request_cd function for deferred resume. */
 	if (gpio_is_valid(msm_host->pdata->status_gpio)) {
 		ret = mmc_gpio_request_cd(msm_host->mmc,
 				msm_host->pdata->status_gpio);
@@ -3895,6 +4034,7 @@ static int sdhci_msm_resume(struct device *dev)
 					mmc_hostname(host->mmc), __func__, ret);
 	}
 
+#endif
 	if (pm_runtime_suspended(dev)) {
 		pr_debug("%s: %s: runtime suspended, defer system resume\n",
 		mmc_hostname(host->mmc), __func__);

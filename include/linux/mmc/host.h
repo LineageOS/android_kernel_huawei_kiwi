@@ -417,7 +417,9 @@ struct mmc_host {
 	unsigned int		actual_clock;	/* Actual HC clock rate */
 
 	unsigned int		slotno;	/* used for sdio acpi binding */
-
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	bool		slot_detect_change_flag;
+#endif
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	struct {
 		struct sdio_cis			*cis;
