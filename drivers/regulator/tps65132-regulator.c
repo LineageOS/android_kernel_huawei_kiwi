@@ -184,9 +184,16 @@ static int tps65132_regulator_get_voltage(struct regulator_dev *rdev)
 static int tps65132_regulator_set_voltage(struct regulator_dev *rdev,
 		int min_uV, int max_uV, unsigned *selector)
 {
+#ifndef CONFIG_HUAWEI_LCD
 	struct tps65132_regulator *vreg = rdev_get_drvdata(rdev);
 	int val, new_uV, rc;
+#endif
 
+#ifdef CONFIG_HUAWEI_LCD
+	return 0;
+#endif
+
+#ifndef CONFIG_HUAWEI_LCD
 	if (!rdev->regmap) {
 		pr_err("regmap not found\n");
 		return -EINVAL;
@@ -216,6 +223,7 @@ static int tps65132_regulator_set_voltage(struct regulator_dev *rdev,
 	*selector = val;
 
 	return 0;
+#endif
 }
 
 static int tps65132_regulator_list_voltage(struct regulator_dev *rdev,
