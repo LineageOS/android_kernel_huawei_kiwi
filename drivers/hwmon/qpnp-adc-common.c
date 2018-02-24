@@ -44,6 +44,93 @@
    and provided to the battery driver in the units desired for
    their framework which is 0.1DegC. True resolution of 0.1DegC
    will result in the below table size to increase by 10 times */
+#ifdef CONFIG_HUAWEI_KERNEL
+static const struct qpnp_vadc_map_pt adcmap_btm_threshold[] = {
+	{-300,  1609},
+	{-200,  1512},
+	{-100,  1391},
+	{0,  1253},
+	{10,  1239},
+	{20,  1225},
+	{30,  1210},
+	{40,  1196},
+	{50,  1182},
+	{60,  1168},
+	{70,  1153},
+	{80,  1139},
+	{90,  1125},
+	{100,  1111},
+	{110,  1097},
+	{120,  1083},
+	{130,  1069},
+	{140,  1055},
+	{150,  1042},
+	{160,  1028},
+	{170,  1015},
+	{180,  1002},
+	{190,  989},
+	{200,  976},
+	{210,  963},
+	{220,  950},
+	{230,  938},
+	{240,  926},
+	{250,  914},
+	{260,  902},
+	{270,  890},
+	{280,  879},
+	{290,  867},
+	{300,  856},
+	{310,  845},
+	{320,  835},
+	{330,  824},
+	{340,  814},
+	{350,  804},
+	{360,  794},
+	{370,  785},
+	{380,  775},
+	{390,  766},
+	{400,  757},
+	{410,  748},
+	{420,  740},
+	{430,  731},
+	{440,  723},
+	{450,  715},
+	{460,  707},
+	{470,  700},
+	{480,  692},
+	{490,  685},
+	{500,  678},
+	{510,  671},
+	{520,  664},
+	{530,  658},
+	{540,  651},
+	{550,  645},
+	{560,  639},
+	{570,  633},
+	{580,  628},
+	{590,  622},
+	{600,  617},
+	{610,  611},
+	{620,  606},
+	{630,  601},
+	{640,  596},
+	{650,  592},
+	{660,  587},
+	{670,  583},
+	{680,  578},
+	{690,  574},
+	{700,  570},
+	{710,  566},
+	{720,  562},
+	{730,  558},
+	{740,  555},
+	{750,  551},
+	{760,  548},
+	{770,  544},
+	{780,  541},
+	{790,  538}
+};
+#else
 static const struct qpnp_vadc_map_pt adcmap_btm_threshold[] = {
 	{-300,	1642},
 	{-200,	1544},
@@ -129,6 +216,7 @@ static const struct qpnp_vadc_map_pt adcmap_btm_threshold[] = {
 	{780,	208},
 	{790,	203}
 };
+#endif
 
 static const struct qpnp_vadc_map_pt adcmap_qrd_btm_threshold[] = {
 	{-200,	1540},
@@ -588,6 +676,93 @@ static const struct qpnp_vadc_map_pt adcmap_150k_104ef_104fb[] = {
 	{30,	125}
 };
 
+#ifdef CONFIG_HUAWEI_KERNEL
+static const struct qpnp_vadc_map_pt adcmap_smb_batt_therm[] = {
+	{-300,  1609},
+	{-200,  1512},
+	{-100,  1391},
+	{0,  1253},
+	{10,  1239},
+	{20,  1225},
+	{30,  1210},
+	{40,  1196},
+	{50,  1182},
+	{60,  1168},
+	{70,  1153},
+	{80,  1139},
+	{90,  1125},
+	{100,  1111},
+	{110,  1097},
+	{120,  1083},
+	{130,  1069},
+	{140,  1055},
+	{150,  1042},
+	{160,  1028},
+	{170,  1015},
+	{180,  1002},
+	{190,  989},
+	{200,  976},
+	{210,  963},
+	{220,  950},
+	{230,  938},
+	{240,  926},
+	{250,  914},
+	{260,  902},
+	{270,  890},
+	{280,  879},
+	{290,  867},
+	{300,  856},
+	{310,  845},
+	{320,  835},
+	{330,  824},
+	{340,  814},
+	{350,  804},
+	{360,  794},
+	{370,  785},
+	{380,  775},
+	{390,  766},
+	{400,  757},
+	{410,  748},
+	{420,  740},
+	{430,  731},
+	{440,  723},
+	{450,  715},
+	{460,  707},
+	{470,  700},
+	{480,  692},
+	{490,  685},
+	{500,  678},
+	{510,  671},
+	{520,  664},
+	{530,  658},
+	{540,  651},
+	{550,  645},
+	{560,  639},
+	{570,  633},
+	{580,  628},
+	{590,  622},
+	{600,  617},
+	{610,  611},
+	{620,  606},
+	{630,  601},
+	{640,  596},
+	{650,  592},
+	{660,  587},
+	{670,  583},
+	{680,  578},
+	{690,  574},
+	{700,  570},
+	{710,  566},
+	{720,  562},
+	{730,  558},
+	{740,  555},
+	{750,  551},
+	{760,  548},
+	{770,  544},
+	{780,  541},
+	{790,  538}
+};
+#else
 static const struct qpnp_vadc_map_pt adcmap_smb_batt_therm[] = {
 	{-300,	1625},
 	{-200,	1515},
@@ -673,6 +848,179 @@ static const struct qpnp_vadc_map_pt adcmap_smb_batt_therm[] = {
 	{780,	190},
 	{790,	186}
 };
+#endif
+
+#ifdef CONFIG_HUAWEI_KERNEL
+static const struct qpnp_vadc_map_pt adcmap_pa_therm[] = {
+	{-40,	1712},
+	{-39,	1708},
+	{-38,	1703},
+	{-37,	1697},
+	{-36,	1692},
+	{-35,	1686},
+	{-34,	1680},
+	{-33,	1674},
+	{-32,	1668},
+	{-31,	1661},
+	{-30,	1654},
+	{-29,	1647},
+	{-28,	1639},
+	{-27,	1632},
+	{-26,	1624},
+	{-25,	1615},
+	{-24,	1607},
+	{-23,	1598},
+	{-22,	1589},
+	{-21,	1580},
+	{-20,	1570},
+	{-19,	1560},
+	{-18,	1550},
+	{-17,	1539},
+	{-16,	1528},
+	{-15,	1517},
+	{-14,	1506},
+	{-13,	1494},
+	{-12,	1482},
+	{-11,	1470},
+	{-10,	1457},
+	{-9,	1444},
+	{-8,	1431},
+	{-7,	1418},
+	{-6,	1404},
+	{-5,	1390},
+	{-4,	1376},
+	{-3,	1361},
+	{-2,	1346},
+	{-1,	1332},
+	{0, 	1316},
+	{1, 	1301},
+	{2, 	1286},
+	{3, 	1270},
+	{4, 	1254},
+	{5, 	1238},
+	{6, 	1222},
+	{7, 	1205},
+	{8, 	1189},
+	{9, 	1172},
+	{10,	1155},
+	{11,	1139},
+	{12,	1122},
+	{13,	1105},
+	{14,	1088},
+	{15,	1070},
+	{16,	1053},
+	{17,	1036},
+	{18,	1019},
+	{19,	1002},
+	{20,	985},
+	{21,	968},
+	{22,	951},
+	{23,	934},
+	{24,	917},
+	{25,	900},
+	{26,	883},
+	{27,	867},
+	{28,	850},
+	{29,	834},
+	{30,	817},
+	{31,	801},
+	{32,	785},
+	{33,	769},
+	{34,	753},
+	{35,	738},
+	{36,	723},
+	{37,	707},
+	{38,	692},
+	{39,	678},
+	{40,	663},
+	{41,	649},
+	{42,	635},
+	{43,	621},
+	{44,	607},
+	{45,	593},
+	{46,	580},
+	{47,	567},
+	{48,	554},
+	{49,	541},
+	{50,	529},
+	{51,	517},
+	{52,	505},
+	{53,	493},
+	{54,	481},
+	{55,	470},
+	{56,	459},
+	{57,	448},
+	{58,	438},
+	{59,	427},
+	{60,	417},
+	{61,	407},
+	{62,	397},
+	{63,	388},
+	{64,	379},
+	{65,	370},
+	{66,	361},
+	{67,	352},
+	{68,	344},
+	{69,	336},
+	{70,	328},
+	{71,	320},
+	{72,	312},
+	{73,	305},
+	{74,	298},
+	{75,	291},
+	{76,	284},
+	{77,	277},
+	{78,	270},
+	{79,	264},
+	{80,	257},
+	{81,	251},
+	{82,	245},
+	{83,	239},
+	{84,	234},
+	{85,	228},
+	{86,	223},
+	{87,	218},
+	{88,	212},
+	{89,	207},
+	{90,	203},
+	{91,	198},
+	{92,	193},
+	{93,	189},
+	{94,	184},
+	{95,	180},
+	{96,	176},
+	{97,	171},
+	{98,	167},
+	{99,	164},
+	{100,	160},
+	{101,	156},
+	{102,	152},
+	{103,	149},
+	{104,	146},
+	{105,	142},
+	{106,	139},
+	{107,	136},
+	{108,	133},
+	{109,	130},
+	{110,	127},
+	{111,	124},
+	{112,	121},
+	{113,	118},
+	{114,	116},
+	{115,	113},
+	{116,	111},
+	{117,	108},
+	{118,	106},
+	{119,	104},
+	{120,	101},
+	{121,	99},
+	{122,	97},
+	{123,	95},
+	{124,	93},
+	{125,	91}
+};
+
+#endif
 
 /* Voltage to temperature */
 static const struct qpnp_vadc_map_pt adcmap_ncp03wf683[] = {
@@ -1038,6 +1386,44 @@ int32_t qpnp_adc_scale_qrd_skug_batt_therm(struct qpnp_vadc_chip *chip,
 }
 EXPORT_SYMBOL(qpnp_adc_scale_qrd_skug_batt_therm);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+int32_t qpnp_adc_scale_huawei_pa_therm(struct qpnp_vadc_chip *chip,
+		int32_t adc_code,
+		const struct qpnp_adc_properties *adc_properties,
+		const struct qpnp_vadc_chan_properties *chan_properties,
+		struct qpnp_vadc_result *adc_chan_result)
+{
+	int64_t pa_voltage = 0;
+
+	pa_voltage = qpnp_adc_scale_ratiometric_calib(adc_code,
+			adc_properties, chan_properties);
+
+	return qpnp_adc_map_temp_voltage(
+			adcmap_pa_therm,
+			ARRAY_SIZE(adcmap_pa_therm),
+			pa_voltage,
+			&adc_chan_result->physical);
+}
+EXPORT_SYMBOL(qpnp_adc_scale_huawei_pa_therm);
+
+int32_t qpnp_adc_scale_huawei_ilimit_voltage(struct qpnp_vadc_chip *chip,
+		int32_t adc_code,
+		const struct qpnp_adc_properties *adc_properties,
+		const struct qpnp_vadc_chan_properties *chan_properties,
+		struct qpnp_vadc_result *adc_chan_result)
+{
+	int64_t V_temp;
+
+	V_temp = qpnp_adc_scale_ratiometric_calib(adc_code,
+		adc_properties, chan_properties);
+
+	adc_chan_result->physical = V_temp;
+
+	return 0;
+}
+EXPORT_SYMBOL(qpnp_adc_scale_huawei_ilimit_voltage);
+#endif
+
 int32_t qpnp_adc_scale_qrd_skuh_batt_therm(struct qpnp_vadc_chip *chip,
 		int32_t adc_code,
 		const struct qpnp_adc_properties *adc_properties,
@@ -1049,11 +1435,19 @@ int32_t qpnp_adc_scale_qrd_skuh_batt_therm(struct qpnp_vadc_chip *chip,
 	bat_voltage = qpnp_adc_scale_ratiometric_calib(adc_code,
 			adc_properties, chan_properties);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+    return qpnp_adc_map_temp_voltage(
+            adcmap_btm_threshold,
+            ARRAY_SIZE(adcmap_btm_threshold),
+            bat_voltage,
+            &adc_chan_result->physical);
+#else
 	return qpnp_adc_map_temp_voltage(
 			adcmap_qrd_skuh_btm_threshold,
 			ARRAY_SIZE(adcmap_qrd_skuh_btm_threshold),
 			bat_voltage,
 			&adc_chan_result->physical);
+#endif
 }
 EXPORT_SYMBOL(qpnp_adc_scale_qrd_skuh_batt_therm);
 
@@ -1550,11 +1944,19 @@ int32_t qpnp_adc_qrd_skuh_btm_scaler(struct qpnp_vadc_chip *chip,
 
 	pr_debug("warm_temp:%d and cool_temp:%d\n", param->high_temp,
 				param->low_temp);
+#ifdef CONFIG_HUAWEI_KERNEL
+	rc = qpnp_adc_map_voltage_temp(
+		adcmap_btm_threshold,
+		ARRAY_SIZE(adcmap_btm_threshold),
+		(param->low_temp),
+		&low_output);
+#else
 	rc = qpnp_adc_map_voltage_temp(
 		adcmap_qrd_skuh_btm_threshold,
 		ARRAY_SIZE(adcmap_qrd_skuh_btm_threshold),
 		(param->low_temp),
 		&low_output);
+#endif
 	if (rc) {
 		pr_debug("low_temp mapping failed with %d\n", rc);
 		return rc;
@@ -1565,11 +1967,19 @@ int32_t qpnp_adc_qrd_skuh_btm_scaler(struct qpnp_vadc_chip *chip,
 	do_div(low_output, btm_param.adc_vref);
 	low_output += btm_param.adc_gnd;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	rc = qpnp_adc_map_voltage_temp(
+		adcmap_btm_threshold,
+		ARRAY_SIZE(adcmap_btm_threshold),
+		(param->high_temp),
+		&high_output);
+#else
 	rc = qpnp_adc_map_voltage_temp(
 		adcmap_qrd_skuh_btm_threshold,
 		ARRAY_SIZE(adcmap_qrd_skuh_btm_threshold),
 		(param->high_temp),
 		&high_output);
+#endif
 	if (rc) {
 		pr_debug("high temp mapping failed with %d\n", rc);
 		return rc;
