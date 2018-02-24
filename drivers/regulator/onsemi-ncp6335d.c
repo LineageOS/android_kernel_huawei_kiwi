@@ -72,6 +72,11 @@ struct ncp6335d_info {
 	unsigned int peek_poke_address;
 
 	struct dentry *debug_root;
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	unsigned int monitor_reg_work_flag;
+	struct delayed_work modfiy_reg_work;
+#endif/* CONFIG_HUAWEI_KERNEL */
 };
 
 static int delay_array[] = {10, 20, 30, 40, 50};
@@ -601,6 +606,69 @@ static int set_reg(void *data, u64 val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(poke_poke_debug_ops, get_reg, set_reg, "0x%02llx\n");
 
+
+#ifdef CONFIG_HUAWEI_KERNEL
+#define MODIFY_REG_TIME_INTER          60000
+#define NCP6335D_REG10_DEFAULT_VAL     0xD8
+#define NCP6335D_REG14_DEFAULT_VAL     0x01
+#define MONITOR_REG_FUNCTION_ON        1
+#define MONITOR_REG_FUNCTION_OFF       0
+
+static void ncp6335d_modify_reg_work(struct work_struct *work)
+{
+	unsigned int reg_val = NCP6335D_REG10_DEFAULT_VAL;
+	int ret = 0;
+
+	struct ncp6335d_info *di_chip =
+		container_of(work, struct ncp6335d_info, modfiy_reg_work.work);
+
+	do
+	{
+		/*check reg 0x10*/
+		ret = ncp6335x_read(di_chip, REG_NCP6335D_PROGVSEL1, &reg_val);
+		if (ret < 0)
+		{
+		    dev_err(di_chip->dev, "Failed to read 0x10 reg!\n");
+            break;
+		}
+
+		if(NCP6335D_REG10_DEFAULT_VAL != reg_val)
+		{
+			dev_info(di_chip->dev,"ncp6335d_modify_reg_work reg 0x10 0x%2x!\n",reg_val);
+			ret = ncp6335x_write(di_chip, REG_NCP6335D_PROGVSEL1, NCP6335D_REG10_DEFAULT_VAL);
+			if (ret < 0)
+			{
+				dev_err(di_chip->dev, "write 0x10 reg value %x failed!\n",reg_val);
+				break;
+			}
+		}
+
+		/*check reg 0x14*/
+		ret = ncp6335x_read(di_chip, REG_NCP6335D_COMMAND, &reg_val);
+		if (ret < 0)
+		{
+		    dev_err(di_chip->dev, "Failed to read 0x14 reg!\n");
+            break;
+		}
+
+		if(NCP6335D_REG14_DEFAULT_VAL != reg_val)
+		{
+			dev_info(di_chip->dev,"ncp6335d_modify_reg_work reg 0x14 0x%2x!\n",reg_val);
+			ret = ncp6335x_write(di_chip, REG_NCP6335D_COMMAND, NCP6335D_REG14_DEFAULT_VAL);
+			if (ret < 0)
+			{
+				dev_err(di_chip->dev, "write 0x14 reg value %x failed!\n",reg_val);
+				break;
+			}
+		}
+	}while(0);
+
+	schedule_delayed_work(&di_chip->modfiy_reg_work, msecs_to_jiffies(MODIFY_REG_TIME_INTER));
+
+	return ;
+}
+#endif/* CONFIG_HUAWEI_KERNEL */
+
 static int ncp6335d_regulator_probe(struct i2c_client *client,
 					const struct i2c_device_id *id)
 {
@@ -667,6 +735,22 @@ static int ncp6335d_regulator_probe(struct i2c_client *client,
 	config.driver_data = dd;
 	config.of_node = client->dev.of_node;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	rc = of_property_read_u32(client->dev.of_node, "monitor_reg_work_flag",&dd->monitor_reg_work_flag);
+	if(rc)
+	{
+		pr_err("get monitor_reg_work_flag failed\n");
+		dd->monitor_reg_work_flag = MONITOR_REG_FUNCTION_OFF;
+	}
+
+	if(MONITOR_REG_FUNCTION_ON == dd->monitor_reg_work_flag)
+	{
+		pr_err("get monitor_reg_work_flag = %d \n", dd->monitor_reg_work_flag);
+		INIT_DELAYED_WORK(&dd->modfiy_reg_work, ncp6335d_modify_reg_work);
+		schedule_delayed_work(&dd->modfiy_reg_work, msecs_to_jiffies(0));
+	}
+#endif/* CONFIG_HUAWEI_KERNEL */
+
 	dd->regulator = regulator_register(&rdesc, &config);
 
 	if (IS_ERR(dd->regulator)) {
@@ -709,23 +793,35 @@ static int ncp6335d_regulator_remove(struct i2c_client *client)
 
 	debugfs_remove_recursive(dd->debug_root);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(MONITOR_REG_FUNCTION_ON == dd->monitor_reg_work_flag)
+	{
+		cancel_delayed_work_sync(&dd->modfiy_reg_work);
+	}
+#endif/* CONFIG_HUAWEI_KERNEL */
+
 	return 0;
 }
 
+/*delete I2C address 0x10*/
 static struct of_device_id ncp6335d_match_table[] = {
-	{ .compatible = "onnn,ncp6335d-regulator", },
+	{ .compatible = "onnn,ncp6335d-a1c", },
+	{ .compatible = "onnn,ncp6335d-a18", },
+#ifdef CONFIG_HUAWEI_KERNEL
+	{ .compatible = "onnn,ncp6335d-a10", },
+#endif/* CONFIG_HUAWEI_KERNEL */
 	{},
 };
 MODULE_DEVICE_TABLE(of, ncp6335d_match_table);
 
 static const struct i2c_device_id ncp6335d_id[] = {
-	{"ncp6335d", -1},
+	{"ncp6335d-a1x", -1},
 	{ },
 };
 
 static struct i2c_driver ncp6335d_regulator_driver = {
 	.driver = {
-		.name = "ncp6335d-regulator",
+		.name = "ncp6335d-a1x",
 		.owner = THIS_MODULE,
 		.of_match_table = ncp6335d_match_table,
 	},
