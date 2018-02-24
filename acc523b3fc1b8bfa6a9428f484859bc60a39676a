@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "177a4958_3017afc1",
+        "filename": "drivers/usb/core/message.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:54:15Z",
+      "side": 1,
+      "message": "Useless",
+      "revId": "acc523b3fc1b8bfa6a9428f484859bc60a39676a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
