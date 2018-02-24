@@ -1589,6 +1589,7 @@ void mmc_set_clock(struct mmc_host *host, unsigned int hz)
 	mmc_host_clk_release(host);
 }
 
+EXPORT_SYMBOL(mmc_set_clock);
 #ifdef CONFIG_MMC_CLKGATE
 /*
  * This gates the clock by setting it to 0 Hz.
@@ -2090,7 +2091,17 @@ void mmc_power_up(struct mmc_host *host)
 	 * This delay should be sufficient to allow the power supply
 	 * to reach the minimum voltage.
 	 */
+	/*For sdcard we increase delay to 150ms to give rpm more time to operate.*/
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(!strcmp(mmc_hostname(host), "mmc1")) {
+		mmc_delay(150);
+	}
+	else {
+		mmc_delay(10);
+	}
+#else
 	mmc_delay(10);
+#endif
 
 	host->ios.clock = host->f_init;
 
@@ -2194,6 +2205,41 @@ static inline void mmc_bus_put(struct mmc_host *host)
 
 int mmc_resume_bus(struct mmc_host *host)
 {
+#ifdef CONFIG_HUAWEI_KERNEL
+	unsigned long flags;
+	int err = 0;
+
+	mmc_claim_host(host);
+	spin_lock_irqsave(&host->lock, flags);
+	if (!mmc_bus_needs_resume(host)) {
+		spin_unlock_irqrestore(&host->lock, flags);
+		mmc_release_host(host);
+		return 0;
+	}
+	host->bus_resume_flags &= ~MMC_BUSRESUME_NEEDS_RESUME;
+	spin_unlock_irqrestore(&host->lock, flags);
+
+	printk("%s: Starting deferred resume\n", mmc_hostname(host));
+	mmc_bus_get(host);
+	if (host->bus_ops && !host->bus_dead) {
+		mmc_power_up(host);
+		BUG_ON(!host->bus_ops->resume);
+		err = host->bus_ops->resume(host);
+		if (err) {
+			pr_err("%s: error %d during resume "
+					    "(card was removed?)\n",
+					    mmc_hostname(host), err);
+			err = 0;
+		}
+	}
+	mmc_bus_put(host);
+	mmc_release_host(host);
+	mmc_detect_change(host, 0);
+
+	printk("%s: Deferred resume completed\n", mmc_hostname(host));
+	return 0;
+#else
+
 	unsigned long flags;
 
 	if (!mmc_bus_needs_resume(host))
@@ -2215,6 +2261,7 @@ int mmc_resume_bus(struct mmc_host *host)
 	mmc_bus_put(host);
 	pr_debug("%s: Deferred resume completed\n", mmc_hostname(host));
 	return 0;
+#endif
 }
 
 EXPORT_SYMBOL(mmc_resume_bus);
@@ -3418,6 +3465,11 @@ void mmc_rescan(struct work_struct *work)
 		mmc_release_host(host);
 		goto out;
 	}
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	if (mmc_bus_needs_resume(host)) {
+		goto out;
+	}
+#endif
 
 	mmc_rpm_hold(host, &host->class_dev);
 	mmc_claim_host(host);
@@ -3430,8 +3482,14 @@ void mmc_rescan(struct work_struct *work)
 	if (extend_wakelock && !host->rescan_disable)
 		wake_lock_timeout(&host->detect_wake_lock, HZ / 2);
 
-	if (host->caps & MMC_CAP_NEEDS_POLL)
+	if (host->caps & MMC_CAP_NEEDS_POLL) {
+#ifdef CONFIG_HUAWEI_KERNEL
+		/*set the time of polling to three second.*/
+		mmc_schedule_delayed_work(&host->detect, (3*HZ));
+#else
 		mmc_schedule_delayed_work(&host->detect, HZ);
+#endif
+}
 }
 
 void mmc_start_host(struct mmc_host *host)
@@ -3854,8 +3912,16 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 		 * just before rescan_disable is set to true.
 		 * Cancel such the scheduled works.
 		 */
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+		pr_info("%s: deffer resume can't remove detect work when slot change. host->slot_detect_change_flag = %s!\n",
+			mmc_hostname(host), host->slot_detect_change_flag?"true":"false");
+		if((!strcmp(mmc_hostname(host),"mmc1")) && host->slot_detect_change_flag)
+			host->slot_detect_change_flag = false;
+		else
+			cancel_delayed_work_sync(&host->detect);
+#else
 		cancel_delayed_work_sync(&host->detect);
-
+#endif
 		/*
 		 * It is possible that the wake-lock has been acquired, since
 		 * its being suspended, release the wakelock
@@ -3883,6 +3949,9 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 
 		spin_lock_irqsave(&host->lock, flags);
 		if (mmc_bus_manual_resume(host)) {
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+			host->rescan_disable = 0;
+#endif
 			spin_unlock_irqrestore(&host->lock, flags);
 			break;
 		}
