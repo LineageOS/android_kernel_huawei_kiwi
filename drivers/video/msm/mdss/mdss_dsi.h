@@ -18,7 +18,7 @@
 #include <linux/mdss_io_util.h>
 #include <linux/irqreturn.h>
 #include <linux/pinctrl/consumer.h>
-#include <linux/gpio.h>
+#include <linux/msm_mdp.h>
 
 #include "mdss_panel.h"
 #include "mdss_dsi_cmd.h"
@@ -374,6 +374,10 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds post_dms_on_cmds;
 	struct dsi_panel_cmds post_panel_on_cmds;
 	struct dsi_panel_cmds off_cmds;
+#ifdef CONFIG_FB_AUTO_CABC
+	struct dsi_panel_cmds dsi_panel_cabc_ui_cmds;
+	struct dsi_panel_cmds dsi_panel_cabc_video_cmds;
+#endif
 	struct dsi_panel_cmds status_cmds;
 	u32 status_cmds_rlen;
 	u32 status_value;
@@ -394,6 +398,10 @@ struct mdss_dsi_ctrl_pdata {
 	struct mutex mutex;
 	struct mutex cmd_mutex;
 	struct mutex clk_lane_mutex;
+#ifdef CONFIG_HUAWEI_LCD
+	struct mutex put_mutex;
+	/*not need the mutex,so delete one line*/
+#endif
 
 	u32 ulps_clamp_ctrl_off;
 	u32 ulps_phyrst_ctrl_off;
@@ -404,12 +412,41 @@ struct mdss_dsi_ctrl_pdata {
 
 	struct dsi_buf tx_buf;
 	struct dsi_buf rx_buf;
+#ifdef CONFIG_HUAWEI_LCD
+	u32 esd_check_enable;
+	struct dsi_panel_cmds esd_cmds;
+#endif
 	struct dsi_buf status_buf;
 	int status_mode;
 	int rx_len;
 
 	struct dsi_pinctrl_res pin_res;
+/*add vars of dispaly color inversion*/
+#ifdef CONFIG_HUAWEI_LCD
+	struct dsi_panel_cmds dot_inversion_cmds;
+	struct dsi_panel_cmds column_inversion_cmds;
+	u32 long_read_flag;
+	u32 skip_reg_read;
+	char reg_expect_value;
+	u32 reg_expect_count;
+	u32 inversion_state;
+	struct dsi_panel_cmds dsi_panel_inverse_on_cmds;
+	struct dsi_panel_cmds dsi_panel_inverse_off_cmds;
 
+	/*<add cabc node>*/
+	struct dsi_panel_cmds dsi_panel_cabc_off_cmds;
+	struct dsi_panel_cmds dsi_panel_cabc_moving_cmds;
+	struct dsi_panel_cmds dsi_panel_cabc_still_cmds;
+
+	bool frame_checksum_support;
+	u32 panel_checksum_cmd_len;
+	struct dsi_panel_cmds dsi_frame_crc_enable_cmds;
+	struct dsi_panel_cmds dsi_frame_crc_disable_cmds;
+	u32 frame_crc_read_cmds[8];
+	u32 frame_crc_read_cmds_value[24];
+	u32 esd_set_cabc_flag;
+	u32 reset_for_pt_flag;
+#endif
 	unsigned long dma_size;
 	dma_addr_t dma_addr;
 	bool cmd_cfg_restore;
@@ -574,6 +611,9 @@ static inline struct mdss_dsi_ctrl_pdata *mdss_dsi_get_ctrl_by_index(int ndx)
 	return ctrl_list[ndx];
 }
 
+#ifdef CONFIG_HUAWEI_LCD
+int panel_check_live_status(struct mdss_dsi_ctrl_pdata *ctrl);
+#endif
 static inline bool mdss_dsi_is_ctrl_clk_slave(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	return mdss_dsi_split_display_enabled() &&

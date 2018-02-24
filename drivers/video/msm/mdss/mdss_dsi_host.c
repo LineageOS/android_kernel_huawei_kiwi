@@ -28,6 +28,7 @@
 #include "mdss_panel.h"
 #include "mdss_debug.h"
 
+#include <linux/hw_lcd_common.h>
 #define VSYNC_PERIOD 17
 #define DMA_TX_TIMEOUT 200
 #define DMA_TPG_FIFO_LEN 64
@@ -111,6 +112,12 @@ void mdss_dsi_ctrl_init(struct device *ctrl_dev,
 	mutex_init(&ctrl->mutex);
 	mutex_init(&ctrl->cmd_mutex);
 	mutex_init(&ctrl->clk_lane_mutex);
+/* avoid esd and checksum running test error */
+#ifdef CONFIG_HUAWEI_LCD
+	mutex_init(&ctrl->panel_data.LCD_checksum_lock);
+	mutex_init(&ctrl->put_mutex);
+	/*not need the mutex,so delete one line*/
+#endif
 	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->tx_buf, SZ_4K);
 	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->rx_buf, SZ_4K);
 	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->status_buf, SZ_4K);
@@ -391,6 +398,8 @@ void mdss_dsi_host_init(struct mdss_panel_data *pdata)
 		data |= BIT(0);
 	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x00cc,
 				data); /* DSI_EOT_PACKET_CTRL */
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x00bc,
+				 0x3fd08); /* DSI_HS_TIMER_CTRL */
 
 
 	/* allow only ack-err-status  to generate interrupt */
@@ -623,6 +632,7 @@ static void mdss_dsi_cmd_start_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 	mdss_dsi_start_hs_clk_lane(ctrl);
 }
 
+/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 static void mdss_dsi_cmd_stop_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
@@ -637,6 +647,75 @@ static void mdss_dsi_cmd_stop_hs_clk_lane(struct mdss_dsi_ctrl_pdata *ctrl)
 	}
 
 	mdss_dsi_stop_hs_clk_lane(ctrl);
+}
+static void mdss_dsi_lp_rx_ctl_phy_reset(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	u32 data0;
+	u32 ln0, ln_ctrl0, i;
+	u32 ln_force_tx_stop = BIT(16) | BIT(17) | BIT(18) | BIT(19) | BIT(20);
+	/*
+	 * Add 2 ms delay suggested by HW team.
+	 * Check data lane stop state after every 200 us
+	 */
+	u32 loop = 10, u_dly = 200;
+	pr_debug("%s: DSI CTRL and PHY reset for LP_RX_TO. ctrl-num = %d\n",
+					__func__, ctrl->ndx);
+	/* Disable PHY contention detection and receive */
+	MIPI_OUTP((ctrl->phy_io.base) + 0x0188, 0);
+
+	data0 = MIPI_INP(ctrl->ctrl_base + 0x0004);
+	/* Disable DSI video mode */
+	MIPI_OUTP(ctrl->ctrl_base + 0x004, (data0 & ~BIT(1)));
+	/* Disable DSI controller */
+	MIPI_OUTP(ctrl->ctrl_base + 0x004, (data0 & ~(BIT(0) | BIT(1))));
+	/* "Force On" all dynamic clocks */
+	MIPI_OUTP(ctrl->ctrl_base + 0x11c, 0x100a00);
+
+	/* DSI_SW_RESET */
+	MIPI_OUTP(ctrl->ctrl_base + 0x118, 0x1);
+	wmb();
+	MIPI_OUTP(ctrl->ctrl_base + 0x118, 0x0);
+	wmb();
+
+	/* Remove "Force On" all dynamic clocks */
+	MIPI_OUTP(ctrl->ctrl_base + 0x11c, 0x00);
+	/* Enable DSI controller */
+	MIPI_OUTP(ctrl->ctrl_base + 0x004, (data0 & ~BIT(1)));
+
+
+	/*
+	 * Toggle lanes Force TX stop so that
+	 * lane status is no more in stop state
+	 */
+	ln0 = MIPI_INP(ctrl->ctrl_base + 0x00a8);
+	pr_debug("%s: lane status, ctrl = 0x%x\n",
+			 __func__, ln0);
+	ln_ctrl0 = MIPI_INP(ctrl->ctrl_base + 0x00ac);
+	MIPI_OUTP(ctrl->ctrl_base + 0x0ac, ln_ctrl0 | ln_force_tx_stop);
+	ln_ctrl0 = MIPI_INP(ctrl->ctrl_base + 0x00ac);
+	for (i = 0; i < loop; i++) {
+		ln0 = MIPI_INP(ctrl->ctrl_base + 0x00a8);
+		if (ln0 == 0x1f1f)
+			break;
+		else
+			/* Check clk lane stopState for every 200us */
+			udelay(u_dly);
+	}
+	if (i == loop) {
+		MDSS_XLOG(ctrl->ndx, ln0, 0x1f1f);
+		pr_err("Data lane still in wrong state");
+		MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0", "dsi1",
+					"panic");
+	}
+	pr_debug("%s: lane status = 0x%x\n", __func__, ln0);
+	MIPI_OUTP(ctrl->ctrl_base + 0x0ac, ln_ctrl0 & ~ln_force_tx_stop);
+
+	/* Enable Video mode for DSI controller */
+	MIPI_OUTP(ctrl->ctrl_base + 0x004, data0);
+	/* Enable PHY contention detection and receiver */
+	MIPI_OUTP((ctrl->phy_io.base) + 0x0188, 0x6);
+
+	return;
 }
 
 static void mdss_dsi_ctl_phy_reset(struct mdss_dsi_ctrl_pdata *ctrl, u32 event)
@@ -1136,6 +1215,34 @@ void mdss_dsi_ctrl_setup(struct mdss_dsi_ctrl_pdata *ctrl)
 	mdss_dsi_op_mode_config(pdata->panel_info.mipi.mode, pdata);
 }
 
+#ifdef CONFIG_HUAWEI_LCD
+int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	int ret = 0;
+
+	if (ctrl_pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+
+		/*
+		 * This should not return error otherwise
+		 * BTA status thread will treat it as dead panel scenario
+		 * and request for blank/unblank
+		 */
+		return 0;
+	}
+
+	pr_debug("%s: Checking BTA status\n", __func__);
+
+	/*if panel check error and enable the esd check bit in dtsi,report the event to hal layer*/
+	/* avoid ESD running test fail */
+	/*add ESD to check 0A reg status*/
+	/* open esd check function,avoid esd running test fail*/
+	if(ctrl_pdata->esd_check_enable)
+		ret = panel_check_live_status(ctrl_pdata);
+	return ret;
+}
+
+#else
 /**
  * mdss_dsi_bta_status_check() - Check dsi panel status through bta check
  * @ctrl_pdata: pointer to the dsi controller structure
@@ -1184,6 +1291,7 @@ int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 
 	return ret;
 }
+#endif
 
 int mdss_dsi_cmd_reg_tx(u32 data,
 			unsigned char *ctrl_base)
@@ -1715,12 +1823,15 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	char *bp;
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
 	int ignored = 0;	/* overflow ignored */
+#ifdef CONFIG_HUAWEI_LCD
+	bool iommu_attached = false;
+	int rg_address;
+#endif
 
 	bp = tp->data;
 
 	len = ALIGN(tp->len, 4);
 	ctrl->dma_size = ALIGN(tp->len, SZ_4K);
-
 
 	if (ctrl->mdss_util->iommu_attached()) {
 		int ret = msm_iommu_map_contig_buffer(tp->dmap,
@@ -1730,9 +1841,16 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 			pr_err("unable to map dma memory to iommu(%d)\n", ret);
 			return -ENOMEM;
 		}
+	#ifdef CONFIG_HUAWEI_LCD
+		iommu_attached = true;
+	#endif
 	} else {
 		ctrl->dma_addr = tp->dmap;
+	#ifdef CONFIG_HUAWEI_LCD
+		iommu_attached = false;
+	#endif
 	}
+
 
 	INIT_COMPLETION(ctrl->dma_comp);
 
@@ -1808,7 +1926,11 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 			/* restore overflow isr */
 			mdss_dsi_set_reg(mctrl, 0x10c, 0x0f0000, 0);
 		}
-		if (ctrl->mdss_util->iommu_attached()) {
+#ifdef CONFIG_HUAWEI_LCD
+		if ((ctrl->mdss_util->iommu_attached()) && iommu_attached){
+#else
+		if (ctrl->mdss_util->iommu_attached()){
+#endif
 			msm_iommu_unmap_contig_buffer(mctrl->dma_addr,
 			ctrl->mdss_util->get_iommu_domain(domain),
 							0, mctrl->dma_size);
@@ -1817,7 +1939,16 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 		mctrl->dma_size = 0;
 	}
 
-	if (ctrl->mdss_util->iommu_attached()) {
+#ifdef CONFIG_HUAWEI_LCD
+	if (ret < 0)
+	{
+		rg_address =  ((tp->len > 4) ? *(tp->data + 4) : *(tp->data));
+	}
+	//unmap it when it have been maped at front
+	if ((ctrl->mdss_util->iommu_attached()) && iommu_attached){
+#else
+	if (ctrl->mdss_util->iommu_attached()){
+#endif
 		msm_iommu_unmap_contig_buffer(ctrl->dma_addr,
 			ctrl->mdss_util->get_iommu_domain(domain),
 							0, ctrl->dma_size);
@@ -1831,6 +1962,7 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	}
 	ctrl->dma_addr = 0;
 	ctrl->dma_size = 0;
+
 end:
 	return ret;
 }
@@ -2092,7 +2224,6 @@ int mdss_dsi_cmd_mdp_busy(struct mdss_dsi_ctrl_pdata *ctrl)
 
 	pr_debug("%s: %d done pid=%d\n", __func__, ctrl->ndx, current->pid);
 	MDSS_XLOG(ctrl->ndx, ctrl->mdp_busy, current->pid, XLOG_FUNC_EXIT);
-
 	return !rc ? -ETIMEDOUT : 0;
 }
 
@@ -2164,6 +2295,7 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 
 	if (req == NULL)
 		goto need_lock;
+
 	/* make sure dsi_cmd_mdp is idle */
 	rc = mdss_dsi_cmd_mdp_busy(ctrl);
 	if (rc) {
@@ -2264,13 +2396,13 @@ need_lock:
 			mdss_dsi_cmd_mdp_start(ctrl);
 
 		mutex_unlock(&ctrl->cmd_mutex);
+/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 	} else {	/* from dcs send */
 		if (ctrl->cmd_clk_ln_recovery_en &&
 				ctrl->panel_mode == DSI_CMD_MODE &&
 				(req && (req->flags & CMD_REQ_HS_MODE)))
 			mdss_dsi_cmd_stop_hs_clk_lane(ctrl);
 	}
-
 	return ret;
 }
 
@@ -2381,7 +2513,7 @@ static int dsi_event_thread(void *data)
 			}
 			mutex_unlock(&dsi_mtx);
 		}
-
+/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 		if (todo & DSI_EV_MDP_BUSY_RELEASE) {
 			pr_debug("%s: Handling MDP_BUSY_RELEASE event\n",
 							__func__);
@@ -2397,6 +2529,12 @@ static int dsi_event_thread(void *data)
 			mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
 		}
 
+		if (todo & DSI_EV_LP_RX_TIMEOUT) {
+			mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 1);
+			mdss_dsi_lp_rx_ctl_phy_reset(ctrl);
+			mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
+		}
+
 		if (todo & DSI_EV_STOP_HS_CLK_LANE)
 			mdss_dsi_stop_hs_clk_lane(ctrl);
 
@@ -2406,7 +2544,6 @@ static int dsi_event_thread(void *data)
 			mdss_dsi_clk_ctrl(ctrl, DSI_ALL_CLKS, 0);
 		}
 	}
-
 	return 0;
 }
 
@@ -2561,6 +2698,9 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 	u32 isr;
 	struct mdss_dsi_ctrl_pdata *ctrl =
 			(struct mdss_dsi_ctrl_pdata *)ptr;
+#ifdef CONFIG_HUAWEI_LCD
+	u32 dsi_status[5] = {0};
+#endif
 
 	if (!ctrl->ctrl_base) {
 		pr_err("%s:%d DSI base adr no Initialized",
@@ -2575,6 +2715,14 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 
 	if (isr & DSI_INTR_ERROR) {
 		MDSS_XLOG(ctrl->ndx, ctrl->mdp_busy, isr, 0x97);
+		pr_err("%s: ndx=%d isr=%x\n", __func__, ctrl->ndx, isr);
+#ifdef CONFIG_HUAWEI_LCD
+		dsi_status[0] =  MIPI_INP(ctrl->ctrl_base + 0x0068);/* DSI_ACK_ERR_STATUS */
+		dsi_status[1] = MIPI_INP(ctrl->ctrl_base + 0x00c0);/* DSI_TIMEOUT_STATUS */
+		dsi_status[2] = MIPI_INP(ctrl->ctrl_base + 0x00b4);/* DSI_DLN0_PHY_ERR */
+		dsi_status[3] = MIPI_INP(ctrl->ctrl_base + 0x000c);/* DSI_FIFO_STATUS */
+		dsi_status[4] = MIPI_INP(ctrl->ctrl_base + 0x0008);/* DSI_STATUS */
+#endif
 		mdss_dsi_error(ctrl);
 	}
 
@@ -2592,7 +2740,7 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 		complete(&ctrl->dma_comp);
 		spin_unlock(&ctrl->mdp_lock);
 	}
-
+/* TE Signal instable lead to mdp-fence timeout or blank screen and can't wake up*/
 	if (isr & DSI_INTR_CMD_MDP_DONE) {
 		MDSS_XLOG(ctrl->ndx, ctrl->mdp_busy, isr, 0x99);
 		spin_lock(&ctrl->mdp_lock);
@@ -2608,7 +2756,6 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 		complete_all(&ctrl->mdp_comp);
 		spin_unlock(&ctrl->mdp_lock);
 	}
-
 	if (isr & DSI_INTR_BTA_DONE) {
 		spin_lock(&ctrl->mdp_lock);
 		mdss_dsi_disable_irq_nosync(ctrl, DSI_BTA_TERM);
