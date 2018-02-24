@@ -24,7 +24,6 @@
 #include "bus.h"
 #include "mmc_ops.h"
 #include "sd_ops.h"
-
 static const unsigned int tran_exp[] = {
 	10000,		100000,		1000000,	10000000,
 	0,		0,		0,		0
@@ -59,6 +58,11 @@ static const unsigned int tacc_mant[] = {
 	})
 
 static const struct mmc_fixup mmc_fixups[] = {
+#ifdef CONFIG_HUAWEI_KERNEL
+	/* Disable HPI function for Hynix EMMC Jedec 4.5*/
+	MMC_FIXUP_EXT_CSD_REV(CID_NAME_ANY, CID_MANFID_HYNIX,
+			      0x014a, add_quirk, MMC_QUIRK_BROKEN_HPI, 6),
+#endif
 	/*
 	 * Certain Hynix eMMC 4.41 cards might get broken when HPI feature
 	 * is used so disable the HPI feature for such buggy cards.
@@ -328,12 +332,21 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	}
 
 	card->ext_csd.rev = ext_csd[EXT_CSD_REV];
+#ifdef CONFIG_HUAWEI_KERNEL
+	if (card->ext_csd.rev > 8) {
+		pr_err("%s: unrecognised EXT_CSD revision %d\n",
+			mmc_hostname(card->host), card->ext_csd.rev);
+		err = -EINVAL;
+		goto out;
+	}
+#else
 	if (card->ext_csd.rev > 7) {
 		pr_err("%s: unrecognised EXT_CSD revision %d\n",
 			mmc_hostname(card->host), card->ext_csd.rev);
 		err = -EINVAL;
 		goto out;
 	}
+#endif
 
 	/* fixup device after ext_csd revision field is updated */
 	mmc_fixup_device(card, mmc_fixups);
@@ -602,7 +615,6 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	} else {
 		card->ext_csd.data_sector_size = 512;
 	}
-
 out:
 	return err;
 }
@@ -1705,7 +1717,6 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 					card->bkops_info.host_delay_ms;
 		}
 	}
-
 	return 0;
 
 free_card:
@@ -1717,7 +1728,11 @@ err:
 	return err;
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+int mmc_can_poweroff_notify(const struct mmc_card *card)
+#else
 static int mmc_can_poweroff_notify(const struct mmc_card *card)
+#endif
 {
 	return card &&
 		mmc_card_mmc(card) &&
@@ -1828,7 +1843,11 @@ static void mmc_detect(struct mmc_host *host)
 /*
  * Suspend callback from host.
  */
+#ifdef CONFIG_HUAWEI_KERNEL
+int mmc_suspend(struct mmc_host *host)
+#else
 static int mmc_suspend(struct mmc_host *host)
+#endif
 {
 	int err = 0;
 

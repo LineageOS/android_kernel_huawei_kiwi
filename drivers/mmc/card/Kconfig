@@ -87,3 +87,19 @@ config MMC_BLOCK_TEST
 	  Currently used to test eMMC 4.5 features (packed commands, sanitize,
 	  BKOPs).
 
+config HW_MMC_TEST
+	bool "MMC host test driver by Huawei"
+	depends on  HUAWEI_KERNEL
+	default n
+	help
+	  it's used as a pre-compile macro for mmc test driver by huawei.
+
+config MMC_FFU
+	bool "FFU SUPPORT"
+	depends on MMC != n
+	default n
+	help
+	  This is an option to run firmware update on eMMC 5.0.
+	  Field firmware updates (FFU) enables features enhancment
+	  in the field.
+
