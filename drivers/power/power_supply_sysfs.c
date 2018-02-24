@@ -228,6 +228,13 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(manufacturer),
 	POWER_SUPPLY_ATTR(serial_number),
 	POWER_SUPPLY_ATTR(battery_type),
+	/* Vendor extensions */
+#ifdef CONFIG_HUAWEI_KERNEL
+	POWER_SUPPLY_ATTR(factory_diag),
+	POWER_SUPPLY_ATTR(hot_current_limit),
+	POWER_SUPPLY_ATTR(resume_charging),
+	POWER_SUPPLY_ATTR(running_test_status),
+#endif
 };
 
 static struct attribute *
