@@ -386,6 +386,10 @@ struct mmc_card {
 	unsigned int		sd_bus_speed;	/* Bus Speed Mode set for the card */
 
 	struct dentry		*debugfs_root;
+#ifdef CONFIG_HUAWEI_KERNEL
+	struct dentry		*debugfs_sdxc;
+#endif
+
 	struct mmc_part	part[MMC_NUM_PHY_PARTITION]; /* physical partitions */
 	unsigned int    nr_parts;
 	unsigned int	part_curr;
@@ -468,7 +472,11 @@ struct mmc_fixup {
 
 #define EXT_CSD_REV_ANY (-1u)
 
+#ifdef CONFIG_HUAWEI_KERNEL
+#define CID_MANFID_SANDISK	0x45
+#else
 #define CID_MANFID_SANDISK	0x2
+#endif
 #define CID_MANFID_TOSHIBA	0x11
 #define CID_MANFID_MICRON	0x13
 #define CID_MANFID_SAMSUNG	0x15

@@ -158,6 +158,11 @@ static inline int mmc_blk_part_switch(struct mmc_card *card,
 				      struct mmc_blk_data *md);
 static int get_card_status(struct mmc_card *card, u32 *status, int retries);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+extern int mmc_suspend(struct mmc_host *host);
+extern int mmc_can_poweroff_notify(const struct mmc_card *card);
+#endif
+
 static inline void mmc_blk_clear_packed(struct mmc_queue_req *mqrq)
 {
 	struct mmc_packed *packed = mqrq->packed;
@@ -698,6 +703,11 @@ static int mmc_blk_ioctl_cmd(struct block_device *bdev,
 		err = PTR_ERR(card);
 		goto cmd_done;
 	}
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	if (mmc_bus_needs_resume(card->host)) {
+		mmc_resume_bus(card->host);
+	}
+#endif
 
 	cmd.opcode = idata->ic.opcode;
 	cmd.arg = idata->ic.arg;
@@ -1494,6 +1504,9 @@ static int mmc_blk_issue_flush(struct mmc_queue *mq, struct request *req)
 	struct request_queue *q = mq->queue;
 	struct mmc_card *card = md->queue.card;
 	int ret = 0;
+#ifdef CONFIG_HUAWEI_KERNEL
+	static int timeout_count = 0;
+#endif
 
 	ret = mmc_flush_cache(card);
 	if (ret == -ENODEV) {
@@ -1510,6 +1523,17 @@ static int mmc_blk_issue_flush(struct mmc_queue *mq, struct request *req)
 		pr_info("%s: %s: requeue flush request after timeout",
 				req->rq_disk->disk_name, __func__);
 		spin_lock_irq(q->queue_lock);
+
+#ifdef CONFIG_HUAWEI_KERNEL
+		timeout_count++;
+		if(timeout_count >= 5){
+			pr_err("flush timeout_count is = %d\n", timeout_count);
+			ret = -EIO;
+			timeout_count = 0;
+			goto exit;
+		}
+#endif
+
 		blk_requeue_request(q, req);
 		spin_unlock_irq(q->queue_lock);
 		ret = 0;
@@ -1519,6 +1543,11 @@ static int mmc_blk_issue_flush(struct mmc_queue *mq, struct request *req)
 				req->rq_disk->disk_name, __func__);
 		ret = -EIO;
 	}
+#ifdef CONFIG_HUAWEI_KERNEL
+	else{
+		timeout_count = 0;
+	}
+#endif
 
 	blk_end_request_all(req, ret);
 exit:
@@ -1565,6 +1594,13 @@ static int mmc_blk_err_check(struct mmc_card *card,
 	struct request *req = mq_mrq->req;
 	int ecc_err = 0, gen_err = 0;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	int need_retry = 0;
+	if(CID_MANFID_SANDISK == card->cid.manfid)
+	{
+		pr_debug("[HW]:EMMC_SANDISK_MANFID:Retry Function.");
+	}
+#endif
 	/*
 	 * sbc.error indicates a problem with the set block count
 	 * command.  No data will have been transferred.
@@ -1632,6 +1668,15 @@ static int mmc_blk_err_check(struct mmc_card *card,
 				       status);
 				gen_err = 1;
 			}
+#ifdef CONFIG_HUAWEI_KERNEL
+			if(CID_MANFID_SANDISK == card->cid.manfid)
+			{
+				/* Bit 19 and Bit 20 set means VDET error, need retry this command */
+				if((status & (R1_ERROR|R1_CC_ERROR))==(R1_ERROR|R1_CC_ERROR)) {
+					need_retry = 1;
+				}
+			}
+#endif
 
 			/* Timeout if the device never becomes ready for data
 			 * and never leaves the program state.
@@ -1640,7 +1685,6 @@ static int mmc_blk_err_check(struct mmc_card *card,
 				pr_err("%s: Card stuck in programming state!"\
 					" %s %s\n", mmc_hostname(card->host),
 					req->rq_disk->disk_name, __func__);
-
 				return MMC_BLK_CMD_ERR;
 			}
 			/*
@@ -1650,6 +1694,16 @@ static int mmc_blk_err_check(struct mmc_card *card,
 			 */
 		} while (!(status & R1_READY_FOR_DATA) ||
 			 (R1_CURRENT_STATE(status) == R1_STATE_PRG));
+#ifdef CONFIG_HUAWEI_KERNEL
+		if(CID_MANFID_SANDISK == card->cid.manfid)
+		{
+			/* if error occur,retry operation executes */
+			if(need_retry){
+				printk("[HW]:EMMC_SANDISK_MANFID:status: %d, R1_ERROR and R1_CC_ERROR in CMD13 response, VDET error\n", status);
+				return MMC_BLK_RETRY;
+			}
+		}
+#endif
 	}
 
 	/* if general error occurs, retry the write operation. */
@@ -3228,6 +3282,13 @@ force_ro_fail:
 
 static const struct mmc_fixup blk_fixups[] =
 {
+	/*In order to give sdcard more tome to response, add wait time to 300ms.*/
+#ifdef CONFIG_HUAWEI_KERNEL
+	MMC_FIXUP("SS16G", CID_MANFID_ANY, CID_OEMID_ANY, add_quirk_sd,
+		  MMC_QUIRK_LONG_READ_TIME),
+	MMC_FIXUP("SU08G", CID_MANFID_ANY, CID_OEMID_ANY, add_quirk_sd,
+		  MMC_QUIRK_LONG_READ_TIME),
+#endif
 	MMC_FIXUP("SEM02G", CID_MANFID_SANDISK, 0x100, add_quirk,
 		  MMC_QUIRK_INAND_CMD38),
 	MMC_FIXUP("SEM04G", CID_MANFID_SANDISK, 0x100, add_quirk,
@@ -3332,7 +3393,14 @@ static int mmc_blk_probe(struct mmc_card *card)
 	mmc_fixup_device(card, blk_fixups);
 
 #ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+#ifdef CONFIG_HUAWEI_KERNEL
+	if (mmc_card_sd(card)) {
+		printk("%s: set manual_resume in mmc_blk_probe.\n", mmc_hostname(card->host));
+		mmc_set_bus_resume_policy(card->host, 1);
+	}
+#else
 	mmc_set_bus_resume_policy(card->host, 1);
+#endif
 #endif
 	if (mmc_add_disk(md))
 		goto out;
@@ -3360,7 +3428,16 @@ static void mmc_blk_remove(struct mmc_card *card)
 	mmc_blk_remove_req(md);
 	mmc_set_drvdata(card, NULL);
 #ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+#ifdef CONFIG_HUAWEI_KERNEL
+	if (mmc_card_sd(card)) {
+		printk("%s: clear manual_resume and need_resume in mmc_blk_remove.\n", mmc_hostname(card->host));
+		mmc_set_bus_resume_policy(card->host, 0);
+		card->host->bus_resume_flags &= ~MMC_BUSRESUME_NEEDS_RESUME;
+	}
+#else
 	mmc_set_bus_resume_policy(card->host, 0);
+#endif
+
 #endif
 }
 
@@ -3388,7 +3465,12 @@ static void mmc_blk_shutdown(struct mmc_card *card)
 		mmc_claim_host(card->host);
 		mmc_stop_bkops(card);
 		mmc_release_host(card->host);
-		mmc_send_long_pon(card);
+#ifdef CONFIG_HUAWEI_KERNEL
+		if(card->issue_long_pon && mmc_can_poweroff_notify(card))
+			mmc_send_long_pon(card);
+		else
+			mmc_suspend(card->host);
+#endif
 		mmc_rpm_release(card->host, &card->dev);
 	}
 	return;
