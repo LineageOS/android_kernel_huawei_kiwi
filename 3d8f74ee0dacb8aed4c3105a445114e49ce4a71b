@@ -45,6 +45,23 @@
       "revId": "3d8f74ee0dacb8aed4c3105a445114e49ce4a71b",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f67c50f1_6f1a0e26",
+        "filename": "drivers/misc/huawei_reset_detect/Kconfig",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-02-24T15:00:51Z",
+      "side": 1,
+      "message": "This driver looks useless",
+      "revId": "3d8f74ee0dacb8aed4c3105a445114e49ce4a71b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
