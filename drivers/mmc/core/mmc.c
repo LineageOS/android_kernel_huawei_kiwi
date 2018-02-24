@@ -25,7 +25,6 @@
 #include "bus.h"
 #include "mmc_ops.h"
 #include "sd_ops.h"
-
 static const unsigned int tran_exp[] = {
 	10000,		100000,		1000000,	10000000,
 	0,		0,		0,		0
@@ -60,6 +59,11 @@ static const unsigned int tacc_mant[] = {
 	})
 
 static const struct mmc_fixup mmc_fixups[] = {
+#ifdef CONFIG_HUAWEI_KERNEL
+	/* Disable HPI function for Hynix EMMC Jedec 4.5*/
+	MMC_FIXUP_EXT_CSD_REV(CID_NAME_ANY, CID_MANFID_HYNIX,
+			      0x014a, add_quirk, MMC_QUIRK_BROKEN_HPI, 6),
+#endif
 	/*
 	 * Certain Hynix eMMC 4.41 cards might get broken when HPI feature
 	 * is used so disable the HPI feature for such buggy cards.
@@ -1743,7 +1747,11 @@ err:
 	return err;
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+int mmc_can_poweroff_notify(const struct mmc_card *card)
+#else
 static int mmc_can_poweroff_notify(const struct mmc_card *card)
+#endif
 {
 	return card &&
 		mmc_card_mmc(card) &&
@@ -1854,7 +1862,11 @@ static void mmc_detect(struct mmc_host *host)
 /*
  * Suspend callback from host.
  */
+#ifdef CONFIG_HUAWEI_KERNEL
+int mmc_suspend(struct mmc_host *host)
+#else
 static int mmc_suspend(struct mmc_host *host)
+#endif
 {
 	int err = 0;
 
