@@ -21,12 +21,21 @@
 #include "../cci/msm_cci.h"
 #include <linux/debugfs.h>
 
+#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+#include <linux/hw_dev_dec.h>
+#endif
+#define FLASH_CHIP_ID_MASK 0x07
+#define FLASH_CHIP_ID 0x0
+
 #define FLASH_NAME "camera-led-flash"
 #define CAM_FLASH_PINCTRL_STATE_SLEEP "cam_flash_suspend"
 #define CAM_FLASH_PINCTRL_STATE_DEFAULT "cam_flash_default"
 /*#define CONFIG_MSMB_CAMERA_DEBUG*/
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
+#define TEMPERATUE_NORMAL 1  //normal
+#define TEMPERATUE_ABNORMAL 0 //abnormal
+static bool led_temperature = TEMPERATUE_NORMAL; //led temperature status
 
 int32_t msm_led_i2c_trigger_get_subdev_id(struct msm_led_flash_ctrl_t *fctrl,
 	void *arg)
@@ -54,6 +63,14 @@ int32_t msm_led_i2c_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 		pr_err("failed\n");
 		return -EINVAL;
 	}
+
+	//if led status is off and led status abnormal close the led
+	if((TEMPERATUE_ABNORMAL == led_temperature) && (MSM_CAMERA_LED_TORCH_POWER_NORMAL != cfg->cfgtype))
+	{
+		cfg->cfgtype = MSM_CAMERA_LED_OFF;
+		pr_err("flash can not work.\n");
+	}
+
 	switch (cfg->cfgtype) {
 
 	case MSM_CAMERA_LED_INIT:
@@ -107,6 +124,30 @@ int32_t msm_led_i2c_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 		if (fctrl->func_tbl->flash_led_high)
 			rc = fctrl->func_tbl->flash_led_high(fctrl);
 		break;
+
+	case MSM_CAMERA_LED_TORCH:
+		if (fctrl->func_tbl->torch_led_on){
+			msleep(200);    //have to sleep to solve the flash problem of torch app
+			rc = fctrl->func_tbl->torch_led_on(fctrl);
+		}
+		break;
+
+	//normal
+	case MSM_CAMERA_LED_TORCH_POWER_NORMAL:
+		pr_err("resume the flash.\n");
+		led_temperature = TEMPERATUE_NORMAL;
+		break;
+	//abnormal
+	case MSM_CAMERA_LED_TORCH_POWER_ABNORMAL:
+		//need run MSM_CAMERA_LED_OFF to take off the led
+		pr_err("tunn off the flash.\n");
+		led_temperature = TEMPERATUE_ABNORMAL;
+		//close flash
+		if (fctrl->func_tbl->flash_led_off)
+		{
+			rc = fctrl->func_tbl->flash_led_off(fctrl);
+		}
+
 	default:
 		rc = -EFAULT;
 		break;
@@ -420,6 +461,15 @@ static int32_t msm_led_get_dt_data(struct device_node *of_node,
 		goto ERROR1;
 	}
 
+	// Get the flash high current from .dtsi file. If failed to get the value of current,
+	// set register as the default value 1031.25mA.
+	rc = of_property_read_u32(of_node, "qcom,flash-high-current", &fctrl->flash_high_current);
+	if (rc < 0) {
+		pr_err("get flash_high_current failed\n");
+	}
+
+	CDBG("flash_high_current %d\n", fctrl->flash_high_current);
+
 	rc = of_property_read_u32(of_node, "qcom,cci-master",
 		&fctrl->cci_i2c_master);
 	CDBG("%s qcom,cci-master %d, rc %d\n", __func__, fctrl->cci_i2c_master,
@@ -718,6 +768,18 @@ int msm_flash_i2c_probe(struct i2c_client *client,
 	if (!fctrl->flash_i2c_client->i2c_func_tbl)
 		fctrl->flash_i2c_client->i2c_func_tbl =
 			&msm_sensor_qup_func_tbl;
+
+#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+	/* read chip id */
+	if( fctrl->func_tbl->flash_match_id ){
+		rc = fctrl->func_tbl->flash_match_id(fctrl);
+		if( rc < 0 ){
+			 rc = -ENODEV;
+			goto probe_failure;
+		}
+	}
+	set_hw_dev_flag(DEV_I2C_FLASH);
+#endif
 
 	rc = msm_led_i2c_flash_create_v4lsubdev(fctrl);
 #ifdef CONFIG_DEBUG_FS
