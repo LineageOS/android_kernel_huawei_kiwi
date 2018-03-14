@@ -15,3 +15,5 @@
 #include "huawei-sdcard.dtsi"
 #include "huawei-usb.dtsi"
 #include "huawei-fingerprint.dtsi"
+
+#include "huawei-ramoops.dtsi"
