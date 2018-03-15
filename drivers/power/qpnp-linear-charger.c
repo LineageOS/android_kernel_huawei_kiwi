@@ -31,6 +31,8 @@
 static struct qpnp_lbc_chip *global_chip;
 #include <linux/power/huawei_charger.h>
 #include <linux/charger_core.h>
+
+int huawei_disable_charger(struct qpnp_lbc_chip *chip);
 #endif
 
 #define CREATE_MASK(NUM_BITS, POS) \
@@ -3883,16 +3885,6 @@ static int qpnp_lbc_parse_resources(struct qpnp_lbc_chip *chip)
 	struct spmi_resource *spmi_resource;
 	struct spmi_device *spmi = chip->spmi;
 
-#ifdef CONFIG_HUAWEI_KERNEL
-	struct charger_core_info *di = NULL;
-	di = charge_core_get_params();
-	if(NULL == di)
-	{
-		pmu_log_err("err:[%s]di is NULL!\n",__func__);
-		return -EINVAL;
-	}
-#endif
-
 	spmi_for_each_container_dev(spmi_resource, spmi) {
 		if (!spmi_resource) {
 			pr_err("spmi resource absent\n");
@@ -3949,7 +3941,25 @@ static int qpnp_lbc_parse_resources(struct qpnp_lbc_chip *chip)
 		}
 	}
 
+	pr_debug("chgr_base=%x usb_chgpth_base=%x bat_if_base=%x misc_base=%x\n",
+				chip->chgr_base, chip->usb_chgpth_base,
+				chip->bat_if_base, chip->misc_base);
+
+	return rc;
+}
+
 #ifdef CONFIG_HUAWEI_KERNEL
+int huawei_disable_charger(struct qpnp_lbc_chip *chip)
+{
+	int rc;
+	struct charger_core_info *di = NULL;
+	di = charge_core_get_params();
+	if(NULL == di)
+	{
+		pmu_log_err("err:[%s]di is NULL!\n",__func__);
+		return -EINVAL;
+	}
+
 	if(QCOM_LINEAR_CHARGER != di->charger_type_info.charger_index)
 	{
 		di->vadc_dev = chip->vadc_dev;
@@ -3963,14 +3973,10 @@ static int qpnp_lbc_parse_resources(struct qpnp_lbc_chip *chip)
 		pmu_log_info("use the extern charger IC,no qpnp_linear_charger probe!\n");
 		return 0;
 	}
-#endif
 
-	pr_debug("chgr_base=%x usb_chgpth_base=%x bat_if_base=%x misc_base=%x\n",
-				chip->chgr_base, chip->usb_chgpth_base,
-				chip->bat_if_base, chip->misc_base);
-
-	return rc;
+	return 1;
 }
+#endif
 
 static int qpnp_lbc_parallel_probe(struct spmi_device *spmi)
 {
@@ -4004,6 +4010,12 @@ static int qpnp_lbc_parallel_probe(struct spmi_device *spmi)
 		pr_err("Unable to parse LBC(parallel) resources rc=%d\n", rc);
 		return rc;
 	}
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	rc = huawei_disable_charger(chip);
+	if (rc == 0 || rc != 1)
+		return rc;
+#endif
 
 	rc = qpnp_lbc_parallel_charger_init(chip);
 	if (rc) {
@@ -4092,6 +4104,12 @@ static int qpnp_lbc_main_probe(struct spmi_device *spmi)
 		pr_err("Unable to parse LBC resources rc=%d\n", rc);
 		goto fail_chg_enable;
 	}
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	rc = huawei_disable_charger(chip);
+	if (rc == 0 || rc != 1)
+		return rc;
+#endif
 
 	if (chip->cfg_use_external_charger) {
 		pr_warn("Disabling Linear Charger (e-external-charger = 1)\n");
