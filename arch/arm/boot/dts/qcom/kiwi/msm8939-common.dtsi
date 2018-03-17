@@ -53,6 +53,12 @@
 		/delete-property/ qcom,hsusb-otg-disable-reset;
 	};
 
+	i2c_0: i2c@78b6000 { /* BLSP1 QUP2 */
+		pinctrl-names = "i2c_active", "i2c_sleep", "i2c_defult";
+		pinctrl-2 = <&i2c_0_defult>;
+		gpios = <&msm_gpio 7 0>, <&msm_gpio 6 0>;
+	};
+
 	i2c_1: i2c@78b5000 { /* BLSP1 QUP6 */
 		compatible = "qcom,i2c-msm-v2";
 		#address-cells=<1>;
