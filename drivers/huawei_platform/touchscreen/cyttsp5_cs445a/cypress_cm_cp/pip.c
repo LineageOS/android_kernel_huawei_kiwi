@@ -56,9 +56,6 @@
 #define COMMAND_READ_DATA_BLOCK		0x22
 #define COMMAND_RETRIEVE_DATA_STRUCTURE	0x24
 #define COMMAND_SHORT_TEST                   0x26
-#define COMMAND_OPEN_TEST                    0x26
-#define COMMAND_GET_OPENS_SELF_TEST_RESULTS  0x27
-
 #define COMMAND_CALIBRATE_IDACS		0x28
 #define COMMAND_EXECUTE_PANEL_SCAN	0x2A
 #define COMMAND_RETRIEVE_PANEL_SCAN	0x2B
@@ -553,66 +550,6 @@ static int check_and_parse_retrieve_data_structure_response(uint8_t *buf,
     return 0;
 }
 
-static int check_and_parse_get_opens_self_test_results_response(uint8_t *buf,
-        uint16_t read_length, uint8_t *status, uint8_t *data_id,
-        uint16_t *actual_read_length, uint8_t *data_format, uint8_t *data)
-{
-    struct tt_input_report *in = (struct tt_input_report *)buf;
-    uint16_t length = 0;
-    uint8_t command = 0;
-
-    if (read_length < 6)
-        return -EINVAL;
-
-    if (check_and_parse_tt_input_report(in, &length, &command)
-            || command != COMMAND_GET_OPENS_SELF_TEST_RESULTS
-            || length < 6)
-        return -EINVAL;
-
-    *status = in->return_data[0];
-    if (read_length == 6)
-        return 0;
-
-    if (read_length >= 7)
-        *data_id = in->return_data[1];
-
-    if (read_length >= 9)
-        *actual_read_length = MERGE8(in->return_data[2],
-                in->return_data[3]);
-
-    if (read_length != 10 + *actual_read_length)
-        return -EINVAL;
-
-    *data_format = in->return_data[4];
-
-    memcpy(data, &in->return_data[5], *actual_read_length);
-
-    return 0;
-}
-
-static int prepare_get_opens_self_test_results_report(uint8_t *buf,
-        uint16_t read_offset, uint16_t read_length, uint8_t data_id)
-{
-    struct tt_output_report *out = (struct tt_output_report *)buf;
-
-    out->parameters[0] = LO_BYTE(read_offset);
-    out->parameters[1] = HI_BYTE(read_offset);
-    out->parameters[2] = LO_BYTE(read_length);
-    out->parameters[3] = HI_BYTE(read_length);
-    out->parameters[4] = data_id;
-
-    return prepare_tt_output_report(out, 5, COMMAND_GET_OPENS_SELF_TEST_RESULTS);
-}
-
-
-static int prepare_open_test_report(uint8_t *buf)
-{
-    struct tt_output_report *out = (struct tt_output_report *)buf;
-    out->parameters[0] = 0x03;//Automatic Shorts Self test ID is 0x04
-    return prepare_tt_output_report(out, 1, COMMAND_OPEN_TEST);
-}
-
-
 static int prepare_short_test_report(uint8_t *buf)
 {
     struct tt_output_report *out = (struct tt_output_report *)buf;
@@ -628,26 +565,6 @@ static int prepare_calibrate_idacs_report(uint8_t *buf, uint8_t sensing_mode)
 
     return prepare_tt_output_report(out, 1, COMMAND_CALIBRATE_IDACS);
 }
-
-static int check_and_parse_open_test_response(uint8_t *buf,
-        uint16_t read_length, uint8_t *status)
-{
-    struct tt_input_report *in = (struct tt_input_report *)buf;
-    uint16_t length = 0;
-    uint8_t command = 0;
-    if (read_length != 7)
-        return -EINVAL;
-
-    if (check_and_parse_tt_input_report(in, &length, &command)
-            || command != COMMAND_OPEN_TEST
-            || length != 7)
-    return -EINVAL;
-
-    *status = in->return_data[0];
-
-    return 0;
-}
-
 static int check_and_parse_short_test_response(uint8_t *buf,
         uint16_t read_length, uint8_t *status)
 {
@@ -1118,69 +1035,6 @@ int pip_short_test(void)
     }
 
     tp_log_info("%s:finish--!\n",__func__);
-exit:
-    return ret;
-}
-
-int pip_opens_self_test(void)
-{
-    uint8_t status;
-    int size;
-    int ret;
-
-    size = prepare_open_test_report(report_buffer);
-    ret = pip_get_sensor_data(gdev, report_buffer, size, response_buffer, &size);
-
-    if (ret < 0) {
-        tp_log_err("Unable to send open test command!\n");
-        goto exit;
-    }
-    ret = check_and_parse_open_test_response(response_buffer, size,&status);
-    if (ret) {
-        tp_log_err("Check open test fails!\n");
-        goto exit;
-    }
-
-    if (status != SUCCESS)
-        return -EIO;
-
-exit:
-    return ret;
-}
-
-
-int pip_get_opens_self_test_results(uint16_t read_offset, uint16_t read_length,
-        uint8_t data_id, uint16_t *actual_read_length,
-        uint8_t *data_format, uint8_t *data)
-{
-    uint8_t status;
-    uint8_t ret_data_id;
-    int size;
-    int ret;
-
-    if (!actual_read_length || !data_format || !data)
-        return -EINVAL;
-
-    size = prepare_get_opens_self_test_results_report(report_buffer, read_offset,
-            read_length, data_id);
-    ret = pip_get_sensor_data(gdev, report_buffer, size, response_buffer, &size);
-
-    if (ret < 0) {
-        tp_log_err("Unable to send retrieve data structure command!\n");
-        goto exit;
-    }
-
-    ret = check_and_parse_get_opens_self_test_results_response(response_buffer,
-            size, &status, &ret_data_id, actual_read_length,
-            data_format, data);
-    if (ret) {
-        tp_log_err("Check retrieve data structure fails!\n");
-        goto exit;
-    }
-
-    if (status != SUCCESS || ret_data_id != data_id)
-        return -EINVAL;
-
 exit:
     return ret;
 }

@@ -645,9 +645,8 @@ static int get_cm_uniformity_test_results(int vdda, uint16_t tx_num,
 {
     union parameter_value parameter_value;
     enum parameter_type parameter_type;
-    uint8_t *sensor_localpwc = NULL;
-    uint8_t *gidacs = NULL;
-    uint16_t read_length=0;
+    int *sensor_localpwc = NULL;
+    //uint16_t read_length;
     uint16_t sensor_element_num = 0;
     uint8_t data_format = 0;
     int gidac_val = 0;
@@ -668,17 +667,12 @@ static int get_cm_uniformity_test_results(int vdda, uint16_t tx_num,
     int ret;
     int i;
     int j;
-    int max_read_elem = 0;
-    int remain_to_read = 0;
-    int read_offset = 0;
 
     sensor_element_num = rx_num * tx_num;
     tp_log_info("%s, get_cm_uniformity_test_results called\n", __func__);
     *sensor_raw_data = kzalloc(sensor_element_num * sizeof(int32_t), GFP_KERNEL);
     *cm_sensor_data = kzalloc(sensor_element_num * sizeof(int),GFP_KERNEL);
-    sensor_localpwc = kzalloc(sensor_element_num * sizeof(uint8_t),GFP_KERNEL);
-    gidacs = kzalloc(tx_num * sizeof(uint8_t),GFP_KERNEL);
-
+    sensor_localpwc = kzalloc((sensor_element_num + tx_num)* sizeof(int),GFP_KERNEL);
     if (!*sensor_raw_data || !*cm_sensor_data || !sensor_localpwc) {
         ret = -ENOMEM;
         goto exit;
@@ -789,7 +783,6 @@ static int get_cm_uniformity_test_results(int vdda, uint16_t tx_num,
             goto restore_multi_tx;
         }
     }
-
  /*step 8a:resume Panel Scan*/
     ret = pip_resume_scanning();
     if (ret) {
@@ -812,23 +805,33 @@ static int get_cm_uniformity_test_results(int vdda, uint16_t tx_num,
         goto restore_multi_tx;
     }
 
-    /* Step 3: Get Sensor Mutual Global IDACS */
-    ret = pip_retrieve_data_structure(0, tx_num, IDAC_DATA_ID_MUTUAL, &read_length, &data_format, gidacs);
-    tp_log_info("%s: gidacs[0..%d]\n",__func__, tx_num-1);
-    max_gidac = 0;
-    for(i=0; i<tx_num; i++) {
-        printk("%5d ",gidacs[i]);
-        if(gidacs[i] > max_gidac) /*get the max gidac*/
-            max_gidac = gidacs[i];
-    }
-    printk("\n");
+    /* Step 8e: Retrieve Panel Scan raw data */
+    ret = retrieve_panel_localpwc(MUTUAL_LOCAL_PWC_DATA_ID, 0,
+            sensor_element_num + tx_num, &data_format, sensor_localpwc);
     if (ret) {
-        tp_log_err("%s:Unable to retrieve panel gidacs!\n",__func__);
+        tp_log_err("%s:Unable to retrieve panel localpwc!\n",__func__);
         goto restore_multi_tx;
     }
 
-    tp_log_info("%s: max_gidac: %d\n", __func__,  max_gidac);
-    /*get the gidac_val*/
+    tp_log_info("%s: sensor_localpwc[0..%d]:\n", __func__,
+            sensor_element_num + tx_num - 1);
+    max_gidac = sensor_localpwc[0];
+    tp_log_info("global idac:");
+    for(i=0; i<tx_num; i++) {
+        if( sensor_localpwc[i] > max_gidac) {
+            max_gidac = sensor_localpwc[i];
+    }
+        printk("%5d", sensor_localpwc[i]);
+    }
+    printk("\n");
+
+    for( i = 0 ; i < sensor_element_num; i++) {
+        printk("%5d", sensor_localpwc[i + tx_num]);
+        if((i + 1)%rx_num  == 0)
+            printk("\n");
+    }
+
+
     if((max_gidac % mtx_sum) ==0 ) {
         gidac_val = (max_gidac /mtx_sum);
     } else {
@@ -838,53 +841,7 @@ static int get_cm_uniformity_test_results(int vdda, uint16_t tx_num,
         gidac_val =10;
         tp_log_info("%s: reseting gidac_val from 0 to 10\n", __func__);
     }
-    tp_log_info("%s: gidac_val: %d\n", __func__,  gidac_val);
-
-    /*write the gidac_val to RAM.OPENS_TEST_GIDAC*/
-    ret = pip_set_parameter(OPENS_TEST_GIDAC, 1, gidac_val);
-    if (ret) {
-        tp_log_err("Unable to set OPENS_TEST_GIDAC parameter!\n");
-        goto restore_multi_tx;
-    }
-    /*do a opens self test command*/
-    ret = pip_opens_self_test();
-    if (ret) {
-        tp_log_err("Unable to do opens self test!\n");
-        goto restore_multi_tx;
-    }
-
-    /*
-    *get opens self tests results
-    *read multiple times because sometimes driver
-    *can not pass more than 255 bytes back
-    */
-    max_read_elem = MAX_READ_ELEM;
-    remain_to_read = sensor_element_num;
-    read_offset = 0;
-    while(remain_to_read >0) {
-
-        if(remain_to_read >max_read_elem )
-        {
-            ret =pip_get_opens_self_test_results(read_offset, max_read_elem, 3, &read_length, &data_format, &sensor_localpwc[read_offset]);
-        } else {
-            ret =pip_get_opens_self_test_results(read_offset, remain_to_read, 3, &read_length, &data_format, &sensor_localpwc[read_offset]);
-        }
-
-        if (ret < 0) {
-            tp_log_err("Unable to do pip_get_opens_self_test_results!\n");
-            goto restore_multi_tx;
-        }
-        remain_to_read -= read_length;
-        read_offset += read_length;
-    }
-
-    tp_log_info("%s: sensor_localpwc[0..%d]:\n", __func__, sensor_element_num  - 1);
-
-    for( i = 0 ; i < sensor_element_num; i++) {
-        printk("%5d", sensor_localpwc[i]);
-        if((i + 1)%rx_num  == 0)
-            printk("\n");
-    }
+    tp_log_info("%s, max global idac:%d\n", __func__, max_gidac);
 
     /*step 8a:resume Panel Scan*/
     ret = pip_resume_scanning();
@@ -936,7 +893,7 @@ static int get_cm_uniformity_test_results(int vdda, uint16_t tx_num,
     *cm_sensor_average = 0;
 
     for (i = 0; i < sensor_element_num; i++) {
-        (*cm_sensor_data)[i] = calculate_cm((*sensor_raw_data)[i], sensor_localpwc[i], int_cap_mutual,
+        (*cm_sensor_data)[i] = calculate_cm((*sensor_raw_data)[i], sensor_localpwc[tx_num + i], int_cap_mutual, 
                               idac_lsb, vref, gidac_val, scaling_factor_mutual ,
                               clk, vtx, mtx_sum);
         *cm_sensor_average += (*cm_sensor_data)[i];
@@ -980,10 +937,6 @@ exit:
     if(sensor_localpwc) {
         kfree(sensor_localpwc);
         sensor_localpwc = NULL;
-    }
-    if(gidacs) {
-        kfree(gidacs);
-        gidacs = NULL;
     }
     return ret;
 }
