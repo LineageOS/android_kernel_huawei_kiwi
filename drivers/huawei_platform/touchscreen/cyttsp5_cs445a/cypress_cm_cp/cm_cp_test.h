@@ -77,11 +77,6 @@
 #define READ_LENGTH 					100
 
 
-#define IDAC_DATA_ID_MUTUAL             0
-#define OPENS_TEST_GIDAC                0xC1
-
-#define MAX_READ_ELEM                   100
-
 struct gd_sensor {
     uint16_t cm_min;
     uint16_t cm_max;
