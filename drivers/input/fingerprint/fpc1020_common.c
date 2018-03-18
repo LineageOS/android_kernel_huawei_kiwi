@@ -1681,6 +1681,9 @@ int fpc1020_cmd(fpc1020_data_t *fpc1020,
 
         if (error >= 0)
             error = fpc1020_read_irq(fpc1020, true);
+        else {
+            fpc_log_err("fpc1020_wait_for_irq after cmd failed, error = %d", error);
+        }
     }
 #if CS_CONTROL
     gpio_set_value(fpc1020->cs_gpio, 1);
@@ -2066,7 +2069,13 @@ int fpc1020_fetch_image(fpc1020_data_t *fpc1020,
     error = fpc1020_read_irq(fpc1020, true);
 
     if (error > 0)
+    {
+        if(error & FPC_1020_IRQ_REG_BIT_ERROR)
+        {
+            fpc_log_err("return clear_irq error = %d\n", error);
+        }
         error = (error & FPC_1020_IRQ_REG_BIT_ERROR) ? -EIO : 0;
+    }
 
 out:
     return error;
