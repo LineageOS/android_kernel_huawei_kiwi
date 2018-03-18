@@ -105,6 +105,7 @@ enum msm_usb_phy_type {
 };
 
 #define IDEV_CHG_MAX	1500
+#define IDEV_CHG_FLOATED	1000
 #define IDEV_CHG_MIN	500
 #define IUNIT		100
 
@@ -283,6 +284,7 @@ enum usb_id_state {
  */
 struct msm_otg_platform_data {
 	int *phy_init_seq;
+	int *phy_init_seq_host;
 	int (*vbus_power)(bool on);
 	unsigned power_budget;
 	enum usb_mode_type mode;
@@ -325,8 +327,7 @@ struct msm_otg_platform_data {
 #define PHY_VBUS_VALID_OVERRIDE		BIT(4)
 
 /* Timeout (in msec) values (min - max) associated with OTG timers */
-
-#define TA_WAIT_VRISE	100	/* ( - 100)  */
+#define TA_WAIT_VRISE	400	/* ( - 100)  */
 #define TA_WAIT_VFALL	500	/* ( - 1000) */
 
 /*
@@ -781,4 +782,21 @@ static inline int msm_dwc3_reset_dbm_ep(struct usb_ep *ep)
 }
 
 #endif
+
+#ifdef CONFIG_HUAWEI_EXTERN_ID_DETECT
+/*
+ * USB ID STATUS, only support 0 or 1
+ * the USB ID is pulled up internal
+ * USB_ID_STATUS_LOW :  id is pulled down, should switch to usb host mode
+ * USB_ID_STATUS_HIGH:  id is pulled up,   should switch to usb peripheral mode
+ *
+ */
+typedef enum enum_usb_id_status_type {
+	USB_ID_STATUS_LOW = 0,
+	USB_ID_STATUS_HIGH,
+}USB_ID_STATUS_TYPE;
+
+extern void msm_id_status_changed(USB_ID_STATUS_TYPE id_state);
+#endif
+
 #endif
