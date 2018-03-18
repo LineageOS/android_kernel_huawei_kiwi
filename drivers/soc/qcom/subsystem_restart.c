@@ -309,6 +309,9 @@ EXPORT_SYMBOL(subsys_bus_type);
 
 static DEFINE_IDA(subsys_ida);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+int subsystem_restart_requested = 0;
+#endif
 static int enable_ramdumps;
 module_param(enable_ramdumps, int, S_IRUGO | S_IWUSR);
 
@@ -413,9 +416,18 @@ out:
 
 static int is_ramdump_enabled(struct subsys_device *dev)
 {
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(subsystem_restart_requested == 1)
+		return 0;
+	/*if we are initiative to reset subsys, we don't go into dump
+	enable_ramdumps is already set to 0, so skip this if*/
+	else if (dev->desc->ramdump_disable_gpio)
+		return !dev->desc->ramdump_disable;
+#else
 	if (dev->desc->ramdump_disable_gpio)
 		return !dev->desc->ramdump_disable;
 
+#endif
 	return enable_ramdumps;
 }
 
@@ -862,6 +874,13 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 	for_each_subsys_device(list, count, NULL, subsystem_powerup);
 	notify_each_subsys_device(list, count, SUBSYS_AFTER_POWERUP, NULL);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	/* restore subsystem ramdump switch */
+	if (subsystem_restart_requested) {
+		subsystem_restart_requested = 0;
+	}
+#endif
+
 	pr_info("[%s:%d]: Restart sequence for %s completed.\n",
 			current->comm, current->pid, desc->name);
 
@@ -949,6 +968,31 @@ int subsystem_restart_dev(struct subsys_device *dev)
 		return 0;
 	}
 
+#ifdef CONFIG_HUAWEI_KERNEL
+
+	/*if we are initiative to reset modem, we must do
+	  what RESET_SUBSYS_COUPLED do*/
+	if(subsystem_restart_requested)
+	{
+		pr_info("initialtive to reset modem\n");
+		__subsystem_restart_dev(dev);
+	}
+	else{
+		switch (dev->restart_level) {
+
+			case RESET_SUBSYS_COUPLED:
+				__subsystem_restart_dev(dev);
+				break;
+			case RESET_SOC:
+				__pm_stay_awake(&dev->ssr_wlock);
+				schedule_work(&dev->device_restart_work);
+				return 0;
+			default:
+				panic("subsys-restart: Unknown restart level!\n");
+				break;
+		}
+	}
+#else
 	switch (dev->restart_level) {
 
 	case RESET_SUBSYS_COUPLED:
@@ -962,6 +1006,7 @@ int subsystem_restart_dev(struct subsys_device *dev)
 		panic("subsys-restart: Unknown restart level!\n");
 		break;
 	}
+#endif
 	module_put(dev->owner);
 	put_device(&dev->dev);
 
