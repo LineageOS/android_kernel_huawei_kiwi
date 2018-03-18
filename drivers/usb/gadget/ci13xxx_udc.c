@@ -2515,7 +2515,12 @@ __acquires(udc->lock)
 
 	/*stop charging upon reset */
 	if (udc->transceiver)
+#ifdef CONFIG_HUAWEI_KERNEL
+		//in order to support D+ ground, D- hung up non-standard charger,modify the current value
+		usb_phy_set_power(udc->transceiver, 500);
+#else
 		usb_phy_set_power(udc->transceiver, 100);
+#endif
 
 	retval = _gadget_stop_activity(&udc->gadget);
 	if (retval)
