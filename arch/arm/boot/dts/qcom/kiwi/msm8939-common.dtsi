@@ -172,7 +172,7 @@
 		interrupts = <0 100 0>, <0 238 0>;
 		spi-max-frequency = <18000000>;
 		qcom,use-pinctrl;
-		pinctrl-names = "default", "sleep";
+		pinctrl-names = "spi_default", "spi_sleep";
 		pinctrl-0 = <&spi6_default &spi6_cs0_active>;
 		pinctrl-1 = <&spi6_sleep &spi6_cs0_sleep>;
 		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
