@@ -1946,7 +1946,33 @@ static int msm_spi_unprepare_transfer_hardware(struct spi_master *master)
 	pm_runtime_put_autosuspend(dd->dev);
 	return 0;
 }
+int msm_spi_ctl_for_tz(struct spi_device *spi,int enable)
+{
+	struct msm_spi *dd;
+	static int enable_count = 0;
 
+	if(!spi)
+		return -EINVAL;
+	dd = spi_master_get_devdata(spi->master);
+
+	if(enable) {
+		msm_spi_clk_path_init(dd);
+		if (!dd->pdata->active_only)
+			msm_spi_clk_path_vote(dd);
+		get_local_resources(dd);
+		enable_count++;
+		dev_info(&spi->dev, "%s: clk enable_count = %d\n",__func__, enable_count);
+	}
+	else {
+		if (dd->pdata)
+			put_local_resources(dd);
+		if (dd->pdata && !dd->pdata->active_only)
+			msm_spi_clk_path_unvote(dd);
+		enable_count--;
+		dev_info(&spi->dev, "%s: clk enable_count = %d\n",__func__, enable_count);
+	}
+	return 0;
+}
 static int msm_spi_setup(struct spi_device *spi)
 {
 	struct msm_spi	*dd;
