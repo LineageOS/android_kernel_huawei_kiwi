@@ -172,6 +172,19 @@ enum {
 	SMEM_NUM_ITEMS = SMEM_SMP2P_SENSOR_BASE + 8, /* 489 */
 };
 
+typedef struct
+{
+    unsigned int lpddrID;                  /* DDR ID */
+    unsigned int update_flag[2];           /* sd auto update flag */
+    unsigned char sb_seme_data[16];
+#ifdef  CONFIG_HUAWEI_KERNEL
+    unsigned int pwrkpd_reset;
+#endif
+
+    unsigned int huawei_oba;
+
+    unsigned int reserved;                  /* reserved for filling */
+}smem_exten_huawei_paramater;
 #ifdef CONFIG_MSM_SMEM
 void *smem_alloc(unsigned id, unsigned size_in, unsigned to_proc,
 								unsigned flags);
