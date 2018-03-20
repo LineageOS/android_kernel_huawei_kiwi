@@ -96,6 +96,10 @@ struct notif_data {
 
 #if defined(CONFIG_MSM_SUBSYSTEM_RESTART)
 
+#ifdef CONFIG_HUAWEI_KERNEL
+extern int subsystem_restart_requested;
+#endif
+
 extern int subsys_get_restart_level(struct subsys_device *dev);
 extern int subsystem_restart_dev(struct subsys_device *dev);
 extern int subsystem_restart(const char *name);
