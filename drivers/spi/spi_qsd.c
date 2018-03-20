@@ -1467,6 +1467,11 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 	u32 spi_ioc;
 	u32 int_loopback = 0;
 	int ret;
+	unsigned int __iomem *gpio;
+	unsigned int gpio0;
+	unsigned int gpio1;
+	unsigned int gpio2;
+	unsigned int gpio3;
 
 	dd->tx_bytes_remaining = dd->cur_msg_len;
 	dd->rx_bytes_remaining = dd->cur_msg_len;
@@ -1555,6 +1560,15 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 	do {
 		if (!wait_for_completion_timeout(&dd->transfer_complete,
 						 timeout)) {
+				gpio = ioremap(0x1000000, sizeof(unsigned int));
+				gpio0 = readl_relaxed(gpio);
+				gpio = ioremap(0x1001000, sizeof(unsigned int));
+				gpio1 = readl_relaxed(gpio);
+				gpio = ioremap(0x1002000, sizeof(unsigned int));
+				gpio2 = readl_relaxed(gpio);
+				gpio = ioremap(0x1003000, sizeof(unsigned int));
+				gpio3 = readl_relaxed(gpio);
+				printk("gpio dump for spi: gpio0 %x  gpio1 %x gpio2 %x gpio3 %x\n", gpio0, gpio1, gpio2, gpio3);
 				dev_err(dd->dev,
 					"%s: SPI transaction timeout\n",
 					__func__);
@@ -1840,6 +1854,7 @@ static int msm_spi_transfer_one_message(struct spi_master *master,
 			status_error = -EINVAL;
 			msg->status = status_error;
 			spi_finalize_current_message(master);
+			put_local_resources(dd);
 			return 0;
 		}
 	}
@@ -1885,9 +1900,6 @@ static int msm_spi_transfer_one_message(struct spi_master *master,
 	spin_lock_irqsave(&dd->queue_lock, flags);
 	dd->transfer_pending = 0;
 	spin_unlock_irqrestore(&dd->queue_lock, flags);
-
-
-
 	/*
 	 * Put local resources prior to calling finalize to ensure the hw
 	 * is in a known state before notifying the calling thread (which is a
@@ -1902,6 +1914,11 @@ static int msm_spi_transfer_one_message(struct spi_master *master,
 		put_local_resources(dd);
 	}
 	mutex_unlock(&dd->core_lock);
+
+	/*
+	 * If needed, this can be done after the current message is complete,
+	 * and work can be continued upon resume. No motivation for now.
+	 */
 	if (dd->suspended)
 		wake_up_interruptible(&dd->continue_suspend);
 	status_error = dd->cur_msg->status;
@@ -1946,7 +1963,33 @@ static int msm_spi_unprepare_transfer_hardware(struct spi_master *master)
 	pm_runtime_put_autosuspend(dd->dev);
 	return 0;
 }
+int msm_spi_ctl_for_tz(struct spi_device *spi,int enable)
+{
+	struct msm_spi *dd;
+	static int enable_count = 0;
 
+	if(!spi)
+		return -EINVAL;
+	dd = spi_master_get_devdata(spi->master);
+
+	if(enable) {
+		msm_spi_clk_path_init(dd);
+		if (!dd->pdata->active_only)
+			msm_spi_clk_path_vote(dd);
+		get_local_resources(dd);
+		enable_count++;
+		dev_info(&spi->dev, "%s: clk enable_count = %d\n",__func__, enable_count);
+	}
+	else {
+		if (dd->pdata)
+			put_local_resources(dd);
+		if (dd->pdata && !dd->pdata->active_only)
+			msm_spi_clk_path_unvote(dd);
+		enable_count--;
+		dev_info(&spi->dev, "%s: clk enable_count = %d\n",__func__, enable_count);
+	}
+	return 0;
+}
 static int msm_spi_setup(struct spi_device *spi)
 {
 	struct msm_spi	*dd;
@@ -1958,13 +2001,16 @@ static int msm_spi_setup(struct spi_device *spi)
 	if (spi->bits_per_word < 4 || spi->bits_per_word > 32) {
 		dev_err(&spi->dev, "%s: invalid bits_per_word %d\n",
 			__func__, spi->bits_per_word);
-		return -EINVAL;
+		rc = -EINVAL;
 	}
 	if (spi->chip_select > SPI_NUM_CHIPSELECTS-1) {
 		dev_err(&spi->dev, "%s, chip select %d exceeds max value %d\n",
 			__func__, spi->chip_select, SPI_NUM_CHIPSELECTS - 1);
-		return -EINVAL;
+		rc = -EINVAL;
 	}
+
+	if (rc)
+		goto err_setup_exit;
 
 	dd = spi_master_get_devdata(spi->master);
 
@@ -2035,8 +2081,6 @@ err_setup_exit:
 }
 
 #ifdef CONFIG_DEBUG_FS
-
-
 static int debugfs_iomem_x32_set(void *data, u64 val)
 {
 	struct msm_spi_regs *debugfs_spi_regs = (struct msm_spi_regs *)data;
@@ -2856,6 +2900,7 @@ static int msm_spi_pm_resume_runtime(struct device *device)
 		if (ret)
 			return ret;
 	}
+
 	msm_spi_clk_path_init(dd);
 	if (!dd->pdata->active_only)
 		msm_spi_clk_path_vote(dd);
