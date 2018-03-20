@@ -1073,4 +1073,17 @@ config TOUCHSCREEN_IT7260_I2C
 	  To compile this driver as a module, choose M here: the
 	  module will be called it7258_ts_i2c.
 
+config CYTTSP5_CS445A
+	tristate "cypress cs445a touch screen driver"
+	default n
+	help
+	  Say Y here if you have cypress touch device us cyttsp5 to connected to your system and want
+	  it to be available to applications.
+	  Say N here if you have no cypress touch device use cyttsp5 in your system.
+	  If unsure, say Y.
+	  To compile this driver as a module, choose M here: the
+	  module will be called input.
+
+source "drivers/input/touchscreen/cyttsp5_cs445a/Kconfig"
+
 endif
