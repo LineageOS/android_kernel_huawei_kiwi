@@ -169,6 +169,10 @@ static struct qpnp_vadc_scale_fn vadc_scale_fn[] = {
 	[SCALE_QRD_SKUAA_BATT_THERM] = {qpnp_adc_scale_qrd_skuaa_batt_therm},
 	[SCALE_SMB_BATT_THERM] = {qpnp_adc_scale_smb_batt_therm},
 	[SCALE_QRD_SKUG_BATT_THERM] = {qpnp_adc_scale_qrd_skug_batt_therm},
+#ifdef CONFIG_HUAWEI_KERNEL
+	[SCALE_HUAWEI_PA_THERM]	= {qpnp_adc_scale_huawei_pa_therm},
+	[SCALE_HUAWEI_IBUS]	= {qpnp_adc_scale_huawei_ilimit_voltage},
+#endif
 	[SCALE_QRD_SKUH_BATT_THERM] = {qpnp_adc_scale_qrd_skuh_batt_therm},
 	[SCALE_NCP_03WF683_THERM] = {qpnp_adc_scale_therm_ncp03},
 	[SCALE_QRD_SKUC_BATT_THERM] = {qpnp_adc_scale_qrd_skuc_batt_therm},
@@ -2201,6 +2205,82 @@ thermal_err_sens:
 	return rc;
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+static struct qpnp_vadc_chip *qpnp_vadc;
+static int  therm_pa;
+#define BUF_MAX_LENGTH		8
+static int pa_mpp_number = -1;
+static int cpu_mpp_number = -1;
+static int cam_mpp_number = -1;
+static int get_pa_temp(char *buf,struct kernel_param *kp )
+{
+	int rc = 0;
+	struct qpnp_vadc_result results;
+
+	if(pa_mpp_number < 0 || qpnp_vadc == NULL)
+	{
+		return  0;
+	}
+	rc = qpnp_vadc_read(qpnp_vadc,pa_mpp_number, &results);
+	if (rc) {
+		pr_debug("Unable to read pa temperature rc=%d\n", rc);
+		return 0;
+	}
+	pr_debug("get_pa_temp %d %lld\n",
+		results.adc_code, results.physical);
+
+	return snprintf(buf,BUF_MAX_LENGTH, "%d", (int)results.physical);
+}
+
+module_param_call(therm_pa,NULL,get_pa_temp,&therm_pa,0644);
+
+static int therm_cpu;
+static int get_cpu_temp(char *buf,struct kernel_param *kp )
+{
+	int rc = 0;
+	struct qpnp_vadc_result results;
+	if(cpu_mpp_number < 0 || qpnp_vadc == NULL)
+	{
+		return 0;
+	}
+
+	rc = qpnp_vadc_read(qpnp_vadc,cpu_mpp_number, &results);
+	if (rc) {
+		pr_debug("Unable to read cpu temperature rc=%d\n", rc);
+		return 0;
+	}
+	pr_debug("get_cpu_temp %d %lld\n",
+		results.adc_code, results.physical);
+
+	return snprintf(buf,BUF_MAX_LENGTH, "%d", (int)results.physical);
+}
+
+module_param_call(therm_cpu,NULL,get_cpu_temp,&therm_cpu,0644);
+
+static int therm_cam;
+static int get_cam_temp(char *buf,struct kernel_param *kp )
+{
+	int rc = 0;
+	struct qpnp_vadc_result results;
+	if(cam_mpp_number < 0 || qpnp_vadc == NULL)
+	{
+		return 0;
+	}
+
+	rc = qpnp_vadc_read(qpnp_vadc,cam_mpp_number, &results);
+	if (rc) {
+		pr_debug("Unable to read camera temperature rc=%d\n", rc);
+		return 0;
+	}
+	pr_debug("get_cam_temp %d %lld\n",
+		results.adc_code, results.physical);
+
+	return snprintf(buf,BUF_MAX_LENGTH, "%d", (int)results.physical);
+}
+
+module_param_call(therm_cam,NULL,get_cam_temp,&therm_cam,0644);
+#endif
+
 static int qpnp_vadc_probe(struct spmi_device *spmi)
 {
 	struct qpnp_vadc_chip *vadc;
@@ -2258,6 +2338,25 @@ static int qpnp_vadc_probe(struct spmi_device *spmi)
 		return rc;
 	}
 	mutex_init(&vadc->adc->adc_lock);
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	rc = of_property_read_u32(spmi->dev.of_node,"pa_mpp_number",&pa_mpp_number);
+	if(rc)
+	{
+		dev_err(&spmi->dev, "failed to read pa_mpp_number device tree\n");
+	}
+	rc = of_property_read_u32(spmi->dev.of_node,"cpu_mpp_number",&cpu_mpp_number);
+	if(rc)
+	{
+		dev_err(&spmi->dev, "failed to read cpu_mpp_number device tree\n");
+	}
+	rc = of_property_read_u32(spmi->dev.of_node,"cam_mpp_number",&cam_mpp_number);
+	if(rc)
+	{
+		dev_err(&spmi->dev, "failed to read cam_mpp_number device tree\n");
+	}
+	qpnp_vadc = vadc;
+#endif
 
 	rc = qpnp_vadc_init_hwmon(vadc, spmi);
 	if (rc) {
