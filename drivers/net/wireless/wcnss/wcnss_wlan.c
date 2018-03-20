@@ -251,7 +251,13 @@ static struct notifier_block wnb = {
 	.notifier_call = wcnss_notif_cb,
 };
 
+#ifdef CONFIG_HUAWEI_WIFI
+#define NVBIN_FILE "../wifi/WCNSS_hw_wlan_nv.bin"
+#define NVBIN_FILE_QCOM_DEFAULT "wlan/prima/WCNSS_qcom_wlan_nv.bin"
+#define NVBIN_PATH_LENTH           70
+#else
 #define NVBIN_FILE "wlan/prima/WCNSS_qcom_wlan_nv.bin"
+#endif
 
 /* On SMD channel 4K of maximum data can be transferred, including message
  * header, so NV fragment size as next multiple of 1Kb is 3Kb.
@@ -2317,6 +2323,37 @@ static void wcnss_pm_qos_enable_pc(struct work_struct *worker)
 
 static DECLARE_RWSEM(wcnss_pm_sem);
 
+#ifdef CONFIG_HUAWEI_WIFI
+/**------------------------------------------------------------------------
+  \brief construct_nvbin_with_pubfd() -construct wlan nvbin file path
+         with pubfd which is defined in the dtsi
+  \sa
+  -------------------------------------------------------------------------*/
+void construct_nvbin_with_pubfd(char *nvbin_path)
+{
+    const char *pubfd = NULL;
+    char nvbin_path_with_pubfd[NVBIN_PATH_LENTH] = {0};
+
+    pubfd = get_hw_wifi_pubfile_id();
+    if( NULL == pubfd )
+    {
+        pr_err("%s get pubfd failed;\n", __func__);
+        return;
+    }
+
+    strncpy(nvbin_path_with_pubfd, "../wifi/WCNSS_hw_wlan_nv_", NVBIN_PATH_LENTH - 1);
+    pr_debug("%s line:%d nvbin_path_with_pubfd:%s;\n", __func__, __LINE__, nvbin_path_with_pubfd);
+
+    strncat(nvbin_path_with_pubfd,pubfd,NVBIN_PATH_LENTH - 1);
+    pr_debug("%s line:%d nvbin_path_with_pubfd:%s;\n", __func__, __LINE__, nvbin_path_with_pubfd);
+    strncat(nvbin_path_with_pubfd, ".bin", NVBIN_PATH_LENTH - 1);
+    pr_debug("%s line:%d nvbin_path_with_pubfd:%s;\n", __func__, __LINE__, nvbin_path_with_pubfd);
+    strncpy(nvbin_path,nvbin_path_with_pubfd, NVBIN_PATH_LENTH - 1);
+    return;
+}
+EXPORT_SYMBOL(construct_nvbin_with_pubfd);
+#endif
+
 static void wcnss_nvbin_dnld(void)
 {
 	int ret = 0;
@@ -2330,9 +2367,44 @@ static void wcnss_nvbin_dnld(void)
 	unsigned int nv_blob_size = 0;
 	const struct firmware *nv = NULL;
 	struct device *dev = &penv->pdev->dev;
+#ifdef CONFIG_HUAWEI_WIFI
+	char nvbin_path_with_pubfd[NVBIN_PATH_LENTH] = {0};
+#endif
 
 	down_read(&wcnss_pm_sem);
 
+#ifdef CONFIG_HUAWEI_WIFI
+	construct_nvbin_with_pubfd(nvbin_path_with_pubfd);
+	ret = request_firmware(&nv, nvbin_path_with_pubfd, dev);
+	if (ret || !nv || !nv->data || !nv->size) {
+		pr_err("wcnss: %s: request_firmware failed for %s (ret = %d)\n",
+			__func__, nvbin_path_with_pubfd, ret);
+	    ret = request_firmware(&nv, NVBIN_FILE, dev);
+		if (ret || !nv || !nv->data || !nv->size) {
+			pr_err("wcnss: %s: request_firmware failed for %s (ret = %d)\n",
+				__func__, NVBIN_FILE, ret);
+		    ret = request_firmware(&nv, NVBIN_FILE_QCOM_DEFAULT, dev);
+		    pr_err("wcnss: %s: firmware_path %s\n",__func__, NVBIN_FILE_QCOM_DEFAULT);
+		    if (ret || !nv || !nv->data || !nv->size) {
+			    pr_err("wcnss: %s: request_firmware failed for %s (ret = %d)\n",
+	                            __func__, NVBIN_FILE_QCOM_DEFAULT, ret);
+			goto out;
+		    }
+		    else
+		    {
+			    pr_err("wcnss: %s:download firmware_path %s successed;\n",__func__, NVBIN_FILE_QCOM_DEFAULT);
+		    }
+		}
+		else
+		{
+			pr_err("wcnss: %s:download firmware_path %s successed;\n",__func__, NVBIN_FILE);
+		}
+	}
+	else
+	{
+		pr_err("wcnss: %s:download firmware_path %s successed;\n",__func__, nvbin_path_with_pubfd);
+	}
+#else
 	ret = request_firmware(&nv, NVBIN_FILE, dev);
 
 	if (ret || !nv || !nv->data || !nv->size) {
@@ -2340,6 +2412,7 @@ static void wcnss_nvbin_dnld(void)
 			__func__, NVBIN_FILE, ret);
 		goto out;
 	}
+#endif
 
 	/* First 4 bytes in nv blob is validity bitmap.
 	 * We cannot validate nv, so skip those 4 bytes.
