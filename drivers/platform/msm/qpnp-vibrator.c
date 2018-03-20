@@ -35,6 +35,7 @@
 #define QPNP_VIB_VTG_SET_MASK		0x1F
 #define QPNP_VIB_LOGIC_SHIFT		4
 
+bool is_vibrator_on = false;
 enum qpnp_vib_mode {
 	QPNP_VIB_MANUAL,
 	QPNP_VIB_DTEST1,
@@ -249,6 +250,7 @@ static int qpnp_vib_set(struct qpnp_vib *vib, int on)
 					QPNP_VIB_EN_CTL(vib->base));
 			if (rc < 0)
 				return rc;
+			is_vibrator_on = true;
 			vib->reg_en_ctl = val;
 		}
 	} else {
@@ -261,6 +263,7 @@ static int qpnp_vib_set(struct qpnp_vib *vib, int on)
 					QPNP_VIB_EN_CTL(vib->base));
 			if (rc < 0)
 				return rc;
+			is_vibrator_on = false;
 			vib->reg_en_ctl = val;
 		}
 	}
