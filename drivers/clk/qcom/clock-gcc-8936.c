@@ -884,6 +884,7 @@ static struct clk_freq_tbl ftbl_gcc_blsp1_qup1_6_spi_apps_clk[] = {
 	F(  16000000,	   gpll0_out_main,  10,	  1,	5),
 	F(  19200000,	      gcc_xo,   1,	  0,	0),
 	F(  25000000,	   gpll0_out_main,  16,	  1,	2),
+	F(  40000000,	   gpll0_out_main,  10,	  1,	2),
 	F(  50000000,	   gpll0_out_main,  16,	  0,	0),
 	F_END
 };
@@ -897,7 +898,7 @@ static struct rcg_clk blsp1_qup1_spi_apps_clk_src = {
 	.c = {
 		.dbg_name = "blsp1_qup1_spi_apps_clk_src",
 		.ops = &clk_ops_rcg_mnd,
-		VDD_DIG_FMAX_MAP2(LOW, 25000000, NOMINAL, 50000000),
+		VDD_DIG_FMAX_MAP2(LOW, 25000000, NOMINAL, 40000000),
 		CLK_INIT(blsp1_qup1_spi_apps_clk_src.c),
 	},
 };
