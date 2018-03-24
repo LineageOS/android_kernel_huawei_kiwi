@@ -1,0 +1,14 @@
+config HUAWEI_DRIVERS
+	bool "huawei drivers"
+	default y
+	help
+	  Say Y here if you want to build the huawei drivers.
+	  If unsure, say N here.
+
+config HUAWEI_SENSORS
+	bool "huawei sensors"
+	default y
+	help
+	  Say Y here if you want to build the huawei sensor drivers.If unsure, say N here.
+
+source "drivers/huawei_platform/sensor/Kconfig"
