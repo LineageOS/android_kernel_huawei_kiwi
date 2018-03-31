@@ -57,6 +57,7 @@
 		pinctrl-names = "i2c_active", "i2c_sleep", "i2c_defult";
 		pinctrl-2 = <&i2c_0_defult>;
 		gpios = <&msm_gpio 7 0>, <&msm_gpio 6 0>;
+		qcom,disable-dma;
 	};
 
 	i2c_1: i2c@78b5000 { /* BLSP1 QUP6 */
@@ -78,9 +79,20 @@
 		pinctrl-1 = <&i2c_1_sleep>;
 		qcom,noise-rjct-scl = <0>;
 		qcom,noise-rjct-sda = <0>;
-		qcom,bam-pipe-idx-cons = <4>;
-		qcom,bam-pipe-idx-prod = <5>;
 		qcom,master-id = <86>;
+		qcom,disable-dma;
+	};
+
+	i2c_4: i2c@78b8000 { /* BLSP1 QUP4 */
+		qcom,disable-dma;
+	};
+
+	i2c_5: i2c@78b9000 { /* BLSP1 QUP5 */
+		qcom,disable-dma;
+	};
+
+	i2c_6: i2c@78ba000 { /* BLSP1 QUP6 */
+		qcom,disable-dma;
 	};
 
 	spi_0: spi@78b7000 { /* BLSP1 QUP3 */
