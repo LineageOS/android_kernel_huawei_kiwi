@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2298e3d9_cf340967",
+        "filename": "drivers/sensors/sensors_class.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 0,
+      "message": "don\u0027t remove it",
+      "revId": "8fd643538f3b1103e8139a0666fbc80a84978f70",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "248d442b_060d42eb",
+        "filename": "drivers/spi/spi_qsd.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 1888,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 0,
+      "message": "don\u0027t remove this",
+      "revId": "8fd643538f3b1103e8139a0666fbc80a84978f70",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d959006d_69d247c7",
+        "filename": "drivers/spi/spi_qsd.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 2038,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 0,
+      "message": "don\u0027t remove this",
+      "revId": "8fd643538f3b1103e8139a0666fbc80a84978f70",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}

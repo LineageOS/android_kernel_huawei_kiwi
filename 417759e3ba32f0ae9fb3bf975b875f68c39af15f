@@ -1,0 +1,225 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f2309e6c_4754d005",
+        "filename": "drivers/iommu/msm_iommu_sec.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 1,
+      "message": "replace with\n\nif (drvdata-\u003emodel \u003d\u003d MMU_500)\n    return ret;\n\nso that you don\u0027t change existing code",
+      "revId": "417759e3ba32f0ae9fb3bf975b875f68c39af15f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fe76ead5_5d1d64e0",
+        "filename": "drivers/misc/qseecom.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 2058,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 1,
+      "message": "indent properly",
+      "revId": "417759e3ba32f0ae9fb3bf975b875f68c39af15f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9dd65059_d856fff9",
+        "filename": "drivers/platform/msm/qpnp-vibrator.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 1,
+      "message": "where do you need this?",
+      "revId": "417759e3ba32f0ae9fb3bf975b875f68c39af15f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "55ef2977_f6fcb70e",
+        "filename": "drivers/sensors/sensors_class.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 1,
+      "message": "remove the comment",
+      "revId": "417759e3ba32f0ae9fb3bf975b875f68c39af15f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f7ba852d_96faa00a",
+        "filename": "drivers/sensors/sensors_class.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 1,
+      "message": "Just a log.",
+      "revId": "417759e3ba32f0ae9fb3bf975b875f68c39af15f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0d652da3_1610908c",
+        "filename": "drivers/soc/qcom/pil-q6v5-mss.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 1,
+      "message": "indent properly",
+      "revId": "417759e3ba32f0ae9fb3bf975b875f68c39af15f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4d68ab26_6dec300a",
+        "filename": "drivers/soc/qcom/subsystem_restart.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 968,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 1,
+      "message": "ifdef this by keeping the original code in place and adding the else {} around it",
+      "revId": "417759e3ba32f0ae9fb3bf975b875f68c39af15f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c6cebce6_a2743040",
+        "filename": "drivers/spi/spi_qsd.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 1917,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 1,
+      "message": "don\u0027t comment this",
+      "revId": "417759e3ba32f0ae9fb3bf975b875f68c39af15f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "29b11d72_639215d6",
+        "filename": "drivers/spi/spi_qsd.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 1966,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 1,
+      "message": "new line before and after",
+      "revId": "417759e3ba32f0ae9fb3bf975b875f68c39af15f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "85978f1f_969921c8",
+        "filename": "drivers/spi/spi_qsd.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 2004,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 1,
+      "message": "this change is useless, all err_setup_exit does is return rc;",
+      "revId": "417759e3ba32f0ae9fb3bf975b875f68c39af15f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a71e948_f7d9b532",
+        "filename": "drivers/spi/spi_qsd.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 2903,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 1,
+      "message": "don\u0027t add this",
+      "revId": "417759e3ba32f0ae9fb3bf975b875f68c39af15f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e0a884a7_de3733f4",
+        "filename": "drivers/tty/sysrq.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 1,
+      "message": "you could probably scrap all the changes in this file",
+      "revId": "417759e3ba32f0ae9fb3bf975b875f68c39af15f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e63697bc_d7cf6192",
+        "filename": "include/linux/sensors.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 17257
+      },
+      "writtenOn": "2018-03-31T12:20:49Z",
+      "side": 1,
+      "message": "indent",
+      "revId": "417759e3ba32f0ae9fb3bf975b875f68c39af15f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
