@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ffbbb92e_778d58c0",
+        "filename": "arch/arm/mach-msm/include/mach/board.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:01:11Z",
+      "side": 1,
+      "message": "Move these changes to camera import commit and ifdef",
+      "revId": "16a497ceda0b28dd148d7d14f9d9acfcb5aa01a9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
