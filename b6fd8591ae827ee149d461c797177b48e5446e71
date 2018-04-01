@@ -1,0 +1,283 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "65bb46d9_26e1b7e9",
+        "filename": "drivers/Kconfig",
+        "patchSetId": 18
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "Move it to the commit that imports hw_fac_info",
+      "range": {
+        "startLine": 189,
+        "startChar": 0,
+        "endLine": 189,
+        "endChar": 36
+      },
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7052e4e8_b34ce1d9",
+        "filename": "drivers/Kconfig",
+        "patchSetId": 18
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "Move it to the first commit that imports huawei_platform drivers",
+      "range": {
+        "startLine": 194,
+        "startChar": 0,
+        "endLine": 194,
+        "endChar": 40
+      },
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "69cb112a_819da1b2",
+        "filename": "drivers/Makefile",
+        "patchSetId": 18
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "Move it to the commit that imports hw_fac_info",
+      "range": {
+        "startLine": 171,
+        "startChar": 0,
+        "endLine": 171,
+        "endChar": 49
+      },
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a1355be1_bb0b2765",
+        "filename": "drivers/Makefile",
+        "patchSetId": 18
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "Move it to the first commit that imports huawei_platform drivers",
+      "range": {
+        "startLine": 172,
+        "startChar": 0,
+        "endLine": 172,
+        "endChar": 51
+      },
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a6b11edc_76953c8e",
+        "filename": "drivers/bluetooth/device_feature.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "This file looks useless, all kiwi have the same BT component no?",
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8fe671a6_047a3da7",
+        "filename": "drivers/hwmon/qpnp-adc-common.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "Move these changes to power import commit",
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4babe22a_8295d8da",
+        "filename": "drivers/hwmon/qpnp-adc-voltage.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "Move these changes to power import commit",
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cbbc9484_642d4d19",
+        "filename": "drivers/platform/msm/qpnp-revid.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "Move these changes to the commit that imports app_info",
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dfbe8516_84793472",
+        "filename": "drivers/sensors/sensors_class.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "Move this to sensors import commit",
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9c8db292_68fcc451",
+        "filename": "drivers/spi/spi_qsd.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 1460,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "All changes to this file are useless except msm_spi_ctl_for_tz",
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dc9120e7_d78a3afa",
+        "filename": "include/linux/charger_core.h",
+        "patchSetId": 18
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "Move this to charger import commit",
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b55c074f_6abbd695",
+        "filename": "include/linux/config_interface.h",
+        "patchSetId": 18
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "Check where this header is used. Looks like it\u0027s for app_info? If yes, move it to that commit",
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e633b25f_d2e21793",
+        "filename": "include/linux/hw_lcd_common.h",
+        "patchSetId": 18
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "Move this to display commit",
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8e283b7b_361074ba",
+        "filename": "include/linux/qpnp/qpnp-adc.h",
+        "patchSetId": 18
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "Move this to power import commit",
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "675a665f_ac5d9cee",
+        "filename": "include/linux/sensors.h",
+        "patchSetId": 18
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:21:13Z",
+      "side": 1,
+      "message": "Move this to sensors import commit",
+      "revId": "b6fd8591ae827ee149d461c797177b48e5446e71",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
