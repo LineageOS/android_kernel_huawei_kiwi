@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "33f18164_f03fe4d3",
+        "filename": "kernel/sysctl.c",
+        "patchSetId": 27
+      },
+      "lineNbr": 1899,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2018-04-01T12:02:04Z",
+      "side": 1,
+      "message": "Spaces \u003e tabs",
+      "revId": "70b7504fce6f36eb2f47743b22a8f36ade7463ea",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
