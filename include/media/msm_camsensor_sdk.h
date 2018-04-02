@@ -108,6 +108,13 @@ enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_FL_EN,
 	SENSOR_GPIO_FL_NOW,
 	SENSOR_GPIO_FL_RESET,
+#ifdef CONFIG_HUAWEI_KERNEL
+	SENSOR_GPIO_CAM_ID,
+	SENSOR_GPIO_MISP_VDD,
+	SENSOR_GPIO_DVDD_SEL,
+	SENSOR_GPIO_AF_EN,
+	SENSOR_GPIO_OIS_EN,
+#endif
 	SENSOR_GPIO_CUSTOM1,
 	SENSOR_GPIO_CUSTOM2,
 	SENSOR_GPIO_MAX,
@@ -215,8 +222,38 @@ struct msm_sensor_init_params {
 
 struct msm_sensor_id_info_t {
 	uint16_t sensor_id_reg_addr;
+#ifdef CONFIG_HUAWEI_KERNEL
+	enum msm_camera_i2c_data_type sensor_id_data_type;
+#endif
 	uint16_t sensor_id;
 };
+
+#ifdef CONFIG_HUAWEI_KERNEL
+struct msm_sensor_cam_id_t
+{
+	uint8_t cam_excepted_id;
+	uint32_t vendor_id;
+};
+
+enum dump_reg_operation {
+	DUMP_REG_READ = 0,
+	DUMP_REG_WRITE,
+};
+
+struct dump_reg_info_t {
+	uint16_t addr;
+	uint16_t value;
+	enum dump_reg_operation reg_type;
+	enum msm_camera_i2c_data_type data_type;
+};
+struct msm_cam_otp_vendor_info_t{
+	uint32_t i2c_addr;
+	uint16_t reg_addr;
+	uint16_t expect_vendor_id;
+	enum msm_camera_i2c_reg_addr_type addr_type;
+	enum msm_camera_i2c_data_type data_type;
+};
+#endif
 
 struct msm_camera_sensor_slave_info {
 	char sensor_name[32];
@@ -234,12 +271,30 @@ struct msm_camera_sensor_slave_info {
 	struct msm_sensor_init_params sensor_init_params;
 	uint8_t is_flash_supported;
 	enum msm_sensor_output_format_t output_format;
+#ifdef CONFIG_HUAWEI_KERNEL
+	struct msm_sensor_cam_id_t *sensor_cam_id;
+	struct dump_reg_info_t *dump_reg_info;
+	uint16_t dump_reg_num;
+	struct msm_cam_otp_vendor_info_t *otp_vendor_info;
+#endif
 };
+
+#ifdef CONFIG_HUAWEI_KERNEL
+struct msm_camera_spi_reg_setting {
+       uint8_t *param;
+       uint16_t size;
+       uint16_t opcode;
+       uint16_t delay;
+};
+#endif
 
 struct msm_camera_i2c_reg_array {
 	uint16_t reg_addr;
 	uint16_t reg_data;
 	uint32_t delay;
+#ifdef CONFIG_HUAWEI_KERNEL
+	enum msm_camera_i2c_data_type data_type;
+#endif
 };
 
 struct msm_camera_i2c_reg_setting {
