@@ -16,6 +16,8 @@
 		qcom,cpr-voltage-floor = <1050000 1150000 1100000>;
 		qcom,cpr-voltage-ceiling-factory = <1050000 1150000 1350000>;
 		qcom,cpr-voltage-floor-factory = <1050000 1050000 1100000>;
+		vdd-apc-optional-prim-supply = <&fan53555>;
+		vdd-apc-optional-sec-supply = <&ncp6335d_a18>;
 		qcom,cpr-voltage-floor-override =
 			<0xffffffff 0xffffffff 1050000 1050000 1050000 1150000
 			1150000 1150000 1150000 1150000 1150000 1150000 1150000
