@@ -215,11 +215,69 @@ struct camera_vreg_t {
 	enum camera_vreg_type type;
 };
 
+#ifdef CONFIG_HUAWEI_KERNEL
+struct msm_sensor_af_otp {
+	uint32_t index_start;
+	uint16_t af_size;
+	uint16_t start_code;
+	uint16_t max_code;
+	uint16_t start_dist;//cm
+	uint16_t end_dist;//cm
+	uint32_t axis_angle;//0:Horizon  1:vertical
+	uint32_t pose_offset;
+};
+
+#define ALTEK_MAX_COMMON_OTP_LEN 5
+#define ALTEK_MAX_AWB_OTP_LEN 8
+#define ALTEK_MAX_OIS_OTP_LEN 53
+
+struct msm_sensor_common_otp {
+	uint8_t common_size;
+	uint8_t common_info[ALTEK_MAX_COMMON_OTP_LEN];
+};
+struct msm_sensor_awb_otp {
+	uint32_t index_start;
+	uint32_t awb_size;
+	uint8_t aucISO_AWBCalib[ALTEK_MAX_AWB_OTP_LEN];
+};
+struct msm_sensor_ois_otp {
+	uint32_t index_start;
+	uint32_t ois_size;
+	/*IMX278: liteon&sunny size is 43bytes, lg size is 53bytes*/
+	uint8_t aucOIS[ALTEK_MAX_OIS_OTP_LEN];
+};
+struct msm_sensor_otp_info {
+	uint32_t otp_size;
+	struct msm_sensor_common_otp common_otp;
+	struct msm_sensor_awb_otp awb_otp;
+	struct msm_sensor_af_otp af_otp;
+	struct msm_sensor_ois_otp ois_otp;
+	uint8_t otp_vaild;
+};
+
+/*use dtsi get sensor name instead of board id string*/
+#define MAX_SENSOR_CODE_LENGTH 12 //ex: 23060156
+#define MAX_SUPPORT_SENSOR_CODE_COUNT 2
+#define MAX_PRODUCT_NAME_LENGTH 32
+struct msm_support_sensor_codes_info {
+	char sensor_code_list[MAX_SUPPORT_SENSOR_CODE_COUNT][MAX_SENSOR_CODE_LENGTH];
+	char product_name[MAX_PRODUCT_NAME_LENGTH];
+};
+
+/* use dtsi get product name instead of board id string */
+struct msm_hw_product_name {
+	char product_name[MAX_PRODUCT_NAME_LENGTH];
+};
+#endif
+
 struct sensorb_cfg_data {
 	int cfgtype;
 	union {
 		struct msm_sensor_info_t      sensor_info;
 		struct msm_sensor_init_params sensor_init_params;
+#ifdef CONFIG_HUAWEI_KERNEL
+		struct msm_sensor_otp_info otp_info;
+#endif
 		void                         *setting;
 	} cfg;
 };
@@ -314,7 +372,14 @@ struct msm_camera_sensor_slave_info32 {
 	uint8_t  is_init_params_valid;
 	struct msm_sensor_init_params sensor_init_params;
 	uint8_t is_flash_supported;
+#ifndef CONFIG_HUAWEI_KERNEL
 	enum msm_sensor_output_format_t output_format;
+#else
+	compat_uptr_t sensor_cam_id;
+	compat_uptr_t dump_reg_info;
+	uint16_t dump_reg_num;
+	compat_uptr_t otp_vendor_info;
+#endif
 };
 
 struct msm_camera_csid_lut_params32 {
@@ -359,7 +424,11 @@ struct msm_eeprom_cfg_data32 {
 	enum eeprom_cfg_type_t cfgtype;
 	uint8_t is_supported;
 	union {
+#ifdef CONFIG_HUAWEI_KIWI
 		char eeprom_name[MAX_EEPROM_NAME];
+#else
+		char eeprom_name[MAX_SENSOR_NAME];
+#endif
 		struct eeprom_get_t get_data;
 		struct eeprom_read_t32 read_data;
 		struct eeprom_write_t32 write_data;
@@ -372,6 +441,15 @@ struct msm_camera_i2c_seq_reg_setting32 {
 	enum msm_camera_i2c_reg_addr_type addr_type;
 	uint16_t delay;
 };
+
+#ifdef CONFIG_HUAWEI_KERNEL
+struct msm_camera_spi_reg_setting32 {
+       compat_uptr_t param;
+       uint16_t size;
+       uint16_t opcode;
+       uint16_t delay;
+};
+#endif
 #endif
 
 enum msm_sensor_cfg_type_t {
@@ -401,6 +479,21 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_AUTOFOCUS,
 	CFG_CANCEL_AUTOFOCUS,
 	CFG_SET_STREAM_TYPE,
+#ifdef CONFIG_HUAWEI_KERNEL
+	CFG_SET_OTP_INFO, 
+	CFG_SET_AFC_OTP_INFO,
+	CFG_SET_AWB_OTP_INFO,
+	CFG_WRITE_EXPOSURE_DATA,
+	/* optimize camera print mipi packet and frame count log*/
+	CFG_START_FRM_CNT,
+	CFG_STOP_FRM_CNT,
+	CFG_MISP_LOAD_FIRMWARE,
+	CFG_MISP_STREAMON,
+	CFG_MISP_STREAMOFF,
+	CFG_WRITE_SPI_ARRAY,
+	CFG_GET_OTP,
+        CFG_SPI_REG_SETTINGS,
+#endif
 };
 
 enum msm_actuator_cfg_type_t {
@@ -412,6 +505,9 @@ enum msm_actuator_cfg_type_t {
 	CFG_ACTUATOR_POWERDOWN,
 	CFG_ACTUATOR_POWERUP,
 	CFG_ACTUATOR_INIT,
+#ifdef CONFIG_HUAWEI_KERNEL
+	CFG_SET_VCM_CODE,
+#endif
 };
 
 enum msm_ois_cfg_type_t {
@@ -420,6 +516,19 @@ enum msm_ois_cfg_type_t {
 	CFG_OIS_POWERUP,
 	CFG_OIS_CONTROL,
 	CFG_OIS_I2C_WRITE_SEQ_TABLE,
+
+#ifdef CONFIG_HUAWEI_KERNEL
+/*add camera ois driver*/
+    CFG_OIS_SETOTP,
+    CFG_OIS_TURN_ON,
+    CFG_OIS_TURN_ON_LIN,
+    CFG_OIS_TURN_OFF,
+    CFG_OIS_START_RUNNINGTEST,
+    CFG_OIS_START_MMI_CHECK,
+    CFG_OIS_START_MAG_CHECK,
+    CFG_OIS_GET_GYROGAIN,
+    CFG_OIS_SET_GYROGAIN,
+#endif
 };
 
 enum msm_ois_i2c_operation {
@@ -448,6 +557,21 @@ struct msm_ois_params_t {
 struct msm_ois_set_info_t {
 	struct msm_ois_params_t ois_params;
 };
+
+#ifdef CONFIG_HUAWEI_KERNEL
+struct msm_ois_gyrogain_info_t {
+	int32_t gyrogainx;//from gyro gain register
+	int32_t gyrogainy;
+	int32_t towritegyrogainx;// write into gyro gain register
+	int32_t towritegyrogainy;
+};
+struct msm_ois_mag_info_t {
+    int32_t otpcenX;
+    int32_t otpcenY;
+    int32_t srvoffX;
+    int32_t srvoffY;
+};
+#endif
 
 struct msm_actuator_move_params_t {
 	int8_t dir;
@@ -520,9 +644,17 @@ enum af_camera_name {
 
 struct msm_ois_cfg_data {
 	int cfgtype;
+#ifdef CONFIG_HUAWEI_KERNEL
+	/*add camera ois driver*/
+	int vendor_id;
+#endif
 	union {
 		struct msm_ois_set_info_t set_info;
 		struct msm_camera_i2c_seq_reg_setting *settings;
+#ifdef CONFIG_HUAWEI_KERNEL
+		struct msm_ois_mag_info_t *mag_info;
+		struct msm_ois_gyrogain_info_t *gyro_gain_info;
+#endif
 	} cfg;
 };
 
@@ -541,6 +673,9 @@ struct msm_actuator_cfg_data {
 		struct msm_actuator_get_info_t get_info;
 		struct msm_actuator_set_position_t setpos;
 		enum af_camera_name cam_name;
+#ifdef CONFIG_HUAWEI_KERNEL
+		uint16_t  vcm_code;
+#endif
 	} cfg;
 };
 
@@ -550,13 +685,42 @@ enum msm_camera_led_config_t {
 	MSM_CAMERA_LED_HIGH,
 	MSM_CAMERA_LED_INIT,
 	MSM_CAMERA_LED_RELEASE,
+#ifdef CONFIG_HUAWEI_KERNEL
+	MSM_CAMERA_LED_TORCH = 16,
+	MSM_CAMERA_LED_TORCH_POWER_NORMAL = 32,
+	MSM_CAMERA_LED_TORCH_POWER_ABNORMAL,
+	MSM_CAMERA_LED_CAMERA_ID = 100,
+#endif
 };
+
+#ifdef CONFIG_HUAWEI_KERNEL
+typedef enum {
+  DUAL_LED_MODE_OFF = 0,
+  DUAL_LED_MODE_ON,
+  DUAL_LED_MODE_TORCH,
+  DUAL_LED_MODE_FLASH,
+} dual_flash_led_mode;
+
+typedef enum {
+  DUAL_LED_TORCH_DEFAULT = -5, //
+  DUAL_LED_TORCH_BOTH,
+  DUAL_LED_TORCH_COLD,
+  DUAL_LED_TORCH_WARM,
+} dual_flash_torch_type_t;
+#endif
 
 struct msm_camera_led_cfg_t {
 	enum msm_camera_led_config_t cfgtype;
 	uint32_t torch_current[MAX_LED_TRIGGERS];
 	uint32_t flash_current[MAX_LED_TRIGGERS];
 	uint32_t flash_duration[MAX_LED_TRIGGERS];
+#ifdef CONFIG_HUAWEI_KERNEL
+	uint32_t DualLedMode;
+	uint32_t CurrentIndex;
+	dual_flash_torch_type_t DfTorchIndex;
+	uint8_t camera_id;
+	uint32_t flip_id;
+#endif
 };
 
 struct msm_flash_init_info_t {
@@ -582,6 +746,10 @@ enum msm_sensor_init_cfg_type_t {
 	CFG_SINIT_PROBE,
 	CFG_SINIT_PROBE_DONE,
 	CFG_SINIT_PROBE_WAIT_DONE,
+#ifdef CONFIG_HUAWEI_KERNEL
+	CFG_SINIT_GET_SENSOR_CODE_LIST,
+	CFG_SINIT_GET_HW_PRODUCT_NAME,
+#endif
 };
 
 struct sensor_init_cfg_data {
@@ -592,6 +760,28 @@ struct sensor_init_cfg_data {
 		void *setting;
 	} cfg;
 };
+
+#ifdef CONFIG_HUAWEI_KERNEL
+struct msm_sensor_afc_otp_info
+{
+    uint16_t starting_dac;
+	uint16_t infinity_dac;
+	uint16_t macro_dac;
+};
+
+struct msm_sensor_awb_otp_info
+{
+	uint16_t RG;
+	uint16_t BG;
+	uint32_t typical_RG;
+	uint32_t typical_BG;
+};
+
+struct msm_sensor_mmi_otp_flag
+{
+	uint16_t mmi_otp_check_flag;
+};
+#endif
 
 #define VIDIOC_MSM_SENSOR_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 1, struct sensorb_cfg_data)
@@ -636,7 +826,9 @@ struct msm_camera_i2c_reg_setting32 {
 	enum msm_camera_i2c_reg_addr_type addr_type;
 	enum msm_camera_i2c_data_type data_type;
 	uint16_t delay;
+#ifndef CONFIG_HUAWEI_KIWI
 	enum msm_camera_qup_i2c_write_batch_t qup_i2c_batch;
+#endif
 };
 
 struct msm_actuator_tuning_params_t32 {
@@ -692,6 +884,9 @@ struct msm_actuator_cfg_data32 {
 		struct msm_actuator_get_info_t get_info;
 		struct msm_actuator_set_position_t setpos;
 		enum af_camera_name cam_name;
+#ifdef CONFIG_HUAWEI_KERNEL
+		uint16_t  vcm_code;
+#endif
 	} cfg;
 };
 
@@ -708,6 +903,9 @@ struct sensorb_cfg_data32 {
 	union {
 		struct msm_sensor_info_t      sensor_info;
 		struct msm_sensor_init_params sensor_init_params;
+#ifdef CONFIG_HUAWEI_KERNEL
+		struct msm_sensor_otp_info otp_info;
+#endif
 		compat_uptr_t                 setting;
 	} cfg;
 };
@@ -727,9 +925,17 @@ struct msm_ois_set_info_t32 {
 
 struct msm_ois_cfg_data32 {
 	int cfgtype;
+#ifdef CONFIG_HUAWEI_KERNEL
+	/*add camera ois driver*/
+	int vendor_id;
+#endif
 	union {
 		struct msm_ois_set_info_t32 set_info;
 		compat_uptr_t settings;
+#ifdef CONFIG_HUAWEI_KERNEL
+		compat_uptr_t mag_info;
+		compat_uptr_t gyro_gain_info;
+#endif
 	} cfg;
 };
 
