@@ -278,7 +278,11 @@ struct msm_mctl_post_proc_cmd {
 #define NUM_ACTUATOR_DIR 2
 #define MAX_ACTUATOR_SCENARIO 8
 #define MAX_ACTUATOR_REGION 5
+#ifndef CONFIG_HUAWEI_KERNEL
 #define MAX_ACTUATOR_INIT_SET 32
+#else
+#define MAX_ACTUATOR_INIT_SET 12
+#endif
 #define MAX_ACTUATOR_TYPE_SIZE 32
 #define MAX_ACTUATOR_REG_TBL_SIZE 8
 
