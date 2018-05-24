@@ -44,7 +44,18 @@ enum msm_bus_perf_setting {
 struct msm_camera_slave_info {
 	uint16_t sensor_slave_addr;
 	uint16_t sensor_id_reg_addr;
+#ifdef CONFIG_HUAWEI_KERNEL
+	enum msm_camera_i2c_data_type sensor_id_data_type;
+#endif
 	uint16_t sensor_id;
+#ifdef CONFIG_HUAWEI_KERNEL
+	uint8_t mcam_id;
+	uint32_t otp_vendor_id;
+
+	struct dump_reg_info_t *dump_reg_info;
+	uint16_t dump_reg_num;
+	struct msm_cam_otp_vendor_info_t *otp_vendor_info;
+#endif
 };
 
 struct msm_cam_clk_info {
