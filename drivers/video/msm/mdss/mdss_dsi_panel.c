@@ -231,6 +231,7 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
+
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
@@ -318,21 +319,13 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			pr_err("gpio request failed\n");
 			return rc;
 		}
-	#ifdef CONFIG_HUAWEI_LCD
 		if (!pinfo->cont_splash_enabled) {
+#ifdef CONFIG_HUAWEI_LCD
 			LCD_MDELAY(10);
-
-			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
-				gpio_set_value((ctrl_pdata->rst_gpio),
-					pdata->panel_info.rst_seq[i]);
-				if (pdata->panel_info.rst_seq[++i])
-					usleep(pinfo->rst_seq[i] * 1000);
-			}
-		}
-	#else
-		if (!pinfo->cont_splash_enabled) {
+#else
 			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+#endif
 
 			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
 				gpio_set_value((ctrl_pdata->rst_gpio),
@@ -341,11 +334,12 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 					usleep(pinfo->rst_seq[i] * 1000);
 			}
 
+#ifndef CONFIG_HUAWEI_LCD
 			if (gpio_is_valid(ctrl_pdata->bklt_en_gpio))
 				gpio_set_value((ctrl_pdata->bklt_en_gpio), 1);
+#endif
 		}
 
-	#endif
 		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
 			if (pinfo->mode_gpio_state == MODE_GPIO_HIGH)
 				gpio_set_value((ctrl_pdata->mode_gpio), 1);
@@ -371,9 +365,9 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		gpio_free(ctrl_pdata->rst_gpio);
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
-	#ifdef CONFIG_HUAWEI_LCD
+#ifdef CONFIG_HUAWEI_LCD
 		LCD_MDELAY(10);
-	#endif
+#endif
 
 	}
 	return rc;
@@ -703,12 +697,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
-
-#ifdef CONFIG_HUAWEI_LCD
-	lcd_pwr_status.lcd_dcm_pwr_status |= BIT(1);
-	do_gettimeofday(&lcd_pwr_status.tvl_lcd_on);
-	time_to_tm(lcd_pwr_status.tvl_lcd_on.tv_sec, 0, &lcd_pwr_status.tm_lcd_on);
-#endif
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
