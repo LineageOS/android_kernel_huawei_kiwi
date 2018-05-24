@@ -1,0 +1,2 @@
+obj-$(CONFIG_MSMB_CAMERA_KIWI) += cpp/
+obj-$(CONFIG_MSMB_CAMERA_KIWI) += vpe/
