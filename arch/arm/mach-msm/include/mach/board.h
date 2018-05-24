@@ -192,8 +192,13 @@ struct msm_gpio_set_tbl {
 };
 
 struct msm_camera_gpio_num_info {
+#ifdef CONFIG_HUAWEI_KERNEL
+	uint16_t gpio_num[11];
+	uint8_t valid[11];
+#else
 	uint16_t gpio_num[10];
 	uint8_t valid[10];
+#endif
 };
 
 struct msm_camera_gpio_conf {
