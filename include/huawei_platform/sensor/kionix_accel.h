@@ -40,17 +40,17 @@
 #define	KIONIX_I2C_SDA	908
 
 #define KIONIX_ERR(x,arg...) do {\
-		printk("[kx023_err]"  x"\n",##arg);\
+		printk("[kx023_err]"  x,##arg);\
 	} while (0)
 
 #define KIONIX_INFO(x, arg...) do {\
 	if (kx023_debug_mask >= 1)\
-		printk("[kx023_info]" x"\n",##arg);\
+		printk("[kx023_info]" x,##arg);\
 	} while (0)
 
 #define KIONIX_DBG(x,arg...) do {\
 	if (kx023_debug_mask > 1)\
-		printk("[kx023_debug]" x"\n",##arg);\
+		printk("[kx023_debug]" x,##arg);\
 	} while (0)
 
 

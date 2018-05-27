@@ -758,12 +758,12 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 	cci_dev->reg_ptr = regulator_get(&(cci_dev->pdev->dev),
 					 "qcom,gdscr-vdd");
 	if (IS_ERR_OR_NULL(cci_dev->reg_ptr)) {
-		pr_err(" %s: Failed in getting TOP gdscr regulator handle",
+		pr_err("%s: Failed in getting TOP gdscr regulator handle\n",
 			__func__);
 	} else {
 		rc = regulator_enable(cci_dev->reg_ptr);
 		if (rc) {
-			pr_err(" %s: regulator enable failed for TOP GDSCR\n",
+			pr_err("%s: regulator enable failed for TOP GDSCR\n",
 				__func__);
 			goto clk_enable_failed;
 		}
