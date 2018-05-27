@@ -947,7 +947,7 @@ int32_t msm_sensor_driver_probe(void *setting,
 	/* Power up and probe sensor */
 	rc = s_ctrl->func_tbl->sensor_power_up(s_ctrl);
 	if (rc < 0) {
-		pr_err("%s power up failed", slave_info->sensor_name);
+		pr_err("%s power up failed\n", slave_info->sensor_name);
 		goto free_vendor_info;
 	}
 

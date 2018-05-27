@@ -322,7 +322,7 @@ static int kionix_accel_init_and_power_on(struct kionix_accel_driver *acceld)
 	kionix_accel_update_g_range(acceld);
 	err = acceld->kionix_accel_update_odr(acceld, acceld->poll_interval);
 	if(err < 0)
-		KIONIX_ERR("init_and_power_on failed.");
+		KIONIX_ERR("init_and_power_on failed.\n");
 
 	return 0;
 }
@@ -375,7 +375,7 @@ static int kionix_accel_standby(struct kionix_accel_driver *acceld)
 		return err;
 	}
 
-	KIONIX_INFO("enter standby mode");
+	KIONIX_INFO("enter standby mode\n");
 	return 0;
 }
 
@@ -541,7 +541,7 @@ static int kionix_accel_update_odr(struct kionix_accel_driver *acceld, unsigned 
 		if (poll_interval < kionix_accel_odr_table[i].cutoff)
 			break;
 	}
-	KIONIX_DBG("%s@line:%d: accel_data_ctrl=0x%x,accel_ctrl_reg1=0x%x",\
+	KIONIX_DBG("%s@line:%d: accel_data_ctrl=0x%x,accel_ctrl_reg1=0x%x\n",\
 		__func__, __LINE__,acceld->accel_registers[accel_data_ctrl],acceld->accel_registers[accel_ctrl_reg1]);
 
 	/* Do not need to update DATA_CTRL_REG register if the ODR is not changed */
@@ -569,43 +569,43 @@ static int kionix_accel_update_odr(struct kionix_accel_driver *acceld, unsigned 
 			return err;
 		switch(buf[0]) {
 			case ACCEL_ODR0_781:
-				KIONIX_DBG("kx023 ODR = 0.781 Hz");
+				KIONIX_DBG("kx023 ODR = 0.781 Hz\n");
 				break;
 			case ACCEL_ODR1_563:
-				KIONIX_DBG("kx023 ODR = 1.563 Hz");
+				KIONIX_DBG("kx023 ODR = 1.563 Hz\n");
 				break;
 			case ACCEL_ODR3_125:
-				KIONIX_DBG("kx023 ODR = 3.125 Hz");
+				KIONIX_DBG("kx023 ODR = 3.125 Hz\n");
 				break;
 			case ACCEL_ODR6_25:
-				KIONIX_DBG("kx023 ODR = 6.25 Hz");
+				KIONIX_DBG("kx023 ODR = 6.25 Hz\n");
 				break;
 			case ACCEL_ODR12_5:
-				KIONIX_DBG("kx023 ODR = 12.5 Hz");
+				KIONIX_DBG("kx023 ODR = 12.5 Hz\n");
 				break;
 			case ACCEL_ODR25:
-				KIONIX_DBG("kx023 ODR = 25 Hz");
+				KIONIX_DBG("kx023 ODR = 25 Hz\n");
 				break;
 			case ACCEL_ODR50:
-				KIONIX_DBG("kx023 ODR = 50 Hz");
+				KIONIX_DBG("kx023 ODR = 50 Hz\n");
 				break;
 			case ACCEL_ODR100:
-				KIONIX_DBG("kx023 ODR = 100 Hz");
+				KIONIX_DBG("kx023 ODR = 100 Hz\n");
 				break;
 			case ACCEL_ODR200:
-				KIONIX_DBG("kx023 ODR = 200 Hz");
+				KIONIX_DBG("kx023 ODR = 200 Hz\n");
 				break;
 			case ACCEL_ODR400:
-				KIONIX_DBG("kx023 ODR = 400 Hz");
+				KIONIX_DBG("kx023 ODR = 400 Hz\n");
 				break;
 			case ACCEL_ODR800:
-				KIONIX_DBG("kx023 ODR = 800 Hz");
+				KIONIX_DBG("kx023 ODR = 800 Hz\n");
 				break;
 			case ACCEL_ODR1600:
-				KIONIX_DBG("kx023 ODR = 1600 Hz");
+				KIONIX_DBG("kx023 ODR = 1600 Hz\n");
 				break;
 			default:
-				KIONIX_DBG("kx023 Unknown ODR");
+				KIONIX_DBG("kx023 Unknown ODR\n");
 				break;
 		}
 	}
@@ -680,7 +680,7 @@ static int kionix_accel_enable(struct kionix_accel_driver *acceld)
 	/*not used*/
 
 	mutex_lock(&acceld->mutex_earlysuspend);
-	KIONIX_INFO("%s: acceld->accel_enabled=%d, acceld->accel_suspended=%d",__func__,
+	KIONIX_INFO("%s: acceld->accel_enabled=%d, acceld->accel_suspended=%d\n",__func__,
 	                          atomic_read(&acceld->accel_enabled),
 	                          atomic_read(&acceld->accel_suspended));
 	acceld->print_xyz_flag = true;
@@ -692,11 +692,11 @@ static int kionix_accel_enable(struct kionix_accel_driver *acceld)
 
 		/* Make sure that the sensor had successfully resumed before enabling it */
 		if(atomic_read(&acceld->accel_suspended) == 1) {
-			KIONIX_INFO("%s: waiting for resume", __func__);
+			KIONIX_INFO("%s: waiting for resume\n", __func__);
 			/*not used*/
 
 			if(atomic_read(&acceld->accel_suspended) == 1) {
-				KIONIX_ERR("%s: timeout waiting for resume", __func__);
+				KIONIX_ERR("%s: timeout waiting for resume\n", __func__);
 				err = -ETIME;
 				goto exit;
 			}
@@ -719,7 +719,7 @@ static int kionix_accel_enable(struct kionix_accel_driver *acceld)
 			goto exit;
 		}
 
-		KIONIX_INFO("kionix_accel enabled");
+		KIONIX_INFO("kionix_accel enabled\n");
 	}
 
 exit:
@@ -761,13 +761,13 @@ static int kionix_accel_disable(struct kionix_accel_driver *acceld)
 
 		err = acceld->kionix_accel_standby(acceld);
 		if (err < 0) {
-			KIONIX_ERR("%s: kionix_accel_standby returned err = %d", __func__, err);
+			KIONIX_ERR("%s: kionix_accel_standby returned err = %d\n", __func__, err);
 			goto exit;
 		}
 
 		kionix_acc_config_regulator(acceld,false);
 
-		KIONIX_INFO("kionix_accel disabled");
+		KIONIX_INFO("kionix_accel disabled\n");
 	}
 
 exit:
@@ -786,7 +786,7 @@ static int  kionix_accel_setup_input_device(struct kionix_accel_driver *acceld)
 
 	input_dev = input_allocate_device();
 	if (!input_dev) {
-		KIONIX_ERR("input_allocate_device failed");
+		KIONIX_ERR("input_allocate_device failed\n");
 		return -ENOMEM;
 	}
 	mutex_init(&input_dev->mutex);
@@ -806,7 +806,7 @@ static int  kionix_accel_setup_input_device(struct kionix_accel_driver *acceld)
 
 	err = input_register_device(acceld->input_dev);
 	if (err) {
-		KIONIX_ERR("%s: input_register_device returned err = %d", __func__, err);
+		KIONIX_ERR("%s: input_register_device returned err = %d\n", __func__, err);
 		input_free_device(acceld->input_dev);
 		return err;
 	}
@@ -928,7 +928,7 @@ static ssize_t attr_set_delay(struct device *dev, struct device_attribute *attr,
 		#else
 		err = strict_strtoul((const char *)buf2, 10, &interval);
 		if (err < 0) {
-			KIONIX_ERR("%s: strict_strtoul returned err = %d", __func__, err);
+			KIONIX_ERR("%s: strict_strtoul returned err = %d\n", __func__, err);
 			goto exit;
 		}
 		#endif
@@ -938,7 +938,7 @@ static ssize_t attr_set_delay(struct device *dev, struct device_attribute *attr,
 
 		err = acceld->kionix_accel_update_odr(acceld, acceld->poll_interval);
 
-		KIONIX_INFO("set new acceld->poll_interval=%d",acceld->poll_interval);
+		KIONIX_INFO("set new acceld->poll_interval=%d\n",acceld->poll_interval);
 
 	}
 
@@ -979,7 +979,7 @@ static ssize_t attr_set_direct(struct device *dev, struct device_attribute *attr
 
 	if(kionix_strtok(buf, count, &buf2, direct_count) < 0) {
 		KIONIX_ERR("%s: No direction data being read. " \
-				"No direction data will be updated.", __func__);
+				"No direction data will be updated.\n", __func__);
 	}
 
 	else {
@@ -989,19 +989,19 @@ static ssize_t attr_set_direct(struct device *dev, struct device_attribute *attr
 		#if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,35))
 		err = kstrtouint((const char *)buf2, 10, (unsigned int *)&direction);
 		if (err < 0) {
-			KIONIX_ERR("%s: kstrtouint returned err = %d", __func__, err);
+			KIONIX_ERR("%s: kstrtouint returned err = %d\n", __func__, err);
 			goto exit;
 		}
 		#else
 		err = strict_strtoul((const char *)buf2, 10, &direction);
 		if (err < 0) {
-			KIONIX_ERR("%s: strict_strtoul returned err = %d", __func__, err);
+			KIONIX_ERR("%s: strict_strtoul returned err = %d\n", __func__, err);
 			goto exit;
 		}
 		#endif
 
 		if(direction < 1 || direction > 8)
-			KIONIX_ERR("%s: invalid direction = %d", __func__, (unsigned int) direction);
+			KIONIX_ERR("%s: invalid direction = %d\n", __func__, (unsigned int) direction);
 
 		else {
 			acceld->accel_pdata->accel_direction = (u8) direction;
@@ -1137,13 +1137,13 @@ static ssize_t attr_show_regs(struct device *dev,
 
 	err = kionix_i2c_read(acceld, ACCEL_INT_REL,reg_buf, 2);
 	if(err < 0){
-		KIONIX_DBG("failed to read ACCEL_INT_REL regs value");
+		KIONIX_DBG("failed to read ACCEL_INT_REL regs value\n");
 		return err;
 	}
 
 	err = kionix_i2c_read(acceld, ACCEL_DATA_CTRL,&reg_buf[2], 2);
 	if(err < 0){
-		KIONIX_DBG("failed to read ACCEL_DATA_CTRL regs value");
+		KIONIX_DBG("failed to read ACCEL_DATA_CTRL regs value\n");
 		return err;
 	}
 	return snprintf(buf, 512,"ACCEL_INT_REL = 0x%2x,ACCEL_CTRL_REG1 = 0x%2x\n"\
@@ -1230,7 +1230,7 @@ static int  kionix_verify_and_set_callback_func(struct kionix_accel_driver *acce
 	err = kionix_i2c_read(acceld, ACCEL_WHO_AM_I,&who_am_i,1);
 	if(err < 0)
 	{
-		KIONIX_ERR("failed to read who_am_i register. return ");
+		KIONIX_ERR("failed to read who_am_i register. return \n");
 		return err;
 	}
 
@@ -1266,11 +1266,11 @@ static int  kionix_verify_and_set_callback_func(struct kionix_accel_driver *acce
 			atomic_set(&acceld->accel_enable_resume, 0);
 			break;
 		default:
-			KIONIX_ERR("%s: unsupported device, who am i = %d. Abort.", __func__, who_am_i);
+			KIONIX_ERR("%s: unsupported device, who am i = %d. Abort.\n", __func__, who_am_i);
 			return -ENODEV;
 	}
 
-	KIONIX_INFO("this accelerometer is a KX023.");
+	KIONIX_INFO("this accelerometer is a KX023.\n");
 	return 0;
 }
 
@@ -1283,13 +1283,13 @@ static int kionix_acc_poll_delay_set(struct sensors_classdev *sensors_cdev,
 	unsigned char reg_buf[4];
 	err = kionix_i2c_read(acc, ACCEL_INT_REL,reg_buf, 2);
 	if(err < 0){
-		KIONIX_ERR("failed to read ACCEL_INT_REL regs value");
+		KIONIX_ERR("failed to read ACCEL_INT_REL regs value\n");
 		return err;
 	}
 
 	err = kionix_i2c_read(acc, ACCEL_DATA_CTRL,&reg_buf[2], 2);
 	if(err < 0){
-		KIONIX_ERR("failed to read ACCEL_DATA_CTRL regs value");
+		KIONIX_ERR("failed to read ACCEL_DATA_CTRL regs value\n");
 		return err;
 	}
 
@@ -1300,7 +1300,7 @@ static int kionix_acc_poll_delay_set(struct sensors_classdev *sensors_cdev,
 	mutex_lock(&acc->lock);
 
 	acc->poll_interval = max(delay_msec,acc->accel_pdata->min_interval);
-	KIONIX_INFO("%s acc->poll_interval =%d.",__func__,acc->poll_interval );
+	KIONIX_INFO("%s acc->poll_interval =%d.\n",__func__,acc->poll_interval );
 	acc->poll_delay = msecs_to_jiffies(acc->poll_interval);
 
 	err = acc->kionix_accel_update_odr(acc, acc->poll_interval);
@@ -1319,18 +1319,18 @@ static int kionix_acc_enable_set(struct sensors_classdev *sensors_cdev,
 	if (enable){
 		err = kionix_accel_enable(acc);
 		if(err < 0){
-			KIONIX_ERR("app enalbe gsensor failed!");
+			KIONIX_ERR("app enable gsensor failed!\n");
 			return err;
 		}
-		KIONIX_INFO("app enalbe gsensor");
+		KIONIX_INFO("app enable gsensor\n");
 	}
 	else{
 		err = kionix_accel_disable(acc);
 		if(err < 0){
-			KIONIX_ERR("app disalbe gsensor failed!");
+			KIONIX_ERR("app disable gsensor failed!\n");
 			return err;
 		}
-		KIONIX_INFO("app disalbe gsensor");
+		KIONIX_INFO("app disable gsensor\n");
 	}
 
 
@@ -1349,7 +1349,7 @@ static u32 get_of_u32_val(struct device_node *np,
 	if (!err)
 		return tmp;
 	else {
-		KIONIX_ERR("%s:FAILED get the data %s from the dtsi default_val=%d!",__func__,name,default_val);
+		KIONIX_ERR("%s:FAILED get the data %s from the dtsi default_val=%d!\n",__func__,name,default_val);
 		return default_val;
 	}
 }
@@ -1358,12 +1358,12 @@ static u32 get_of_u32_val(struct device_node *np,
 */
 static void print_default_config(struct kionix_accel_platform_data *pdata)
 {
-	KIONIX_INFO("%s,line:%d,gpio_int1=%d",__func__,__LINE__,pdata->gpio_int1);
-	KIONIX_INFO("%s,line:%d,accel_direction=%d",__func__,__LINE__,pdata->accel_direction);
-	KIONIX_INFO("%s,line:%d,accel_g_range=%d",__func__,__LINE__,pdata->accel_g_range);
-	KIONIX_INFO("%s,line:%d,poll_interval=%d",__func__,__LINE__,pdata->poll_interval);
-	KIONIX_INFO("%s,line:%d,min_interval=%d",__func__,__LINE__,pdata->min_interval);
-	KIONIX_INFO("%s,line:%d,accel_res=%d sucessfully",__func__,__LINE__,pdata->accel_res);
+	KIONIX_INFO("%s,line:%d,gpio_int1=%d\n",__func__,__LINE__,pdata->gpio_int1);
+	KIONIX_INFO("%s,line:%d,accel_direction=%d\n",__func__,__LINE__,pdata->accel_direction);
+	KIONIX_INFO("%s,line:%d,accel_g_range=%d\n",__func__,__LINE__,pdata->accel_g_range);
+	KIONIX_INFO("%s,line:%d,poll_interval=%d\n",__func__,__LINE__,pdata->poll_interval);
+	KIONIX_INFO("%s,line:%d,min_interval=%d\n",__func__,__LINE__,pdata->min_interval);
+	KIONIX_INFO("%s,line:%d,accel_res=%d sucessfully\n",__func__,__LINE__,pdata->accel_res);
 
 }
 
@@ -1473,7 +1473,7 @@ static int  kionix_accel_init_workfunc(struct kionix_accel_driver *acceld)
 		acceld->accel_workqueue = alloc_workqueue("Kionix Accel Workqueue", WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_HIGHPRI, 1);
 		if (!acceld->accel_workqueue )
 		{
-			KIONIX_ERR("%s: Unable to create accel_workqueue",__func__);
+			KIONIX_ERR("%s: Unable to create accel_workqueue\n",__func__);
 			return -ENOMEM;
 		}
 		INIT_WORK(&acceld->accel_work.work, kionix_accel_work);
@@ -1481,7 +1481,7 @@ static int  kionix_accel_init_workfunc(struct kionix_accel_driver *acceld)
 		acceld->accel_workqueue = create_workqueue("Kionix Accel Workqueue");
 		if (!acceld->accel_workqueue )
 		{
-			KIONIX_ERR("%s: Unable to create accel_workqueue",__func__);
+			KIONIX_ERR("%s: Unable to create accel_workqueue\n",__func__);
 			return -ENOMEM;
 		}
 		INIT_DELAYED_WORK(&acceld->accel_work, kionix_accel_work);
@@ -1499,14 +1499,14 @@ static int  kionix_accel_probe(struct i2c_client *client,
 
 	if (!i2c_check_functionality(client->adapter,
 				I2C_FUNC_I2C | I2C_FUNC_SMBUS_BYTE_DATA)) {
-		KIONIX_ERR("%s:line%d:client is not i2c capable. Abort.",__func__,__LINE__);
+		KIONIX_ERR("%s:line%d:client is not i2c capable. Abort.\n",__func__,__LINE__);
 		err = -EINVAL;
 		goto err_probe_start;
 	}
 
 	acceld = kzalloc(sizeof(*acceld), GFP_KERNEL);
 	if (acceld == NULL) {
-		KIONIX_ERR("%s:line%d:failed to allocate memory for module data. Abort.",__func__,__LINE__);
+		KIONIX_ERR("%s:line%d:failed to allocate memory for module data. Abort.\n",__func__,__LINE__);
 		err = -ENOMEM;
 		goto  err_probe_start;
 	}
@@ -1527,14 +1527,14 @@ static int  kionix_accel_probe(struct i2c_client *client,
 	acceld->accel_pdata = kzalloc(sizeof(*acceld->accel_pdata), GFP_KERNEL);
 	if (acceld->accel_pdata == NULL) {
 		err = -ENOMEM;
-		KIONIX_ERR("%s:line%d:failed to allocate memory for pdata: %d",__func__,__LINE__,err);
+		KIONIX_ERR("%s:line%d:failed to allocate memory for pdata: %d\n",__func__,__LINE__,err);
 		goto err_kfree_acc;
 	}
 
 	acceld->accel_registers = kzalloc(sizeof(u8)*accel_regs_count, GFP_KERNEL);
 	if (acceld->accel_registers == NULL) {
 		err =  -ENOMEM;
-		KIONIX_ERR("failed to allocate memory for accel_registers. Abort.");
+		KIONIX_ERR("failed to allocate memory for accel_registers. Abort.\n");
 		goto err_kfree_pdata;
 	}
 
@@ -1543,7 +1543,7 @@ static int  kionix_accel_probe(struct i2c_client *client,
 		err = kionix_parse_dt(&client->dev, acceld);
 		if (err) {
 			err = -EINVAL;
-			KIONIX_ERR("%s:line%d:Failed to parse device tree",__func__,__LINE__);
+			KIONIX_ERR("%s:line%d:Failed to parse device tree\n",__func__,__LINE__);
 			goto err_kfree_acc_regs;
 		}
 	}else {
@@ -1582,7 +1582,7 @@ static int  kionix_accel_probe(struct i2c_client *client,
 			goto err_dsm_exit;
 		}
 	} else {
-		KIONIX_ERR("%s: pinctrl is null", __func__);
+		KIONIX_ERR("%s: pinctrl is null\n", __func__);
 	}
 	/*init queue_delayed_work func to report accel data events*/
 	err = kionix_accel_init_workfunc(acceld);
@@ -1596,20 +1596,20 @@ static int  kionix_accel_probe(struct i2c_client *client,
 
 	err = create_sysfs_interfaces(&client->dev);
 	if (err < 0) {
-		KIONIX_ERR("device KIONIX_ACC_DEV_NAME sysfs register failed err=%d",err);
+		KIONIX_ERR("device KIONIX_ACC_DEV_NAME sysfs register failed err=%d\n",err);
 		goto err_free_input;
 	}
 
 	err = sensors_classdev_register(&acceld->input_dev->dev, &acceld->cdev);
 	if (err) {
-		KIONIX_ERR("sensors_classdev_register failed: %d", err);
+		KIONIX_ERR("sensors_classdev_register failed: %d\n", err);
 		goto err_remove_sysfs_int;
 	}
 
 	/* init the registers of accelerometer, don't enable in the initialization process */
 	err = acceld->kionix_accel_power_on_init(acceld);
 	if (err) {
-		KIONIX_ERR("%s: kionix_accel_power_on_init returned err = %d. Abort.", __func__, err);
+		KIONIX_ERR("%s: kionix_accel_power_on_init returned err = %d. Abort.\n", __func__, err);
 		goto err_free_sensor_class;
 	}
 
@@ -1621,7 +1621,7 @@ static int  kionix_accel_probe(struct i2c_client *client,
 	}
 	err = set_sensor_input(ACC, acceld->input_dev->dev.kobj.name);
 	if (err) {
-		KIONIX_ERR("%s set_sensor_input failed", __func__);
+		KIONIX_ERR("%s set_sensor_input failed\n", __func__);
 		goto err_free_sensor_class;
 	}
 	if (!IS_ERR_OR_NULL(acceld->pinctrl)) {
@@ -1631,7 +1631,7 @@ static int  kionix_accel_probe(struct i2c_client *client,
 
 	mutex_unlock(&acceld ->lock);
 
-	KIONIX_INFO("kionix sensor kx023 probe success,client->addr = 0x%x",client->addr);
+	KIONIX_INFO("kionix sensor kx023 probe success,client->addr = 0x%x\n",client->addr);
 	acceld->device_exist = true;
 	return 0;
 
@@ -1693,9 +1693,9 @@ static int kionix_acc_resume(struct i2c_client *client)
 		/* add necessary log */
 		ret = kionix_accel_enable(acc);
 		if( ret < 0){
-			KIONIX_ERR("resume enable acceld failed.");
+			KIONIX_ERR("resume enable acceld failed.\n");
 		}else{
-			KIONIX_INFO("resume enable acceld.");
+			KIONIX_INFO("resume enable acceld.\n");
 		}
 	}
 	return ret;
@@ -1710,9 +1710,9 @@ static int kionix_acc_suspend(struct i2c_client *client, pm_message_t mesg)
 	/* add necessary log */
 	ret =  kionix_accel_disable(acc);
 	if(ret < 0){
-		KIONIX_ERR("suspend disable acceld failed.");
+		KIONIX_ERR("suspend disable acceld failed.\n");
 	}else{
-		KIONIX_INFO("resume enable acceld.");
+		KIONIX_INFO("resume enable acceld.\n");
 	}
 
 	return ret;

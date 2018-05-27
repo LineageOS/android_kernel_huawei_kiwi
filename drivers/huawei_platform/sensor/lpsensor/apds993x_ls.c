@@ -107,20 +107,20 @@ module_param_named(c_ga, apds993x_c_ga, int, S_IRUGO | S_IWUSR | S_IWGRP);
 module_param_named(d_ga, apds993x_d_ga, int, S_IRUGO | S_IWUSR | S_IWGRP);
 #define APDS993X_ERR(x...) do {\
     if (apds993x_debug_mask >=0) \
-        printk(KERN_ERR x);\
+        printk(KERN_ERR "[E/apds993x]" x);\
     } while (0)
 /*KERNEL_HWFLOW is for radar using to control all the log of devices*/
 #define APDS993X_INFO(x...) do {\
     if (apds993x_debug_mask >=0) \
-        printk(KERN_ERR x);\
+        printk(KERN_INFO "[I/apds993x]" x);\
     } while (0)
 #define APDS993X_DEBUG(x...) do {\
     if (apds993x_debug_mask >=1) \
-        printk(KERN_ERR x);\
+        printk(KERN_DEBUG "[D/apds993x]" x);\
     } while (0)
 #define APDS993X_FLOW(x...) do {\
     if (apds993x_debug_mask >=2) \
-        printk(KERN_ERR x);\
+        printk(KERN_INFO "[F/apds993x]" x);\
     } while (0)
 
 /*delete it, no use check_type*/
