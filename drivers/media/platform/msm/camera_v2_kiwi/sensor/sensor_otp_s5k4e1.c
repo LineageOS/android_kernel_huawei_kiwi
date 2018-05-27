@@ -109,14 +109,14 @@ Description:   Only for debug use
 ******************************************************************************/
 void s5k4e1_otp_debug(struct s5k4e1_otp_struct  otp_ptr)
 {
-	CMR_LOGD("%s,otp_ptr.product_year:0x%x",__func__,otp_ptr.product_year);
-	CMR_LOGD("%s,otp_ptr.product_month:0x%x",__func__,otp_ptr.product_month);
-	CMR_LOGD("%s,otp_ptr.product_date:0x%x",__func__,otp_ptr.product_date);
-	CMR_LOGD("%s,otp_ptr.camera_id:0x%x",__func__,otp_ptr.camera_id);
-	CMR_LOGD("%s,otp_ptr.supplier_version_id:0x%x",__func__,otp_ptr.supplier_version_id);
+	CMR_LOGD("%s,otp_ptr.product_year:0x%x\n",__func__,otp_ptr.product_year);
+	CMR_LOGD("%s,otp_ptr.product_month:0x%x\n",__func__,otp_ptr.product_month);
+	CMR_LOGD("%s,otp_ptr.product_date:0x%x\n",__func__,otp_ptr.product_date);
+	CMR_LOGD("%s,otp_ptr.camera_id:0x%x\n",__func__,otp_ptr.camera_id);
+	CMR_LOGD("%s,otp_ptr.supplier_version_id:0x%x\n",__func__,otp_ptr.supplier_version_id);
 	CMR_LOGD("%s,otp_ptr.version:0x%x\n",__func__,otp_ptr.version);
-	CMR_LOGD("%s,otp_ptr.wb_rg:0x%x",__func__,otp_ptr.wb_rg);
-	CMR_LOGD("%s,otp_ptr.wb_bg:0x%x",__func__,otp_ptr.wb_bg);
+	CMR_LOGD("%s,otp_ptr.wb_rg:0x%x\n",__func__,otp_ptr.wb_rg);
+	CMR_LOGD("%s,otp_ptr.wb_bg:0x%x\n",__func__,otp_ptr.wb_bg);
 	return;
 }
 /******************************************************************************
@@ -162,7 +162,7 @@ void s5k4e1_read_otp_regs(struct msm_sensor_ctrl_t * s_ctrl,
 	uint16_t reg_values[S5K4E1_LAYER_NUMS] = {0};
 	int flag_true = 0;
 	uint8_t tmp_mmi_otp_flag = S5K4E1_MMI_OTP_AWB_FLAG;
-	CMR_LOGD("%s reg:0x%x, isMsb:%d ", __func__, reg, isMsb);
+	CMR_LOGD("%s reg:0x%x, isMsb:%d\n", __func__, reg, isMsb);
 
 	for (layer = S5K4E1_LAYER_START; layer <= S5K4E1_LAYER_AWB_END; layer++)
 	{
@@ -183,7 +183,7 @@ void s5k4e1_read_otp_regs(struct msm_sensor_ctrl_t * s_ctrl,
 			reg_values[i] =  reg_values[i] & S5K4E1_LSB;
 		}
 
-		CMR_LOGD("%s reg_values[%d]:0x%x", __func__, i, reg_values[i]);
+		CMR_LOGD("%s reg_values[%d]:0x%x\n", __func__, i, reg_values[i]);
 	}
 
 	//copy the readed data into OTP struct according to otp map
@@ -197,14 +197,14 @@ void s5k4e1_read_otp_regs(struct msm_sensor_ctrl_t * s_ctrl,
 						 + (reg_values[12] <<4) + reg_values[13];
 	current_otp->wb_bg = (reg_values[14] <<12) + (reg_values[15] <<8)
 						 + (reg_values[16] <<4) + reg_values[17];
-	CMR_LOGW("%s,current_otp.product_year:0x%x",__func__,current_otp->product_year);
-	CMR_LOGW("%s,current_otp.product_month:0x%x",__func__,current_otp->product_month);
-	CMR_LOGW("%s,current_otp.product_date:0x%x",__func__,current_otp->product_date);
-	CMR_LOGW("%s,current_otp.camera_id:0x%x",__func__,current_otp->camera_id);
-	CMR_LOGW("%s,current_otp.supplier_version_id:0x%x",__func__,current_otp->supplier_version_id);
+	CMR_LOGW("%s,current_otp.product_year:0x%x\n",__func__,current_otp->product_year);
+	CMR_LOGW("%s,current_otp.product_month:0x%x\n",__func__,current_otp->product_month);
+	CMR_LOGW("%s,current_otp.product_date:0x%x\n",__func__,current_otp->product_date);
+	CMR_LOGW("%s,current_otp.camera_id:0x%x\n",__func__,current_otp->camera_id);
+	CMR_LOGW("%s,current_otp.supplier_version_id:0x%x\n",__func__,current_otp->supplier_version_id);
 	CMR_LOGW("%s,current_otp.version:0x%x\n",__func__,current_otp->version);
-	CMR_LOGW("%s,current_otp.wb_rg:0x%x",__func__,current_otp->wb_rg);
-	CMR_LOGW("%s,current_otp.wb_bg:0x%x",__func__,current_otp->wb_bg);
+	CMR_LOGW("%s,current_otp.wb_rg:0x%x\n",__func__,current_otp->wb_rg);
+	CMR_LOGW("%s,current_otp.wb_bg:0x%x\n",__func__,current_otp->wb_bg);
 	//check if AWB value is valid
 	if ((0 !=  current_otp->wb_rg) && ( 0 !=  current_otp->wb_bg))
 	{
