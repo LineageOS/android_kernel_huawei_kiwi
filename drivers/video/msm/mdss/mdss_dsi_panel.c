@@ -704,12 +704,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 
-#ifdef CONFIG_HUAWEI_LCD
-	lcd_pwr_status.lcd_dcm_pwr_status |= BIT(1);
-	do_gettimeofday(&lcd_pwr_status.tvl_lcd_on);
-	time_to_tm(lcd_pwr_status.tvl_lcd_on.tv_sec, 0, &lcd_pwr_status.tm_lcd_on);
-#endif
-
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 	pr_debug("%s:-\n", __func__);
