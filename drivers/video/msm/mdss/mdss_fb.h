@@ -290,10 +290,6 @@ struct msm_fb_data_type {
 	struct dma_buf *fbmem_buf;
 
 	bool mdss_fb_split_stored;
-#ifdef CONFIG_HUAWEI_LCD
-	struct delayed_work bkl_work;
-	u32 frame_updated;
-#endif
 
 	u32 wait_for_kickoff;
 	u32 thermal_level;

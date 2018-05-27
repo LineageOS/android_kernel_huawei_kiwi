@@ -32,11 +32,6 @@
 #include "mdss_debug.h"
 #include "mdss_livedisplay.h"
 
-#ifdef CONFIG_HUAWEI_KERNEL
-#include <linux/hw_lcd_common.h>
-struct lcd_pwr_status_t lcd_pwr_status;
-#endif
-
 #define XO_CLK_RATE	19200000
 
 #define REGULATOR_DCDC_MODE 0
@@ -280,10 +275,6 @@ static int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata,
 	if (!ret)
 		pinfo->panel_power_state = power_state;
 
-#ifdef CONFIG_HUAWEI_LCD
-	if (!ret)
-		lcd_pwr_status.panel_power_on |= pinfo->panel_power_state;
-#endif
 	return ret;
 }
 
@@ -550,9 +541,6 @@ panel_power_ctrl:
 		pr_err("%s: Panel power off failed\n", __func__);
 		goto end;
 	}
-#ifdef CONFIG_HUAWEI_LCD
-	lcd_pwr_status.panel_power_on = panel_info->panel_power_state;
-#endif
 	if (panel_info->dynamic_fps
 	    && (panel_info->dfps_update == DFPS_SUSPEND_RESUME_MODE)
 	    && (panel_info->new_fps != panel_info->mipi.frame_rate))
@@ -607,9 +595,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 				panel_data);
 
 	cur_power_state = pdata->panel_info.panel_power_state;
-#ifdef CONFIG_HUAWEI_LCD
-		lcd_pwr_status.panel_power_on |= cur_power_state;
-#endif
 	pr_debug("%s+: ctrl=%pK ndx=%d cur_power_state=%d\n", __func__,
 		ctrl_pdata, ctrl_pdata->ndx, cur_power_state);
 
@@ -2094,9 +2079,6 @@ int dsi_panel_device_register(struct device_node *pan_node,
 			(CTRL_STATE_PANEL_INIT | CTRL_STATE_MDP_ACTIVE);
 	} else {
 		pinfo->panel_power_state = MDSS_PANEL_POWER_OFF;
-#ifdef CONFIG_HUAWEI_LCD
-		lcd_pwr_status.panel_power_on |= pinfo->panel_power_state;
-#endif
 	}
 
 	rc = mdss_register_panel(ctrl_pdev, &(ctrl_pdata->panel_data));
