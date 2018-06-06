@@ -435,6 +435,14 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
         }
     }
 
+    switch (event) {
+        case FB_EARLY_EVENT_BLANK:
+        case FB_EVENT_BLANK:
+            break;
+        default:
+            return 0;
+    }
+
     if (*blank == FB_BLANK_UNBLANK) {
             switch(event) {
             case FB_EARLY_EVENT_BLANK:
