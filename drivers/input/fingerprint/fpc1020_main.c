@@ -435,48 +435,27 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
         }
     }
 
-    if (*blank == FB_BLANK_UNBLANK) {
-            switch(event) {
-            case FB_EARLY_EVENT_BLANK:
-                fpc_log_debug("FB_EARLY_EVENT_BLANK resume: event = %lu\n", event);
-                break;
-            case FB_EVENT_BLANK:
-                fpc_log_info("FB_EVENT_BLANK resume: fpc1020->taskstate:%d\n", atomic_read(&fpc1020->taskstate));
-                atomic_set(&fpc1020->state, fp_LCD_UNBLANK);
-                if ((fp_CAPTURE != atomic_read(&fpc1020->taskstate)) && (1 == fpc1020->diag.navigation_enable))
-                {
-                    fpc1020_start_navigation(fpc1020);
-                }
-                fpc_log_debug("FB_EVENT_BLANK resume: event = %lu\n", event);
-                break;
-            default:
-                fpc_log_debug("resume: event = %lu, not care\n", event);
-                break;
-            }
-    } else  if (*blank == FB_BLANK_POWERDOWN){
-
-            /* remove spi ctrl work */
-            /*suspend device*/
-            switch(event) {
-            case FB_EARLY_EVENT_BLANK:
-                fpc_log_debug("FB_EARLY_EVENT_BLANK suspend: event = %lu\n", event);
-                break;
-            case FB_EVENT_BLANK:
+    switch(event) {
+        case FB_EARLY_EVENT_BLANK:
+            fpc_log_debug("FB_EARLY_EVENT_BLANK: event = %lu\n", event);
+            break;
+        case FB_EVENT_BLANK:
+            fpc_log_info("FB_EVENT_BLANK: fpc1020->taskstate:%d\n", atomic_read(&fpc1020->taskstate));
+            if (*blank == FB_BLANK_POWERDOWN){
                 cancel_work_sync(&fpc1020->fpc_nav_work);
                 atomic_set(&fpc1020->state, fp_LCD_POWEROFF);
-                fpc_log_info("FB_EVENT_BLANK suspend: fpc1020->taskstate:%d\n", atomic_read(&fpc1020->taskstate));
-                if ((fp_CAPTURE != atomic_read(&fpc1020->taskstate)) && (1 == fpc1020->diag.navigation_enable))
-                {
-                    fpc1020_start_navigation(fpc1020);
-                }
-                fpc_log_debug("FB_EVENT_BLANK suspend: event = %lu\n", event);
-                break;
-            default:
-                fpc_log_debug("suspend: event = %lu, not care\n", event);
-                break;
+            } else {
+                atomic_set(&fpc1020->state, fp_LCD_UNBLANK);
             }
-    } else {
-        fpc_log_debug("blank: %d, not care\n", *blank);
+            if ((fp_CAPTURE != atomic_read(&fpc1020->taskstate)) &&
+                    fpc1020->diag.navigation_enable){
+                fpc1020_start_navigation(fpc1020);
+            }
+            fpc_log_debug("FB_EVENT_BLANK: event = %lu\n", event);
+            break;
+        default:
+            fpc_log_debug("default: event = %lu, not care\n", event);
+            break;
     }
 
     return 0;
