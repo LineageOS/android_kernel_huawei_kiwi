@@ -19,7 +19,6 @@ Problem NO.         Name        Time         Reason
 #include <linux/module.h>
 #include <misc/app_info.h>
 static char *sensor_binder_input[SENSOR_MAX] = {NULL};
-unsigned long  simulate_revolve_enable=0;
 
 int set_sensor_input(enum input_name name, const char *input_num)
 {
@@ -50,8 +49,7 @@ static ssize_t sensor_show_akm_input(struct device *dev,
 	return snprintf(buf,512, "%s\n", sensor_binder_input[AKM]);
 
 }
-static DEVICE_ATTR(akm_input, S_IRUGO,
-					sensor_show_akm_input, NULL);
+static DEVICE_ATTR(akm_input, S_IRUGO, sensor_show_akm_input, NULL);
 
 static ssize_t sensor_show_acc_input(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -87,8 +85,8 @@ static ssize_t sensor_show_ps_input(struct device *dev,
 	return snprintf(buf,512,"%s\n", sensor_binder_input[PS]);
 
 }
-static DEVICE_ATTR(ps_input, S_IRUGO,
-					sensor_show_ps_input, NULL);
+static DEVICE_ATTR(ps_input, S_IRUGO, sensor_show_ps_input, NULL);
+
 static ssize_t sensor_show_hall_input(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -98,8 +96,8 @@ static ssize_t sensor_show_hall_input(struct device *dev,
 	}
 	return snprintf(buf,512, "%s\n", sensor_binder_input[HALL]);
 }
-static DEVICE_ATTR(hall_input, S_IRUGO,
-					sensor_show_hall_input, NULL);
+static DEVICE_ATTR(hall_input, S_IRUGO, sensor_show_hall_input, NULL);
+
 static ssize_t sensor_show_als_input(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -193,124 +191,8 @@ static ssize_t sensor_probe_list_show(struct device *dev,
 	list_name = get_sensors_list_name();
 	return snprintf(buf, 512,"%s\n", list_name);
 }
-static DEVICE_ATTR(sensor_probe_list, S_IRUGO,
-					sensor_probe_list_show, NULL);
-bool sensorDT_mode=false;//sensor DT mode
-int Gsensor_data_count=0;//G-sensor upload data times
-int als_data_count=0;    //ALS sensor upload data times
-int ps_data_count=0;     //ps sensor upload data times
-int compass_data_count=0;//compass sensor upload data times
+static DEVICE_ATTR(sensor_probe_list, S_IRUGO, sensor_probe_list_show, NULL);
 
-
-static ssize_t store_sensor_DT_test(struct device *dev,
-				struct device_attribute *attr, const char *buf, size_t count)
-{
-       unsigned long val = 0;
-	if (strict_strtoul(buf, 10, &val)) {
-		pr_err("store_sensor_DT_test val, val = %ld\n", val);
-		return -EINVAL;
-	}
-	pr_err("store_sensor_DT_test val=%ld\n",val);
-	if(1 == val)
-	{
-		sensorDT_mode=true;
-		Gsensor_data_count=0;
-		als_data_count=0;
-		ps_data_count=0;
-		compass_data_count=0;
-	}
-	else
-	{
-		sensorDT_mode=false;
-		Gsensor_data_count=0;
-		als_data_count=0;
-		ps_data_count=0;
-		compass_data_count=0;
-	}
-	return count;
-}
-static ssize_t show_sensor_DT_test(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	if (dev == NULL) {
-		pr_err("als_chip info is null\n");
-		return -EINVAL;
-	}
-	return snprintf(buf, PAGE_SIZE, "%d\n", sensorDT_mode);
-}
-
-static DEVICE_ATTR(sensor_test, 0660,show_sensor_DT_test, store_sensor_DT_test);
-static ssize_t show_gsensor_test_result(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	if (dev == NULL) {
-		pr_err("als_chip info is null\n");
-		return -EINVAL;
-	}
-	return snprintf(buf, PAGE_SIZE, "%d\n", Gsensor_data_count);
-}
-static DEVICE_ATTR(acc_read_data, S_IRUGO,show_gsensor_test_result, NULL);
-static ssize_t store_gsensor_simulate(struct device *dev,
-				struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long val = 0;
-	if (strict_strtoul(buf, 10, &val)) {
-		pr_err("store_sensor_DT_test val, val = %ld\n", val);
-		return -EINVAL;
-	}
-	if(1 == val)
-	{
-              simulate_revolve_enable = 1;
-	}
-	else
-	{
-              simulate_revolve_enable = 0;
-       }
-	return count;
-}
-
-static ssize_t show_gsensor_simulate(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	if (dev == NULL) {
-		pr_err("als_chip info is null\n");
-		return -EINVAL;
-	}
-	return snprintf(buf, PAGE_SIZE, "%ld\n", simulate_revolve_enable);
-}
-
-static DEVICE_ATTR(gsensor_simulate, 0660,show_gsensor_simulate, store_gsensor_simulate);
-static ssize_t show_compass_test_result(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	if (dev == NULL) {
-		pr_err("als_chip info is null\n");
-		return -EINVAL;
-	}
-	return snprintf(buf, PAGE_SIZE, "%d\n", compass_data_count);
-}
-static DEVICE_ATTR(mag_read_data, S_IRUGO,show_compass_test_result, NULL);
-
-static ssize_t show_als_test_result(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	if (dev == NULL) {
-		pr_err("als_chip info is null\n");
-		return -EINVAL;
-	}
-	return snprintf(buf, PAGE_SIZE, "%d\n", als_data_count);
-}
-static DEVICE_ATTR(als_read_data, S_IRUGO,show_als_test_result, NULL);
-static ssize_t show_ps_test_result(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	if (dev == NULL) {
-		pr_err("als_chip info is null\n");
-		return -EINVAL;
-	}
-	return snprintf(buf, PAGE_SIZE, "%d\n", ps_data_count);
-}
-static DEVICE_ATTR(ps_read_data, S_IRUGO,show_ps_test_result, NULL);
 static struct attribute *sensor_input_attributes[] = {
 	&dev_attr_ps_input.attr,
 	&dev_attr_als_input.attr,
@@ -319,17 +201,13 @@ static struct attribute *sensor_input_attributes[] = {
 	&dev_attr_gyro_input.attr,
 	&dev_attr_hall_input.attr,
 	&dev_attr_sensor_probe_list.attr,
-	&dev_attr_sensor_test.attr,
-	&dev_attr_gsensor_simulate.attr,
-	&dev_attr_als_read_data.attr,
-	&dev_attr_mag_read_data.attr,
-	&dev_attr_acc_read_data.attr,
-	&dev_attr_ps_read_data.attr,
 	NULL
 };
+
 static const struct attribute_group sensor_input = {
 	.attrs = sensor_input_attributes,
 };
+
 static int __init sensor_input_info_init(void)
 {
 	int ret = 0;

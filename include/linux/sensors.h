@@ -51,11 +51,6 @@
 #define SENSOR_TYPE_HALL	10002
 #define SENSOR_TYPE_CAP_PROX		(10005)
 
-#define SENSOR_DISABLE 0
-#define SENSOR_ENABLE  1
-#define SENSOR_DTENABLE  2
-#define SENSOR_DTDISABLE  3
-
 enum LIS3DH_AXIS {
 	AXIS_X = 0,
 	AXIS_Y,
@@ -174,12 +169,6 @@ extern int sensors_classdev_register(struct device *parent,
 				 struct sensors_classdev *sensors_cdev);
 extern void sensors_classdev_unregister(struct sensors_classdev *sensors_cdev);
 
-extern bool sensorDT_mode;
-extern int Gsensor_data_count;
-extern int als_data_count;
-extern int ps_data_count;
-extern int compass_data_count;
-extern unsigned long  simulate_revolve_enable;
 /*----------------------------------------------------------------*/
 /*This is for speed up boot time*/
 enum input_name {

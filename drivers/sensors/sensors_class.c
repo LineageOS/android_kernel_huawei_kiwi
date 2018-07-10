@@ -195,22 +195,7 @@ static ssize_t sensors_enable_store(struct device *dev,
 	ret = kstrtoul(buf, 10, &data);
 	if (ret)
 		return ret;
-	if(sensorDT_mode)
-	{
-		pr_err("[%s] enter DT_TEST data=%ld\n", __func__, data);
-		if(SENSOR_DTENABLE == data)
-		{
-			data = SENSOR_ENABLE;
-		}
-		else if(SENSOR_DTDISABLE == data)
-		{
-			data = SENSOR_DISABLE;
-		}
-		else
-		{
-			return size;
-		}
-	}
+
 	if (data > 1) {
 		dev_err(dev, "Invalid value of input, input=%ld\n", data);
 		return -EINVAL;
@@ -247,14 +232,6 @@ static ssize_t sensors_delay_store(struct device *dev,
 	ret = kstrtoul(buf, 10, &data);
 	if (ret)
 		return ret;
-
-	if(sensorDT_mode)
-	{
-		if(10 != data)
-		{
-			return size;
-		}
-	}
 
 	/* The data unit is millisecond, the min_delay unit is microseconds. */
 	if ((data * 1000) < sensors_cdev->min_delay) {

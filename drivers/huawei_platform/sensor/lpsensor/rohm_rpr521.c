@@ -956,11 +956,6 @@ static void rpr521_als_polling_work_handler(struct work_struct *work)
 		RPR521_FLOW("%s,line %d:rpr521 lux=%d\n",__func__,__LINE__,luxValue);
 	}
 
-	if (sensorDT_mode)
-	{
-		als_data_count++;
-	}
-
 	RPR521_FLOW("%s: line:%d rpr521 light ch0data=%d, ch1data=%d, luxValue=%d, mode=%x\n", __func__, __LINE__, ch0data, ch1data,luxValue,rpr521_i2c_read(client,
 			REG_ALSPSCONTROL,RPR521_I2C_BYTE));
 	/* restart timer */
@@ -1023,11 +1018,6 @@ static void rpr521_work_handler(struct work_struct *work)
 	if (data->irq)
 	{
 		operate_irq(data,1,true);
-	}
-
-	if(sensorDT_mode)
-	{
-		ps_data_count++;
 	}
 }
 

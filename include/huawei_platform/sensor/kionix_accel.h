@@ -24,7 +24,6 @@
 #include	<linux/input.h>
 #include	<linux/sensors.h>
 
-#define MAX_REPORT_TIMES                  3000
 #define KIONIX_ACCEL_I2C_ADDR		0x0F
 #define KIONIX_ACCEL_NAME			"kionix_accel"
 #define KIONIX_ACCEL_INPUT_NAME		"accelerometer"

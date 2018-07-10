@@ -87,8 +87,6 @@
 
 #endif
 
-#define MAX_REPORT_TIMES                  3000
-
 #define MAX_ACCEL_VAL 1054   /*9.8065/1024*MAX_ACCEL_VAL=10.1*/
 #define MIN_ACCEL_VAL -1054   /*-9.8065/1024*MAX_ACCEL_VAL=-10.1*/
 #define	DEBUG	1
@@ -1209,29 +1207,6 @@ static int lis3dh_acc_get_acceleration_data(struct lis3dh_acc_data *acc,
 static void lis3dh_acc_report_values(struct lis3dh_acc_data *acc,
 					int *xyz)
 {
-	static unsigned int report_times = 1;
-	if(1 == simulate_revolve_enable )
-	{
-		report_times++;
-		if (report_times > MAX_REPORT_TIMES)
-		{
-			report_times = 1;
-		}
-		if (report_times%2)
-		{
-			xyz[0] = 1018;
-			xyz[1] = 13;
-			xyz[2] = 1;
-		}
-		else
-		{
-			xyz[0] = 1020;
-			xyz[1] = 14;
-			xyz[2] = 0;
-		}
-		LIS3DH_DEBUG("%s, simulate_revolve_enable = %ld, xyz[0]=%d, xyz[1]=%d, xyz[2]=%d\n", __func__,
-			simulate_revolve_enable, xyz[0], xyz[1],xyz[2]);
-	}
 	LIS3DH_DEBUG("%s,xyz[0]=%d, xyz[1]=%d, xyz[2]=%d\n", __func__, xyz[0],  xyz[1],xyz[2]);
 	input_report_abs(acc->input_dev, ABS_X, xyz[0]);
 	input_report_abs(acc->input_dev, ABS_Y, xyz[1]);
@@ -2039,10 +2014,6 @@ static void lis3dh_acc_input_work_func(struct work_struct *work)
 	if( !acc->pdata->use_hrtimer)
 		schedule_delayed_work(&acc->input_work, msecs_to_jiffies(acc->delay_ms));
 	mutex_unlock(&acc->lock);
-	if (sensorDT_mode)
-	{
-		Gsensor_data_count++;
-	}
 }
 
 int lis3dh_acc_input_open(struct input_dev *input)

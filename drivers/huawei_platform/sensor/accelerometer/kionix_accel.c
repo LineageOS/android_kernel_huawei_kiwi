@@ -387,8 +387,6 @@ static void kionix_accel_report_accel_data(struct kionix_accel_driver *acceld)
 	}; } accel_data;
 	s16 x, y, z;
 	int err;
-	static unsigned int report_times = 1;
-	/*delete it , use short code segment */
 
 	/* Only read the output registers if enabled */
 	if(atomic_read(&acceld->accel_enabled) > 0) {
@@ -427,29 +425,7 @@ static void kionix_accel_report_accel_data(struct kionix_accel_driver *acceld)
 					acceld->accel_data[acceld->axis_map_z]++;
 					dataflag |= 0x04;
 				}
-				if(1 == simulate_revolve_enable)
-				{
-					report_times++;
-					if (report_times > MAX_REPORT_TIMES)
-					{
-						report_times = 1;
-					}
-					if(report_times%2)
-					{
-						acceld->accel_data[acceld->axis_map_x]= 1020;
-						acceld->accel_data[acceld->axis_map_y]= 13;
-						acceld->accel_data[acceld->axis_map_z]= 1;
-					}
-					else
-					{
-						acceld->accel_data[acceld->axis_map_x]= 1018;
-						acceld->accel_data[acceld->axis_map_y]= 11;
-						acceld->accel_data[acceld->axis_map_z]= 0;
-					}
-					KIONIX_DBG("%s: simulate_revolve_enable = %ld, data is x=%d, y=%d, z=%d \n", __func__, simulate_revolve_enable,
-                                          acceld->accel_data[acceld->axis_map_x], acceld->accel_data[acceld->axis_map_y], acceld->accel_data[acceld->axis_map_z] );
 
-				}
 				KIONIX_DBG( "%s: report x data = %d", __func__, acceld->accel_data[acceld->axis_map_x]);
 				KIONIX_DBG( "%s: report y data = %d", __func__, acceld->accel_data[acceld->axis_map_y]);
 				KIONIX_DBG( "%s: report z data = %d", __func__, acceld->accel_data[acceld->axis_map_z]);
@@ -481,10 +457,6 @@ static void kionix_accel_report_accel_data(struct kionix_accel_driver *acceld)
 					acceld->accel_data[acceld->axis_map_z]--;
 				}
 				dataflag = 0;
-				if (sensorDT_mode)
-				{
-					Gsensor_data_count++;
-				}
 				write_unlock(&acceld->rwlock_accel_data);
 			}
 		}

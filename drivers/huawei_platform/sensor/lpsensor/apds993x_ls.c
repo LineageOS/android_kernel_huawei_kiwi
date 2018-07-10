@@ -929,10 +929,6 @@ static void apds993x_als_polling_work_handler(struct work_struct *work)
 		input_report_abs(data->input_dev_als, ABS_MISC, luxValue);
 		input_sync(data->input_dev_als);
 		APDS993X_FLOW("%s,line %d:apds9930 lux=%d\n",__func__,__LINE__,luxValue);
-		if (sensorDT_mode)
-		{
-			als_data_count++;
-		}
 	}
 
 	/* restart timer */
@@ -1042,10 +1038,6 @@ static void apds993x_work_handler(struct work_struct *work)
 	if (data->irq)
 	{
 		operate_irq(data,1,true);
-	}
-	if(sensorDT_mode)
-	{
-		ps_data_count++;
 	}
 }
 

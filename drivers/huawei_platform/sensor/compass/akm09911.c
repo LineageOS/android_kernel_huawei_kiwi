@@ -2073,11 +2073,6 @@ static int akm_report_data(struct akm_compass_data *akm)
 
 	input_sync(akm->input);
 
-	if(sensorDT_mode)
-	{
-		compass_data_count++;
-	}
-
 	return 0;
 }
 
