@@ -221,13 +221,6 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(input_current_limited),
 	POWER_SUPPLY_ATTR(ignore_false_negative_isense),
 	POWER_SUPPLY_ATTR(enable_jeita_detection),
-	/* Local extensions of type int64_t */
-	POWER_SUPPLY_ATTR(charge_counter_ext),
-	/* Properties of type `const char *' */
-	POWER_SUPPLY_ATTR(model_name),
-	POWER_SUPPLY_ATTR(manufacturer),
-	POWER_SUPPLY_ATTR(serial_number),
-	POWER_SUPPLY_ATTR(battery_type),
 	/* Vendor extensions */
 #ifdef CONFIG_HUAWEI_KERNEL
 	POWER_SUPPLY_ATTR(factory_diag),
@@ -235,6 +228,13 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(resume_charging),
 	POWER_SUPPLY_ATTR(running_test_status),
 #endif
+	/* Local extensions of type int64_t */
+	POWER_SUPPLY_ATTR(charge_counter_ext),
+	/* Properties of type `const char *' */
+	POWER_SUPPLY_ATTR(model_name),
+	POWER_SUPPLY_ATTR(manufacturer),
+	POWER_SUPPLY_ATTR(serial_number),
+	POWER_SUPPLY_ATTR(battery_type),
 };
 
 static struct attribute *
