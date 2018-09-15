@@ -57,10 +57,15 @@ enum rmnet_ioctl_extended_cmds_e {
 	RMNET_IOCTL_GET_QOS_VERSION            = 0x0012,   /* 8/6 byte QoS hdr*/
 	RMNET_IOCTL_GET_SUPPORTED_QOS_MODES    = 0x0013,   /* Get QoS modes   */
 	RMNET_IOCTL_SET_SLEEP_STATE            = 0x0014,   /* Set sleep state */
+#ifdef CONFIG_HUAWEI_KERNEL
+	RMNET_IOCTL_DEREGISTER_DEV             = 0x0015,   /* Dereg a net dev */
+	RMNET_IOCTL_EXTENDED_MAX               = 0x0016
+#else
 	RMNET_IOCTL_SET_XLAT_DEV_INFO          = 0x0015,   /* xlat dev name   */
 	RMNET_IOCTL_DEREGISTER_DEV             = 0x0016,   /* Dereg a net dev */
 	RMNET_IOCTL_GET_SG_SUPPORT             = 0x0017,   /* Query sg support*/
 	RMNET_IOCTL_EXTENDED_MAX               = 0x0018
+#endif
 };
 
 /* Return values for the RMNET_IOCTL_GET_SUPPORTED_FEATURES IOCTL */
@@ -121,11 +126,13 @@ struct rmnet_ioctl_extended_s {
 			uint32_t   producer_pipe_num;
 		} ipa_ep_pair;
 
+#ifndef CONFIG_HUAWEI_KERNEL
 		struct {
 			uint32_t __data; /* Placeholder for legacy data*/
 			uint32_t agg_size;
 			uint32_t agg_count;
 		} ingress_format;
+#endif
 	} u;
 };
 
