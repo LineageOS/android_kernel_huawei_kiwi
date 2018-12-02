@@ -40,6 +40,12 @@
 #ifdef CONFIG_HUAWEI_KERNEL
 #include <linux/power/bq24296m_charger.h>
 #include <linux/power/huawei_charger.h>
+
+#if defined(CONFIG_FB)
+#include <linux/notifier.h>
+#include <linux/fb.h>
+#endif
+
 #endif
 #include <linux/charger_core.h>
 #define _BMS_MASK(BITS, POS) \
@@ -147,53 +153,38 @@
 
 #ifdef CONFIG_HUAWEI_KERNEL
 static int enter_to_poweron_flag = false;
+static int isDisplayOff = false;
 #endif
 
 #define QPNP_VM_BMS_DEV_NAME		"qcom,qpnp-vm-bms"
 #define HWLOG_TAG qpnp-vm-bms
+
 #ifdef CONFIG_HUAWEI_KERNEL
-#define LCD_BACKLIGHT_NODE		"/sys/class/leds/lcd-backlight/brightness"
-#define CHG_OCV_VOLTAGE_DELTA_UV		50000
-static int atoi(const char *name)
+#define CHG_OCV_VOLTAGE_DELTA_UV               50000
+#ifdef CONFIG_FB
+static struct notifier_block fb_notify;
+
+static int fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
 {
-	int val = 0;
+	struct fb_event *fb_event = data;
+	int *blank = fb_event->data;
 
-	for (;; name++)
-	{
-		switch (*name)
-		{
-			case '0' ... '9':
-				val = 10*val+(*name-'0');
-				break;
-			default:
-				return val;
-		}
-	}
-}
-
-int is_lcd_backlight_off(void)
-{
-	struct file *fd  = NULL;
-	mm_segment_t fs;
-
-	char char_temp[4] = {0};
-	loff_t pos = 0;
-
-	fd = filp_open(LCD_BACKLIGHT_NODE, O_RDWR, 0);
-	if (IS_ERR(fd))
-	{
-		pmu_log_err("open LCD_BACKLIGHT_NODE failed!\n ");
+	/* If we aren't interested in this event, skip it immediately ... */
+	if (event != FB_EVENT_BLANK)
 		return 0;
-	}
-	fs = get_fs();
-	set_fs(KERNEL_DS);
-	vfs_read(fd, char_temp, sizeof(char_temp), &pos);
-	filp_close(fd,NULL);
-	set_fs(fs);
-	return (0 == atoi(char_temp));
 
+	blank = fb_event->data;
+	if (*blank == FB_BLANK_UNBLANK) {
+		isDisplayOff = 0;
+	} else if (*blank == FB_BLANK_POWERDOWN){
+		isDisplayOff = 1;
+	}
+
+	return 0;
 }
 #endif
+#endif
+
 /* indicates the state of BMS */
 enum {
 	IDLE_STATE,
@@ -2087,7 +2078,7 @@ static int report_vm_bms_soc(struct qpnp_bms_chip *chip)
 #ifdef CONFIG_HUAWEI_KERNEL
 		if (soc < chip->last_soc && soc != 0 && soc != SOC_ONE)
 		{
-			if(charging && is_lcd_backlight_off())
+			if(charging && isDisplayOff)
 			{
 				if (is_ocv_falls_over_threshold(chip))
 				{
@@ -4903,6 +4894,13 @@ static int qpnp_vm_bms_probe(struct spmi_device *spmi)
 #ifdef CONFIG_HUAWEI_KERNEL
 	chip->resume_soc_work = false;
 	schedule_delayed_work(&chip->report_soc_work, 0);
+
+#if defined(CONFIG_FB)
+	if(fb_notify.notifier_call == NULL) {
+		fb_notify.notifier_call = fb_notifier_callback;
+		fb_register_client(&fb_notify);
+	}
+#endif
 #endif
 
 	pr_info("probe success: soc=%d vbatt=%d ocv=%d warm_reset=%d\n",
@@ -4944,6 +4942,13 @@ static int qpnp_vm_bms_remove(struct spmi_device *spmi)
 	cancel_delayed_work_sync(&chip->monitor_soc_work);
 #ifdef CONFIG_HUAWEI_KERNEL
 	cancel_delayed_work_sync(&chip->report_soc_work);
+
+#if defined(CONFIG_FB)
+	if (fb_notify.notifier_call != NULL) {
+		fb_notify.notifier_call = NULL;
+		fb_unregister_client(&fb_notify);
+	}
+#endif
 #endif
 	debugfs_remove_recursive(chip->debug_root);
 	device_destroy(chip->bms_class, chip->dev_no);
