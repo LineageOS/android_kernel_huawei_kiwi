@@ -301,9 +301,16 @@ static ssize_t fingerprint_chip_info_show(struct device *dev, struct device_attr
 
 }
 
+static ssize_t vendor_info_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    return scnprintf(buf, PAGE_SIZE, "0");
+}
+
 static DEVICE_ATTR(fingerprint_chip_info, S_IRUSR  | S_IRGRP | S_IROTH, fingerprint_chip_info_show, NULL);
+static DEVICE_ATTR(vendor_info, S_IRUSR  | S_IRGRP | S_IROTH, vendor_info_show, NULL);
 static struct attribute *fingerprint_attributes[] = {
     &dev_attr_fingerprint_chip_info.attr,
+    &dev_attr_vendor_info.attr,
     NULL
 };
 
