@@ -5387,11 +5387,9 @@ static ssize_t cyttsp5_easy_wakeup_gesture_show(struct device *dev,
 	return ret;
 }
 
-static ssize_t cyttsp5_easy_wakeup_gesture_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size)
+static int cyttsp5_easy_wakeup_gesture_parse(struct cyttsp5_core_data *cd,
+		const char *buf, unsigned long *value)
 {
-	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
-	unsigned long value;
 	int ret;
 
 	if (!(cd->cpdata->flags & CY_CORE_FLAG_WAKE_ON_GESTURE)) {
@@ -5414,22 +5412,25 @@ static ssize_t cyttsp5_easy_wakeup_gesture_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	ret = kstrtoul(buf, 10, &value);
+	ret = kstrtoul(buf, 10, value);
 	if (ret < 0) {
 		tp_log_err("%s %d:Parse input value fail, value: %s, ret:%d\n",
 					__func__, __LINE__, buf, ret);
 		return -EINVAL;
 	}
 
-	tp_log_info("%s %d:Input value: %lu\n", __func__, __LINE__, value);
-	if (value > 0xFFFF) {
-		tp_log_err("%s %d:Error value: %lu\n", __func__, __LINE__, value);
+	tp_log_info("%s %d:Input value: %lu\n", __func__, __LINE__, *value);
+	if (*value > 0xFFFF) {
+		tp_log_err("%s %d:Error value: %lu\n", __func__, __LINE__, *value);
 		return -EINVAL;
 	}
 
-	pm_runtime_get_sync(dev);
+	return 0;
+}
 
-	mutex_lock(&cd->system_lock);
+static int cyttsp5_easy_wakeup_gesture_set(struct cyttsp5_core_data *cd,
+		unsigned long value)
+{
 	if (cd->sysinfo.ready && IS_PIP_VER_GE(&cd->sysinfo, 1, 2)) {
 		cd->easy_wakeup_gesture = (unsigned int)value;
 	} else {
@@ -5437,8 +5438,28 @@ static ssize_t cyttsp5_easy_wakeup_gesture_store(struct device *dev,
 					cd->sysinfo.ready);
 		tp_log_err("%s %d:easy wakeup Error value: %d\n", __func__, __LINE__,
 					IS_PIP_VER_GE(&cd->sysinfo, 1, 2));
-		ret = -ENODEV;
+		return -ENODEV;
 	}
+
+	return 0;
+}
+
+static ssize_t cyttsp5_easy_wakeup_gesture_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
+	unsigned long value;
+	int ret;
+
+	ret = cyttsp5_easy_wakeup_gesture_parse(cd, buf, &value);
+	if (ret) {
+		return ret;
+	}
+
+	pm_runtime_get_sync(dev);
+
+	mutex_lock(&cd->system_lock);
+	ret = cyttsp5_easy_wakeup_gesture_set(cd, value);
 	mutex_unlock(&cd->system_lock);
 
 	pm_runtime_put(dev);
