@@ -152,8 +152,14 @@
 #endif
 
 #ifdef CONFIG_HUAWEI_KERNEL
+enum
+{
+	DISPLAY_STATE_OFF,
+	DISPLAY_STATE_ON
+};
+
 static int enter_to_poweron_flag = false;
-static int isDisplayOff = false;
+static atomic_t display_state = ATOMIC_INIT(DISPLAY_STATE_ON);
 #endif
 
 #define QPNP_VM_BMS_DEV_NAME		"qcom,qpnp-vm-bms"
@@ -175,9 +181,9 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 
 	blank = fb_event->data;
 	if (*blank == FB_BLANK_UNBLANK) {
-		isDisplayOff = 0;
+		atomic_set(&display_state, DISPLAY_STATE_ON);
 	} else if (*blank == FB_BLANK_POWERDOWN){
-		isDisplayOff = 1;
+		atomic_set(&display_state, DISPLAY_STATE_OFF);
 	}
 
 	return 0;
@@ -2078,7 +2084,7 @@ static int report_vm_bms_soc(struct qpnp_bms_chip *chip)
 #ifdef CONFIG_HUAWEI_KERNEL
 		if (soc < chip->last_soc && soc != 0 && soc != SOC_ONE)
 		{
-			if(charging && isDisplayOff)
+			if(charging && atomic_read(&display_state) == DISPLAY_STATE_OFF)
 			{
 				if (is_ocv_falls_over_threshold(chip))
 				{
