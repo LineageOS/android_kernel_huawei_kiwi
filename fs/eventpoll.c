@@ -1828,6 +1828,12 @@ SYSCALL_DEFINE4(epoll_ctl, int, epfd, int, op, int, fd,
 	if ((epds.events & EPOLLWAKEUP) && !capable(CAP_BLOCK_SUSPEND))
 		epds.events &= ~EPOLLWAKEUP;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	/* Work around an issue where healthd keeps the device awake */
+	if ((epds.events & EPOLLWAKEUP) && !strcmp(current->comm, "healthd"))
+		epds.events &= ~EPOLLWAKEUP;
+#endif
+
 	/*
 	 * We have to check that the file structure underneath the file descriptor
 	 * the user passed to us _is_ an eventpoll file. And also we do not permit
