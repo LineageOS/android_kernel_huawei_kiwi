@@ -4111,11 +4111,11 @@ int _cyttsp5_unsubscribe_attention(struct device *dev,
 		if (atten->id == id && atten->mode == mode) {
 			list_del(&atten->node);
 			spin_unlock(&cd->spinlock);
-			kfree(atten);
 			tp_log_vdebug( "%s: %s=%p %s=%d\n",
 				__func__,
 				"unsub for atten->dev", atten->dev,
 				"atten->mode", atten->mode);
+			kfree(atten);
 			return 0;
 		}
 	}
@@ -5671,8 +5671,11 @@ static ssize_t tthe_debugfs_read(struct file *filp, char __user *buf,
 	}
 
 	ret = copy_to_user(buf, cd->tthe_buf, cd->tthe_buf_len);
-	if (ret == size)
+	if (ret == size) {
+		mutex_unlock(&cd->tthe_lock);
 		return -EFAULT;
+	}
+
 	size -= ret;
 	cd->tthe_buf_len -= size;
 	mutex_unlock(&cd->tthe_lock);

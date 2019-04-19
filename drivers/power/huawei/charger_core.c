@@ -33,17 +33,18 @@ static int get_charge_ic_type(struct charger_core_info *di,const char *name)
 {
     int i = 0;
 
+    if (!di)
+    {
+        pmu_log_err("huawei_charger_info is NULL!\n");
+        return -EINVAL;
+    }
+
     while(UNKNOW_CHARGER != charger_type_table[i].charger_index)
     {
         if (0 == strcmp(charger_type_table[i].charger_type_string, name) )
         {
             di->charger_type_info.charger_index = charger_type_table[i].charger_index;
             di->charger_type_info.charger_type_string = kzalloc(MAX_CHARGER_TYPE_STRING_LEN, GFP_KERNEL);
-            if (!di)
-            {
-                pmu_log_err("huawei_charger_info is NULL!\n");
-                return -EINVAL;
-            }
 
             memset(di->charger_type_info.charger_type_string, 0, MAX_CHARGER_TYPE_STRING_LEN);
             memcpy(di->charger_type_info.charger_type_string, \
