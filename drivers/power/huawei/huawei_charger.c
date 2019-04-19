@@ -1200,9 +1200,8 @@ static void free_ops_info(void)
         di->ops->set_in_thermal = NULL;
         di->ops->set_enable_charger = NULL;
         di->ops->set_runningtest = NULL;
+        di->ops = NULL;
     }
-
-    di->ops = NULL;
 
     return ;
 }
@@ -1398,15 +1397,15 @@ charge_fail_0:
 **********************************************************/
 static int charge_remove(struct spmi_device *pdev)
 {
-    struct charge_device_info *di;
-    di = g_charger_device_para;
-    di->dev = &pdev->dev;
+    struct charge_device_info *di = g_charger_device_para;
 
     if (di == NULL)
     {
         pmu_log_err("[%s]di is NULL!\n",__func__);
         return -ENODEV;
     }
+
+    di->dev = &pdev->dev;
 
     charge_sysfs_remove_group(di);
     cancel_delayed_work_sync(&di->nff_work);

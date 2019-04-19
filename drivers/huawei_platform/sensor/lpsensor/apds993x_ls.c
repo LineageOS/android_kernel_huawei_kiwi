@@ -184,8 +184,8 @@ struct apds993x_data {
 	unsigned int wtime;
 	unsigned int ailt;
 	unsigned int aiht;
-	unsigned int pilt;
-	unsigned int piht;
+	int pilt;
+	int piht;
 	unsigned int pers;
 	unsigned int config;
 	unsigned int ppcount;
