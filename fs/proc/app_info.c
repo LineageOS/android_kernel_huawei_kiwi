@@ -57,7 +57,7 @@ int app_info_set(const char * name, const char * value)
     new_node = kzalloc(sizeof(*new_node), GFP_KERNEL);
     if(new_node == NULL)
     {
-        return -1;
+        return -ENOMEM;
     }
 
     memcpy(new_node->name,name,((name_lenth > (APP_INFO_NAME_LENTH-1))?(APP_INFO_NAME_LENTH-1):name_lenth));

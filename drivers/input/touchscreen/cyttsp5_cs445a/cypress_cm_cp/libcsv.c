@@ -152,15 +152,19 @@ csv_free(struct csv_parser *p)
 int
 csv_fini(struct csv_parser *p, void (*cb1)(void *, size_t, void *), void (*cb2)(int c, void *), void *data)
 {
-  /* Finalize parsing.  Needed, for example, when file does not end in a newline */
-  int quoted = p->quoted;
-  int pstate = p->pstate;
-  size_t spaces = p->spaces;
-  size_t entry_pos = p->entry_pos;
+  int quoted;
+  int pstate;
+  size_t spaces;
+  size_t entry_pos;
 
   if (p == NULL)
     return -1;
 
+  /* Finalize parsing.  Needed, for example, when file does not end in a newline */
+  quoted = p->quoted;
+  pstate = p->pstate;
+  spaces = p->spaces;
+  entry_pos = p->entry_pos;
 
   if (p->pstate == FIELD_BEGUN && p->quoted && p->options & CSV_STRICT && p->options & CSV_STRICT_FINI) {
     /* Current field is quoted, no end-quote was seen, and CSV_STRICT_FINI is set */
@@ -312,8 +316,10 @@ csv_parse(struct csv_parser *p, const void *s, size_t len, void (*cb1)(void *, s
   size_t spaces = p->spaces;
   size_t entry_pos = p->entry_pos;
 
+  if (!p->entry_buf)
+    return pos;
 
-  if (!p->entry_buf && pos < len) {
+  if (pos < len) {
     /* Buffer hasn't been allocated yet and len > 0 */
     if (csv_increase_buffer(p) != 0) {
       p->quoted = quoted, p->pstate = pstate, p->spaces = spaces, p->entry_pos = entry_pos;

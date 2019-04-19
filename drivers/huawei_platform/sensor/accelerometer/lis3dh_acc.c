@@ -905,7 +905,7 @@ static int lis3dh_acc_get_fifo_lvl(struct lis3dh_acc_data *acc)
 	}
 	fifo_lvl = buf[0] & FIFO_SRC_DATA_CNT_MASK;
 	if ((fifo_lvl == FIFO_MAX_CNT)
-		&& (buf[0] | FIFO_SRC_OVRN_MASK))
+		&& (buf[0] & FIFO_SRC_OVRN_MASK))
 		fifo_lvl = FIFO_MAX_CNT + 1;
 
 	return fifo_lvl;
@@ -1948,6 +1948,7 @@ static void dump_regs_xyz_values(struct work_struct *work)
 	err = acceld->i2c_read(acceld, reg, 6);
 	if(err < 0){
 		LIS3DH_ERR("[lis3dh_err]%s,line %d: failed to read regs value",__func__,__LINE__);
+		mutex_unlock(&acceld->lock);
 		return;
 	}
 
@@ -2143,7 +2144,6 @@ err0:
 static void lis3dh_acc_input_cleanup(struct lis3dh_acc_data *acc)
 {
 	input_unregister_device(acc->input_dev);
-	input_free_device(acc->input_dev);
 }
 
 static int lis3dh_pinctrl_init(struct lis3dh_acc_data *acc)
