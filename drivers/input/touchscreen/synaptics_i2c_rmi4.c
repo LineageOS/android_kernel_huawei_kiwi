@@ -3761,6 +3761,7 @@ err_enable_irq:
 	flush_workqueue(rmi4_data->det_workqueue);
 	destroy_workqueue(rmi4_data->det_workqueue);
 	input_unregister_device(rmi4_data->input_dev);
+	rmi4_data->input_dev = NULL;
 
 err_register_input:
 err_free_gpios:

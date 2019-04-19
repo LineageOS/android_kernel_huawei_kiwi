@@ -130,7 +130,7 @@ static int get_configuration_parameter(enum parameter_id id,
     uint16_t row_number;
     uint16_t row_offset;
     uint16_t read_length;
-    uint8_t data[ROW_SIZE];
+    uint8_t data[ROW_SIZE + 3] = {};
     uint32_t value;
     int ret;
     //int i;
@@ -1662,11 +1662,11 @@ static int validate_cp_test_results(struct configuration* configuration, struct 
     }
     if(!skip_cp_button)
         tp_log_err("%s, not support cp_button\n", __func__);
-exit:
     result->cp_test_pass = result->cp_tx_validation_pass &&
                            result->cp_rx_validation_pass;
     *cp_test_pass = result->cp_test_pass;
     tp_log_info("cp_test:%d\n", *cp_test_pass);
+exit:
     return ret;
 }
 

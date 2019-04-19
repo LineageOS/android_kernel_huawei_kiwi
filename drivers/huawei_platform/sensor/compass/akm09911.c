@@ -2104,8 +2104,8 @@ static void akm_dev_poll(struct work_struct *work)
 	}
 
 	if (!akm->use_hrtimer)
-	queue_delayed_work(akm->work_queue, &akm->dwork,
-			(unsigned long)nsecs_to_jiffies64(akm->delay[MAG_DATA_FLAG]));
+		queue_delayed_work(akm->work_queue, &akm->dwork,
+				(unsigned long)nsecs_to_jiffies64(akm->delay[MAG_DATA_FLAG]));
 	mutex_unlock(&akm->self_test_mutex);
 }
 int
