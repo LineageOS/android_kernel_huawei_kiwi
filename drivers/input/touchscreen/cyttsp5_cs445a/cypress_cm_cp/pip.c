@@ -141,10 +141,10 @@ static int pip_get_sensor_data(struct device *dev, uint8_t *report_buffer,
     mdelay(30);
     for (i = 0; i < report_size -1; i++) {
         //tp_log_debug("report_buffer:0x%x\n", report_buffer[i]);
-        snprintf(temp_command,PAGE_SIZE,"0x%02X ", report_buffer[i]);
+        snprintf(temp_command, sizeof(temp_command), "0x%02X ", report_buffer[i]);
         strncat(command_buf, temp_command, sizeof(temp_command));
     }
-    snprintf(temp_command,PAGE_SIZE,"0x%02X ", report_buffer[report_size -1]);
+    snprintf(temp_command, sizeof(temp_command), "0x%02X ", report_buffer[report_size -1]);
     strncat(command_buf, temp_command, strlen(temp_command) - 1);
 	tp_log_debug("report_buffer:%s\n", command_buf);
 
@@ -578,7 +578,7 @@ static int check_and_parse_short_test_response(uint8_t *buf,
     if (check_and_parse_tt_input_report(in, &length, &command)
             || command != COMMAND_SHORT_TEST
             || length != 7)
-    return -EINVAL;
+        return -EINVAL;
 
     *status = in->return_data[0];
 
@@ -598,7 +598,7 @@ static int check_and_parse_calibrate_idacs_response(uint8_t *buf,
     if (check_and_parse_tt_input_report(in, &length, &command)
             || command != COMMAND_CALIBRATE_IDACS
             || length != 6)
-    return -EINVAL;
+        return -EINVAL;
 
     *status = in->return_data[0];
 
@@ -625,7 +625,7 @@ static int check_and_parse_execute_panel_scan_response(uint8_t *buf,
     if (check_and_parse_tt_input_report(in, &length, &command)
             || command != COMMAND_EXECUTE_PANEL_SCAN
             || length != 6)
-    return -EINVAL;
+        return -EINVAL;
 
     *status = in->return_data[0];
 

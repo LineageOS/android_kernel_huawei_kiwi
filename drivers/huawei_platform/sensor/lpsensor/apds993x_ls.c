@@ -762,10 +762,6 @@ static void apds993x_ps_report_event(struct i2c_client *client, int apds_status)
 	}
 	data->pilt = apds993x_i2c_read(client, APDS993X_PILTL_REG, APDS993X_I2C_WORD);
 	data->piht = apds993x_i2c_read(client, APDS993X_PIHTL_REG, APDS993X_I2C_WORD);
-	if (data->pilt < 0 || data->piht < 0){
-		APDS993X_ERR("%s,line %d:data->pilt = %d,data->piht=%d,read i2c wrong\n",__func__,__LINE__,data->pilt,data->piht);
-		goto exit;
-	}
 	if ((data->ps_data >= data->piht) && (!sunlight_detect) && ps_int_occur) {
 		/* far-to-near detected */
 		data->ps_detection = APDS993X_CLOSE_FLAG;

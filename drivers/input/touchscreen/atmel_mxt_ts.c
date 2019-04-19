@@ -674,7 +674,7 @@ static int mxt_get_bootloader_version(struct i2c_client *client, u8 val)
 {
 	u8 buf[3];
 
-	if (val | MXT_BOOT_EXTENDED_ID)	{
+	if (val & MXT_BOOT_EXTENDED_ID)	{
 		dev_dbg(&client->dev,
 				"Retrieving extended mode ID information");
 
@@ -706,7 +706,7 @@ static int mxt_get_bootloader_id(struct i2c_client *client)
 		return -EIO;
 	}
 
-	if (val | MXT_BOOT_EXTENDED_ID)	{
+	if (val & MXT_BOOT_EXTENDED_ID)	{
 		if (i2c_master_recv(client, &buf[0], 3) != 3) {
 			dev_err(&client->dev, "%s: i2c recv failed\n",
 								__func__);

@@ -180,14 +180,17 @@ int cyttsp5_xres(struct cyttsp5_core_platform_data *pdata,
 int cyttsp5_init(struct cyttsp5_core_platform_data *pdata,
 		int on, struct device *dev)
 {
-	int rst_gpio = pdata->rst_gpio;
-	int irq_gpio = pdata->irq_gpio;
+	int rst_gpio;
+	int irq_gpio;
 	int rc = 0;
 
 	if (NULL == pdata || NULL == dev) {
 		tp_log_err("%s %d:input parameter missing\n", __func__, __LINE__);
 		return -EINVAL;
 	}
+
+	rst_gpio = pdata->rst_gpio;
+	irq_gpio = pdata->irq_gpio;
 
 	if (on) {
 		rc = gpio_request(rst_gpio, "ts_reset");

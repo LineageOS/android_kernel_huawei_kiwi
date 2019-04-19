@@ -643,7 +643,7 @@ static int fpc1020_probe(struct spi_device *spi)
 
     fpc1020->pf_dev= platform_device_alloc(FPC1020_INPUT_NAME, -1);
     if (!fpc1020->pf_dev)
-    goto err;
+        goto err;
 
     error = platform_device_add(fpc1020->pf_dev);
     if (error){
