@@ -1,6 +1,7 @@
 #include "../kiwi/huawei.dtsi"
 #include "../kiwi/huawei-camera-vb.dtsi"
 #include "../kiwi/huawei-sensors-vb.dtsi"
+#include "../kiwi/huawei-usb.dtsi"
 
 / {
 	huawei_audio_info {
