@@ -1,0 +1,7 @@
+/ {
+	soc {
+		qcom,rmtfs_sharedmem@8e580000 {
+			reg = <0x86690000 0x150000>;
+		};
+	};
+};
