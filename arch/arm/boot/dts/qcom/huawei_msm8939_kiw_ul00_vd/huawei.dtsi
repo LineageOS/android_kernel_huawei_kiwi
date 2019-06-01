@@ -1,6 +1,7 @@
 #include "../kiwi/huawei.dtsi"
 #include "../kiwi/huawei-camera-vc.dtsi"
 #include "../kiwi/huawei-sensors-vc.dtsi"
+#include "../kiwi/huawei-rmtfs.dtsi"
 
 / {
 	huawei_audio_info {
