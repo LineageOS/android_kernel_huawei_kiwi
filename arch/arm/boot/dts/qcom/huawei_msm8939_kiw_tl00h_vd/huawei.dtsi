@@ -19,4 +19,11 @@
 		fac,software_ver = "MSM8939_KIW_TL00H_VD";
 		status = "ok";
 	};
+
+	soc {
+		qcom,rmtfs_sharedmem@8e580000 {
+			reg = <0x86690000 0x150000>;
+		};
+	};
 };
+
