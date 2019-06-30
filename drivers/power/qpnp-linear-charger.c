@@ -143,7 +143,7 @@ int huawei_disable_charger(struct qpnp_lbc_chip *chip);
 
 #define QPNP_CHARGER_DEV_NAME	"qcom,qpnp-linear-charger"
 
-#define HWLOG_TAG qpnp-linear-charger
+#define HWLOG_TAG "qpnp-linear-charger"
 int pmu_debug_mask = PMU_INFO;
 module_param(pmu_debug_mask, int, 0644);
 

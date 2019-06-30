@@ -163,7 +163,7 @@ static atomic_t display_state = ATOMIC_INIT(DISPLAY_STATE_ON);
 #endif
 
 #define QPNP_VM_BMS_DEV_NAME		"qcom,qpnp-vm-bms"
-#define HWLOG_TAG qpnp-vm-bms
+#define HWLOG_TAG "qpnp-vm-bms"
 
 #ifdef CONFIG_HUAWEI_KERNEL
 #define CHG_OCV_VOLTAGE_DELTA_UV               50000

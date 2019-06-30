@@ -16,7 +16,7 @@
 #include <linux/charger_core.h>
 #include <linux/of_batterydata.h>
 #include <linux/platform_device.h>
-#define HWLOG_TAG charger_core
+#define HWLOG_TAG "charger_core"
 struct charger_ic_type charger_type_table[] =
 {
     {"Linear_charger",     QCOM_LINEAR_CHARGER},

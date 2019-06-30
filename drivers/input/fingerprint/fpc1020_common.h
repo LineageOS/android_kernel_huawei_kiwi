@@ -60,29 +60,26 @@ extern u8 g_fpc_debug_mask;
 #define FPC_DEBUG      2
 #define FPC_NAV_DEBUG  3
 
-#define FPC_TAG_INFO    "[I/FPC] "
-#define FPC_TAG_ERR     "[E/FPC] "
-#define FPC_TAG_DEBUG   "[D/FPC] "
-#define FPC_TAG_NAV     "[N/FPC] "
+#define LOG_TAG         "FPC"
 
-#define fpc_printk(level, tag, fmt, args...) \
-        printk(level tag "%s %d: " fmt "", __func__, __LINE__, ## args)
+#define fpc_printk(level, fmt, args...) \
+        printk(level "%s: %s %d: " fmt "", LOG_TAG, __func__, __LINE__, ## args)
 
 #define fpc_log_err(fmt, args...) do { \
     if (g_fpc_debug_mask >= FPC_ERR) \
-        fpc_printk(KERN_ERR, FPC_TAG_ERR, fmt, ## args); \
+        fpc_printk(KERN_ERR, fmt, ## args); \
     } while(0)
 #define fpc_log_info(fmt, args...) do { \
     if (g_fpc_debug_mask >= FPC_INFO) \
-        fpc_printk(KERN_ERR, FPC_TAG_INFO, fmt, ## args); \
+        fpc_printk(KERN_INFO, fmt, ## args); \
     } while(0)
 #define fpc_log_debug(fmt, args...) do { \
     if ((KERNEL_HWFLOW) && (g_fpc_debug_mask >= FPC_DEBUG)) \
-        fpc_printk(KERN_ERR, FPC_TAG_DEBUG, fmt, ## args); \
+        fpc_printk(KERN_DEBUG, fmt, ## args); \
     } while(0)
 #define fpc_log_nav(fmt, args...) do { \
     if ((KERNEL_HWFLOW) && (g_fpc_debug_mask >= FPC_NAV_DEBUG)) \
-        fpc_printk(KERN_ERR, FPC_TAG_NAV, fmt, ## args); \
+        fpc_printk(KERN_DEBUG, fmt, ## args); \
     } while(0)
 #else
 #define fpc_log_err(fmt, args...)

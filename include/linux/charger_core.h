@@ -42,55 +42,25 @@
 #define PMU_DBG  4
 extern int pmu_debug_mask;
 
-#define pmu_log_err(x...) \
-        _pmu_log_err(HWLOG_TAG,##x)
+#define pmu_log_err(fmt, args...) do { \
+    if (pmu_debug_mask >= PMU_ERR) \
+        pr_err(HWLOG_TAG ":" fmt, ## args); \
+    } while(0)
 
-#define _pmu_log_err(TAG,x...) \
-        __pmu_log_err(TAG,##x)
+#define pmu_log_warn(fmt, args...) do { \
+    if (pmu_debug_mask >= PMU_WARN) \
+        pr_warn(HWLOG_TAG ":" fmt, ## args); \
+    } while(0)
 
-#define __pmu_log_err(TAG,fmt, ...) \
-    do{ \
-        if(pmu_debug_mask >= PMU_ERR) \
-            pr_err(hw_fmt_tag(TAG,E) fmt,##__VA_ARGS__);    \
-    }while(0)
+#define pmu_log_info(fmt, args...) do { \
+    if (pmu_debug_mask >= PMU_INFO) \
+        pr_info(HWLOG_TAG ":" fmt, ## args); \
+    } while(0)
 
-#define pmu_log_warn(x...) \
-        _pmu_log_warn(HWLOG_TAG,##x)
-
-#define _pmu_log_warn(TAG,x...) \
-        __pmu_log_warn(TAG,##x)
-
-#define __pmu_log_warn(TAG,fmt, ...) \
-    do{ \
-        if(pmu_debug_mask >= PMU_WARN) \
-            pr_err(hw_fmt_tag(TAG,W) fmt,##__VA_ARGS__);    \
-    }while(0)
-
-#define pmu_log_info(x...) \
-        _pmu_log_info(HWLOG_TAG,##x)
-
-#define _pmu_log_info(TAG,x...) \
-        __pmu_log_info(TAG,##x)
-
-#define __pmu_log_info(TAG,fmt, ...) \
-    do{ \
-        if(pmu_debug_mask >= PMU_INFO) \
-            pr_err(hw_fmt_tag(TAG,I) fmt,##__VA_ARGS__);    \
-    }while(0)
-
-#define pmu_log_debug(x...) \
-        _pmu_log_debug(HWLOG_TAG,##x)
-
-#define _pmu_log_debug(TAG,x...) \
-        __pmu_log_debug(TAG,##x)
-
-#define __pmu_log_debug(TAG,fmt, ...) \
-    do{ \
-        if(pmu_debug_mask >= PMU_DBG) \
-            pr_err(hw_fmt_tag(TAG,D) fmt,##__VA_ARGS__);    \
-    }while(0)
-
-#define hw_fmt_tag(TAG,LEVEL) "[" #LEVEL "/" #TAG "] "
+#define pmu_log_debug(fmt, args...) do { \
+    if (pmu_debug_mask >= PMU_DBG) \
+        pr_debug(HWLOG_TAG ":" fmt, ## args); \
+    } while(0)
 
 /*************************struct define area***************************/
 struct charger_ic_type{

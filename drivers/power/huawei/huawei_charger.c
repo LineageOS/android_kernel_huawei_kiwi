@@ -36,7 +36,7 @@
 #include <linux/of_batterydata.h>
 #include <linux/qpnp/qpnp-adc.h>
 
-#define HWLOG_TAG huawei_charger
+#define HWLOG_TAG "huawei_charger"
 
 struct charge_device_ops *g_ops = NULL;
 struct device *charge_dev = NULL;

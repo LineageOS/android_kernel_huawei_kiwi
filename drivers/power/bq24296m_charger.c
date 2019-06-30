@@ -35,7 +35,7 @@
 #include <linux/power/huawei_charger.h>
 #include <linux/charger_core.h>
 
-#define HWLOG_TAG  bq24296_charger
+#define HWLOG_TAG  "bq24296_charger"
 
 static struct wake_lock chrg_lock;
 static struct wake_lock stop_chrg_lock;
