@@ -387,6 +387,7 @@ static int lis3dh_acc_config_regulator(struct lis3dh_acc_data *acc, bool on)
 {
 	int rc = 0, i;
 	int num_reg = sizeof(lis3dh_acc_vreg) / sizeof(struct sensor_regulator);
+	struct sensor_regulator *lis3dh_acc_vreg = acc->lis3dh_acc_vreg;
 
 	if (on) {
 		for (i = 0; i < num_reg; i++) {
@@ -1232,7 +1233,6 @@ static int lis3dh_acc_enable(struct lis3dh_acc_data *acc)
 {
 	int err;
 	#ifdef CONFIG_HUAWEI_KERNEL
-	LIS3DH_INFO("%s: acc->enabled=%d",__func__, atomic_read(&acc->enabled));
 	acc->print_xyz_flag = true;
 	acc->queued_debug_work_flag = false;
 	#endif
@@ -1258,13 +1258,13 @@ static int lis3dh_acc_enable(struct lis3dh_acc_data *acc)
 
 		if (!acc->pdata->enable_int && !acc->use_batch) {
 			if (acc->pdata->use_hrtimer){
-				LIS3DH_INFO("%s,lis3dh enable in hrtimer mode, poll_interval = %d\n",__func__,acc->delay_ms);
+				LIS3DH_DEBUG("%s,lis3dh enable in hrtimer mode, poll_interval = %d\n",__func__,acc->delay_ms);
 				err = hrtimer_start(&acc->poll_timer, ns_to_ktime(acc->delay_ms * 1000000), HRTIMER_MODE_REL);
 				if (err != 0) {
 					LIS3DH_ERR("%s: hrtimer_start fail! msec=%d\n", __func__, acc->delay_ms);
 				}
 			}else{
-				LIS3DH_INFO("%s,lis3dh enable, poll_interval = %d\n",__func__,acc->delay_ms);
+				LIS3DH_DEBUG("%s,lis3dh enable, poll_interval = %d\n",__func__,acc->delay_ms);
 				schedule_delayed_work(&acc->input_work,
 				msecs_to_jiffies(acc->delay_ms));
 			}
@@ -1293,9 +1293,6 @@ static int lis3dh_acc_enable(struct lis3dh_acc_data *acc)
 static int lis3dh_acc_disable(struct lis3dh_acc_data *acc)
 {
 	int err = 0;
-	#ifdef CONFIG_HUAWEI_KERNEL
-	LIS3DH_INFO("%s: acc->enabled=%d",__func__, atomic_read(&acc->enabled));
-	#endif
 	if (atomic_cmpxchg(&acc->enabled, 1, 0)) {
 		if (acc->use_batch) {
 			err = lis3dh_acc_enable_batch(acc, false);
@@ -1306,7 +1303,7 @@ static int lis3dh_acc_disable(struct lis3dh_acc_data *acc)
 		}
 		if (!acc->pdata->enable_int && !acc->use_batch){
 			if(acc->pdata->use_hrtimer){
-				LIS3DH_INFO("%s:lis3dh diable with hrtimer mode , acc->enabled=%d",__func__, atomic_read(&acc->enabled));
+				LIS3DH_DEBUG("%s:lis3dh diable with hrtimer mode , acc->enabled=%d",__func__, atomic_read(&acc->enabled));
 				hrtimer_cancel(&acc->poll_timer);
 				cancel_work_sync(&acc->input_work.work);
 			}else{
