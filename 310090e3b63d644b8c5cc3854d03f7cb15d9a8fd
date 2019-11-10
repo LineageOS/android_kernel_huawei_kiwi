@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0290aad1_91db10fa",
+        "filename": "drivers/huawei_platform/sensor/accelerometer/lis3dh_acc.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 908,
+      "author": {
+        "id": 13028
+      },
+      "writtenOn": "2019-11-10T11:46:50Z",
+      "side": 1,
+      "message": "seems legit, although it is then same in the original file in /input/misc",
+      "range": {
+        "startLine": 908,
+        "startChar": 2,
+        "endLine": 908,
+        "endChar": 35
+      },
+      "revId": "310090e3b63d644b8c5cc3854d03f7cb15d9a8fd",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4cfa87d8_c3205530",
+        "filename": "drivers/input/touchscreen/cyttsp5_cs445a/cypress_cm_cp/libcsv.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 13028
+      },
+      "writtenOn": "2019-11-10T11:46:50Z",
+      "side": 1,
+      "message": "I think this is a false positive, as the buffer allocation is done w/ csv_increase_buffer and failures of that are properly caught. the only case this ends up uninitialized would be if len \u003d\u003d 0, which should never happen. and in that case, the error handling has to be done differently than the current approach to fix it",
+      "range": {
+        "startLine": 319,
+        "startChar": 2,
+        "endLine": 322,
+        "endChar": 18
+      },
+      "revId": "310090e3b63d644b8c5cc3854d03f7cb15d9a8fd",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}

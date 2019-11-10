@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3bbb4962_883093b3",
+        "filename": "drivers/huawei_platform/sensor/lpsensor/apds993x_ls.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 768,
+      "author": {
+        "id": 13028
+      },
+      "writtenOn": "2019-11-10T11:46:50Z",
+      "side": 0,
+      "message": "looks suspicious, the call to apds993x_i2c_read calls into https://github.com/LineageOS/android_kernel_huawei_kiwi/blob/lineage-16.0/drivers/huawei_platform/sensor/lpsensor/apds993x_ls.c#L370 -\u003e https://github.com/LineageOS/android_kernel_huawei_kiwi/blob/lineage-16.0/drivers/i2c/i2c-core.c#L1943 -\u003e https://github.com/LineageOS/android_kernel_huawei_kiwi/blob/lineage-16.0/drivers/i2c/i2c-core.c#L2244-L2245\n--\u003e pilt and piht need to be signed",
+      "range": {
+        "startLine": 765,
+        "startChar": 1,
+        "endLine": 768,
+        "endChar": 2
+      },
+      "revId": "6665947f594cffc6ae53fc1adf6928a18cf081b8",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
